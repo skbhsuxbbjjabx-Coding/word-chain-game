@@ -27,7 +27,7 @@ npm run dev
 
 ## Vercel 배포
 
-Vercel은 `/api/[...path].js`를 서버리스 함수로 실행합니다. API 로직은 `api-handler.js`, 로컬 정적 파일 서버는 `local-server.js`로 분리되어 있어 Vercel이 루트 서버 진입점을 잘못 인식하거나 함수가 포트를 열지 않습니다. Vercel 프로젝트의 Environment Variables에 `KDICT_API_KEY`를 추가하면 공식 사전 검증도 활성화됩니다.
+Vercel은 `vercel.json`에서 Framework를 정적 프로젝트(Other)로 고정하고, `/api/[...path].js`만 서버리스 함수로 실행합니다. API 로직은 `api-handler.js`, 로컬 정적 파일 서버는 `local-server.js`로 분리되어 있습니다. Vercel 프로젝트의 Environment Variables에 `KDICT_API_KEY`를 추가하면 공식 사전 검증도 활성화됩니다.
 
 현재 빠른 매칭은 같은 서버에 접속한 실제 플레이어가 정원만큼 모일 때 시작하며, AI로 빈 자리를 채우지 않습니다. 게임 단어 이벤트도 서버를 통해 전달됩니다.
 
