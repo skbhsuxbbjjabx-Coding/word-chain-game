@@ -28,7 +28,8 @@ const state = {
   playerId: null,
   selfIndex: 0,
   eventCursor: 0,
-  eventPollId: null
+  eventPollId: null,
+  startWord: "마음"
 };
 
 const avatarClasses = ["mint", "coral", "blue"];
@@ -36,10 +37,12 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const normalizeWord = (value) => value.trim().replace(/\s+/g, "");
 const lastSyllable = (word) => [...word].at(-1) || "";
 const firstSyllable = (word) => [...word][0] || "";
+const roParticle = (syllable) => { const code = syllable.codePointAt(0); return code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 === 0 ? "로" : "으로"; };
 const getCandidates = (initial, used = state.usedWords) => words.filter((word) => firstSyllable(word) === initial && !used.has(word));
 const responseCount = (word, used) => getCandidates(lastSyllable(word), used).length;
 const isOneShot = (word, used = state.usedWords) => responseCount(word, used) === 0;
 const getDefinition = (word) => dictionary.get(word) || "끝잇 단어 데이터에 등록된 낱말";
+const pickOpeningWord = () => pick(words.filter((word) => responseCount(word, new Set([word])) >= 2));
 
 function showToast(message) {
   const toast = $("#toast");
@@ -190,29 +193,31 @@ async function pollQuickMatch() {
   state.selfIndex = status.selfIndex;
   state.eventCursor = 0;
   state.roomCode = status.roomCode;
-  beginGame(status.players, `빠른 매칭 · ${status.players.length}인`);
+  state.startWord = status.startWord;
+  beginGame(status.players, `빠른 매칭 · ${status.players.length}인`, status.startWord);
   button.disabled = false;
   button.innerHTML = '<span>⌁</span> 빠른 매칭 시작';
 }
 
-function beginGame(names, title) {
+function beginGame(names, title, openingWord = pickOpeningWord()) {
   state.playerNames = names;
   state.gameMode = state.gameMode || "quick";
   state.round = 1;
   state.currentPlayer = state.gameMode === "human" && state.selfIndex !== 0 ? "remote" : "me";
-  state.lastWord = "마음";
+  state.startWord = openingWord;
+  state.lastWord = openingWord;
   state.requiredInitial = lastSyllable(state.lastWord);
-  state.usedWords = new Set(["마음"]);
+  state.usedWords = new Set([openingWord]);
   $("#gameTitle").textContent = title;
   $("#playerCountLabel").textContent = `${names.length}명`;
   $("#gameRoomCode").textContent = state.roomCode || "QUICK";
   renderPlayers();
   $("#chatLog").innerHTML = "";
   addMessage("system", "게임이 시작됐어요. 첫 단어는 한방단어를 사용할 수 없습니다.");
-  addMessage("player", "마음", "마음의 뜻: 사람의 생각이나 감정이 깃드는 곳");
+  addMessage("system", `시작 단어가 정해졌어요: ${openingWord} · ${getDefinition(openingWord)}`);
   $("#roundNumber").textContent = "01";
   $("#turnStatus").textContent = state.currentPlayer === "me" ? "당신의 턴이에요" : "첫 플레이어의 턴이에요";
-  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
+  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
   $("#factCheck").textContent = "";
   $("#wordInput").value = "";
   setView("game");
@@ -262,7 +267,7 @@ async function pollMatchEvents() {
       state.requiredInitial = event.nextInitial;
       addMessage("system", `${event.nickname}님의 시간이 끝났어요. 당신의 턴입니다.`);
       $("#turnStatus").textContent = "당신의 턴이에요";
-      $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
+      $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
       renderPlayers();
       startTimer();
       continue;
@@ -275,7 +280,7 @@ async function pollMatchEvents() {
     addMessage("remote", event.word, `${event.nickname}::${event.note || getDefinition(event.word)} · 다음 글자 ${event.nextInitial}`);
     $("#roundNumber").textContent = String(state.round).padStart(2, "0");
     $("#turnStatus").textContent = "당신의 턴이에요";
-    $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
+    $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
     $("#factCheck").textContent = "✓ 다른 플레이어의 단어를 확인했어요.";
     $("#factCheck").className = "fact-check success";
     renderPlayers();
@@ -364,18 +369,27 @@ async function submitWord(event) {
   if (state.gameMode === "ai") setTimeout(aiTurn, 800);
 }
 
+function lookAhead(word, used, depth = 2) {
+  const nextUsed = new Set([...used, word]);
+  const replies = getCandidates(lastSyllable(word), nextUsed);
+  if (depth <= 0 || !replies.length) return { replies: replies.length, future: 0 };
+  const future = Math.max(...replies.map((reply) => lookAhead(reply, nextUsed, depth - 1).replies));
+  return { replies: replies.length, future };
+}
+
 function selectAIWord() {
   let candidates = getCandidates(state.requiredInitial);
   if (state.round === 1) candidates = candidates.filter((word) => !isOneShot(word));
   if (!candidates.length) return null;
   if (state.difficulty === "easy") return pick(candidates);
   const scored = candidates.map((word) => {
-    const nextUsed = new Set([...state.usedWords, word]);
-    const replies = getCandidates(lastSyllable(word), nextUsed).length;
-    const deadEndBonus = replies === 0 ? 35 : 0;
-    const rarityScore = 1 / (replies + 1) * 20;
-    return { word, score: state.difficulty === "hard" ? deadEndBonus + rarityScore + Math.random() * 2 : replies + Math.random() * 5 };
-  }).sort((a, b) => state.difficulty === "hard" ? b.score - a.score : b.score - a.score);
+    const forecast = lookAhead(word, state.usedWords, state.difficulty === "hard" ? 3 : 2);
+    const deadEndBonus = forecast.replies === 0 ? 80 : 0;
+    const pressure = -forecast.replies * (state.difficulty === "hard" ? 18 : 7);
+    const futurePressure = -forecast.future * (state.difficulty === "hard" ? 6 : 2);
+    const lengthBonus = Math.min(word.length, 4) * (state.difficulty === "hard" ? 1.2 : .4);
+    return { word, score: deadEndBonus + pressure + futurePressure + lengthBonus + Math.random() * (state.difficulty === "hard" ? .4 : 4) };
+  }).sort((a, b) => b.score - a.score);
   return scored[0].word;
 }
 
@@ -396,8 +410,8 @@ function aiTurn() {
   addMessage("ai", word, `${getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
   $("#roundNumber").textContent = String(state.round).padStart(2, "0");
   $("#turnStatus").textContent = "당신의 턴이에요";
-  $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
-  $("#factCheck").textContent = `✓ AI가 사전 후보 ${getCandidates(state.requiredInitial).length}개 중 단어를 선택했어요.`;
+  $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
+  $("#factCheck").textContent = `✓ AI가 후보 ${getCandidates(state.requiredInitial).length}개를 살피고 다음 수까지 계산했어요.`;
   $("#factCheck").className = "fact-check success";
   renderPlayers();
   startTimer();

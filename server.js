@@ -18,6 +18,7 @@ const queues = new Map([[2, []], [3, []], [4, []]]);
 const tickets = new Map();
 const matches = new Map();
 const rooms = new Map();
+const START_WORDS = ["마음", "사랑", "나무", "음악", "게임", "하늘", "바다", "친구", "학교", "사과", "영화", "수박"];
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -40,12 +41,14 @@ function makeCode(prefix = "") {
 }
 
 function makeMatch(players) {
+  const startWord = START_WORDS[Math.floor(Math.random() * START_WORDS.length)];
   const match = {
     id: randomUUID(),
     roomCode: makeCode("P"),
     players,
     events: [],
-    nextInitial: "음",
+    startWord,
+    nextInitial: [...startWord].at(-1),
     createdAt: Date.now()
   };
   matches.set(match.id, match);
@@ -85,7 +88,7 @@ async function handleApi(request, response, url) {
     const queue = queues.get(ticket.size) || [];
     if (ticket.status === "matched") {
       const match = matches.get(ticket.matchId);
-      return sendJson(response, 200, { status: "matched", matchId: match.id, roomCode: match.roomCode, playerId: ticket.id, selfIndex: ticket.selfIndex, players: match.players.map((player) => player.nickname) });
+      return sendJson(response, 200, { status: "matched", matchId: match.id, roomCode: match.roomCode, startWord: match.startWord, playerId: ticket.id, selfIndex: ticket.selfIndex, players: match.players.map((player) => player.nickname) });
     }
     return sendJson(response, 200, { status: "waiting", size: ticket.size, waiting: queue.length, position: Math.max(1, queue.indexOf(ticket.id) + 1) });
   }
@@ -116,7 +119,7 @@ async function handleApi(request, response, url) {
     const player = match.players[match.events.length % match.players.length];
     if (player.id !== body.playerId) return sendJson(response, 409, { error: "not_your_turn" });
     const word = String(body.word || "").trim().replace(/\s+/g, "");
-    if (!word || match.events.some((event) => event.word === word) || word === "마음") return sendJson(response, 422, { error: "invalid_word" });
+    if (!word || match.events.some((event) => event.word === word) || word === match.startWord) return sendJson(response, 422, { error: "invalid_word" });
     const event = { playerId: player.id, nickname: player.nickname, word, note: String(body.note || ""), nextInitial: [...word].at(-1), createdAt: Date.now() };
     match.events.push(event);
     match.nextInitial = event.nextInitial;
