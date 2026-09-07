@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8f5" />
+    <title>끝잇 | 온라인 끝말잇기</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="끝잇 홈">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>끝잇</span>
+        </a>
+        <div class="topbar-actions">
+          <label class="nickname-field">
+            <span class="sr-only">닉네임</span>
+            <span class="user-dot" aria-hidden="true">●</span>
+            <input id="nicknameInput" maxlength="12" value="단어수집가" aria-label="닉네임" />
+          </label>
+          <button class="icon-button" id="soundToggle" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">♬</button>
+          <button class="icon-button" id="settingsButton" title="설정" aria-label="설정">⚙</button>
+        </div>
+      </header>
+
+      <main id="app" class="page-wrap">
+        <section id="lobbyView" class="view active-view" aria-labelledby="lobbyTitle">
+          <div class="welcome-row">
+            <div>
+              <p class="eyebrow"><span class="status-dot"></span> 지금 238명이 플레이 중</p>
+              <h1 id="lobbyTitle">오늘의 한 단어,<br /><span>누구와 이어볼까요?</span></h1>
+              <p class="subcopy">가볍게 만나고, 영리하게 이어가는 끝말잇기</p>
+              <button class="ai-entry-button" id="aiMatchButton"><span>✦</span> AI와 플레이</button>
+            </div>
+            <div class="word-orbit" aria-hidden="true">
+              <div class="orbit orbit-one"></div>
+              <div class="orbit orbit-two"></div>
+              <span class="orbit-word orbit-word-one">마음</span>
+              <span class="orbit-word orbit-word-two">음악</span>
+              <span class="orbit-word orbit-word-three">악수</span>
+              <span class="orbit-word orbit-word-four">수박</span>
+              <div class="orbit-center">끝<br />잇</div>
+            </div>
+          </div>
+
+          <div class="lobby-grid">
+            <section class="panel quick-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">QUICK MATCH</p>
+                  <h2>빠른 매칭</h2>
+                </div>
+                <span class="live-pill"><span></span> LIVE</span>
+              </div>
+              <p class="panel-description">원하는 인원만 고르면 바로 게임을 찾아드려요.</p>
+              <div class="player-count" role="group" aria-label="빠른 매칭 인원 선택">
+                <button class="count-option" data-count="2"><strong>2</strong><span>빠른 한 판</span></button>
+                <button class="count-option selected" data-count="3"><strong>3</strong><span>가장 인기</span></button>
+                <button class="count-option" data-count="4"><strong>4</strong><span>북적북적</span></button>
+              </div>
+              <button class="primary-button full-button" id="quickMatchButton"><span>⌁</span> 빠른 매칭 시작</button>
+              <div class="match-meta"><span><i class="mini-avatar mint">유</i> 2,184명이 대기 중</span><span>평균 8초</span></div>
+            </section>
+
+            <section class="panel friends-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">PLAY WITH FRIENDS</p>
+                  <h2>친구와 플레이</h2>
+                </div>
+                <span class="friends-icon">⌘</span>
+              </div>
+              <p class="panel-description">방을 만들거나 초대 코드를 입력해서 바로 합류하세요.</p>
+              <div class="friends-actions">
+                <button class="secondary-button" id="createRoomButton"><span class="button-icon">＋</span><span><strong>팀 만들기</strong><small>초대 코드 생성</small></span></button>
+                <button class="secondary-button" id="joinRoomButton"><span class="button-icon">↗</span><span><strong>코드 입력</strong><small>친구 방 입장</small></span></button>
+              </div>
+              <div class="room-note"><span>✦</span> 방장은 시작 인원을 직접 정할 수 있어요.</div>
+            </section>
+          </div>
+
+          <div class="lobby-bottom-grid">
+            <section class="panel rules-panel">
+              <div class="section-title-row"><h2>게임 룰</h2><button class="text-button" id="rulesButton">전체 보기 <span>→</span></button></div>
+              <div class="rule-list">
+                <div class="rule-item"><span class="rule-symbol">가</span><div><strong>공식 단어만 인정</strong><small>네이버 사전 기준 검증</small></div></div>
+                <div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이을 수 없는 단어는 제한</small></div></div>
+                <div class="rule-item"><span class="rule-symbol time">20</span><div><strong>턴 제한 20초</strong><small>시간이 지나면 자동 패배</small></div></div>
+              </div>
+            </section>
+            <section class="panel tip-panel">
+              <div class="tip-quote">“좋은 단어는 이어지고,<br />좋은 판은 기억에 남아요.”</div>
+              <div class="tip-footer"><span class="tip-avatar">끝</span><span>끝잇 매니저의 오늘의 팁</span></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="gameView" class="view" aria-labelledby="gameTitle">
+          <div class="game-topbar">
+            <button class="back-button" id="leaveGameButton" aria-label="로비로 돌아가기">← <span>로비</span></button>
+            <div class="game-title"><span class="live-pill"><span></span> PLAYING</span><h1 id="gameTitle">빠른 매칭 · 3인</h1></div>
+            <div class="game-actions"><button class="icon-button" id="copyGameCode" title="방 코드 복사" aria-label="방 코드 복사">⌘</button><button class="icon-button" id="gameRulesButton" title="게임 룰" aria-label="게임 룰">?</button></div>
+          </div>
+          <div class="game-layout">
+            <aside class="players-rail panel">
+              <div class="rail-heading"><h2>플레이어</h2><span id="playerCountLabel">3명</span></div>
+              <div id="playersList" class="players-list"></div>
+              <div class="room-code-card"><span>방 코드</span><strong id="gameRoomCode">QUICK</strong><button id="copyCodeButton">복사</button></div>
+              <button class="ghost-button" id="inviteButton">＋ 친구 초대하기</button>
+            </aside>
+            <section class="game-board panel">
+              <div class="round-banner"><span>ROUND <strong id="roundNumber">01</strong></span><span id="turnStatus">당신의 턴이에요</span><span class="timer"><i></i><strong id="timerValue">20</strong>s</span></div>
+              <div id="chatLog" class="chat-log" aria-live="polite"></div>
+              <div id="turnPrompt" class="turn-prompt">'마음'으로 시작하는 단어를 이어주세요.</div>
+              <form id="wordForm" class="word-form">
+                <div class="word-input-wrap"><span class="input-prefix">↳</span><input id="wordInput" autocomplete="off" maxlength="12" placeholder="단어를 입력하세요" aria-label="단어 입력" /><button type="button" class="clear-input" id="clearWordButton" aria-label="입력 지우기">×</button></div>
+                <button class="primary-button submit-word" type="submit">보내기 <span>↵</span></button>
+              </form>
+              <div id="factCheck" class="fact-check" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer"><span>끝잇 v0.1 · 오늘도 단어를 이어요</span><span><button class="footer-link" id="privacyButton">안전한 플레이</button> · <button class="footer-link" id="helpButton">도움말</button></span></footer>
+    </div>
+
+    <div class="modal-backdrop" id="modalBackdrop" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button class="modal-close" id="modalClose" aria-label="닫기">×</button>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
