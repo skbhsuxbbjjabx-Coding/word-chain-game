@@ -21,7 +21,14 @@ const state = {
   timerId: null,
   sound: localStorage.getItem("kkeutit-sound") !== "off",
   queueId: null,
-  playerNames: []
+  playerNames: [],
+  matchTicket: null,
+  matchPollId: null,
+  matchId: null,
+  playerId: null,
+  selfIndex: 0,
+  eventCursor: 0,
+  eventPollId: null
 };
 
 const avatarClasses = ["mint", "coral", "blue"];
@@ -135,7 +142,7 @@ function joinRoomModal() {
 }
 
 function rulesModal() {
-  openModal(`<p class="panel-kicker">RULE BOOK</p><h2 id="modalTitle">끝잇 게임 룰</h2><p>공식 단어를 이어가며 마지막까지 살아남는 사람이 승리해요.</p><div class="rule-list" style="grid-template-columns:1fr;margin-top:18px"><div class="rule-item"><span class="rule-symbol">가</span><div><strong>단어 검증</strong><small>표준국어대사전/네이버 사전 기준 데이터로 판정합니다.</small></div></div><div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이어갈 후보가 없는 단어는 첫 단어로 사용할 수 없습니다.</small></div></div><div class="rule-item"><span class="rule-symbol time">20</span><div><strong>턴 제한</strong><small>20초 안에 단어를 입력하지 않으면 턴을 놓칩니다.</small></div></div></div>`);
+  openModal(`<p class="panel-kicker">RULE BOOK</p><h2 id="modalTitle">끝잇 게임 룰</h2><p>공식 단어를 이어가며 마지막까지 살아남는 사람이 승리해요.</p><div class="rule-list" style="grid-template-columns:1fr;margin-top:18px"><div class="rule-item"><span class="rule-symbol">가</span><div><strong>단어 검증</strong><small>공식 사전 API를 서버에서 확인한 뒤 판정합니다.</small></div></div><div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이어갈 후보가 없는 단어는 첫 단어로 사용할 수 없습니다.</small></div></div><div class="rule-item"><span class="rule-symbol time">20</span><div><strong>턴 제한</strong><small>20초 안에 단어를 입력하지 않으면 턴을 놓칩니다.</small></div></div></div>`);
 }
 
 function helpModal() {
@@ -147,32 +154,52 @@ function settingsModal() {
   $("#saveSettings").addEventListener("click", () => { state.nickname = $("#modalNickname").value.trim() || "단어수집가"; $("#nicknameInput").value = state.nickname; localStorage.setItem("kkeutit-nickname", state.nickname); closeModal(); showToast("설정을 저장했어요"); });
 }
 
-function startQuickMatch() {
+async function startQuickMatch() {
   const count = state.players;
   const button = $("#quickMatchButton");
   button.disabled = true;
-  button.innerHTML = '<span>◌</span> 플레이어를 찾는 중...';
-  let elapsed = 0;
-  state.queueId = setInterval(() => {
-    elapsed += 1;
-    const matched = Math.min(count, Math.max(1, Math.floor(elapsed / 1.1) + 1));
-    button.innerHTML = `<span>◌</span> ${matched} / ${count}명 매칭 중...`;
-    if (matched >= count) {
-      clearInterval(state.queueId);
-      state.queueId = null;
-      const names = [state.nickname, "단어든든", "문장산책", "오늘의한글"].slice(0, count);
-      beginGame(names, `빠른 매칭 · ${count}인`);
-      button.disabled = false;
-      button.innerHTML = '<span>⌁</span> 빠른 매칭 시작';
-    }
-  }, 700);
+  button.innerHTML = '<span>◌</span> 실제 플레이어를 찾는 중...';
+  try {
+    const response = await fetch("/api/matchmaking/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname: state.nickname, size: count }) });
+    if (!response.ok) throw new Error("match_join_failed");
+    state.matchTicket = (await response.json()).ticket;
+    await pollQuickMatch();
+    state.matchPollId = setInterval(pollQuickMatch, 900);
+  } catch {
+    button.disabled = false;
+    button.innerHTML = '<span>⌁</span> 빠른 매칭 시작';
+    showToast("매칭 서버에 연결하지 못했어요");
+  }
+}
+
+async function pollQuickMatch() {
+  if (!state.matchTicket) return;
+  const response = await fetch(`/api/matchmaking/status?ticket=${encodeURIComponent(state.matchTicket)}`);
+  if (!response.ok) return;
+  const status = await response.json();
+  const button = $("#quickMatchButton");
+  if (status.status === "waiting") {
+    button.innerHTML = `<span>◌</span> 실제 플레이어 ${status.waiting}명 대기 중...`;
+    return;
+  }
+  clearInterval(state.matchPollId);
+  state.matchPollId = null;
+  state.gameMode = "human";
+  state.matchId = status.matchId;
+  state.playerId = status.playerId;
+  state.selfIndex = status.selfIndex;
+  state.eventCursor = 0;
+  state.roomCode = status.roomCode;
+  beginGame(status.players, `빠른 매칭 · ${status.players.length}인`);
+  button.disabled = false;
+  button.innerHTML = '<span>⌁</span> 빠른 매칭 시작';
 }
 
 function beginGame(names, title) {
   state.playerNames = names;
   state.gameMode = state.gameMode || "quick";
   state.round = 1;
-  state.currentPlayer = "me";
+  state.currentPlayer = state.gameMode === "human" && state.selfIndex !== 0 ? "remote" : "me";
   state.lastWord = "마음";
   state.requiredInitial = lastSyllable(state.lastWord);
   state.usedWords = new Set(["마음"]);
@@ -184,29 +211,77 @@ function beginGame(names, title) {
   addMessage("system", "게임이 시작됐어요. 첫 단어는 한방단어를 사용할 수 없습니다.");
   addMessage("player", "마음", "마음의 뜻: 사람의 생각이나 감정이 깃드는 곳");
   $("#roundNumber").textContent = "01";
-  $("#turnStatus").textContent = "당신의 턴이에요";
-  $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
+  $("#turnStatus").textContent = state.currentPlayer === "me" ? "당신의 턴이에요" : "첫 플레이어의 턴이에요";
+  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
   $("#factCheck").textContent = "";
   $("#wordInput").value = "";
   setView("game");
-  startTimer();
-  setTimeout(() => $("#wordInput").focus(), 250);
+  if (state.gameMode === "human") startMatchEventPolling();
+  if (state.currentPlayer === "me") {
+    startTimer();
+    setTimeout(() => $("#wordInput").focus(), 250);
+  }
 }
 
 function renderPlayers() {
-  $("#playersList").innerHTML = state.playerNames.map((name, index) => `<div class="player-row"><span class="player-avatar ${avatarClasses[index % avatarClasses.length]}">${name[0]}</span><span class="player-info"><strong>${name}${index === 0 ? " (나)" : ""}</strong><small>${index === 0 ? "준비 완료" : index === 1 ? "좋은 단어를 찾는 중" : "플레이 중"}</small></span><i class="player-turn ${index === 0 ? "active" : ""}"></i></div>`).join("");
+  $("#playersList").innerHTML = state.playerNames.map((name, index) => {
+    const isMe = state.gameMode === "human" ? index === state.selfIndex : index === 0;
+    return `<div class="player-row"><span class="player-avatar ${avatarClasses[index % avatarClasses.length]}">${name[0]}</span><span class="player-info"><strong>${name}${isMe ? " (나)" : ""}</strong><small>${isMe ? "준비 완료" : index === 1 ? "좋은 단어를 찾는 중" : "플레이 중"}</small></span><i class="player-turn ${isMe && state.currentPlayer === "me" ? "active" : ""}"></i></div>`;
+  }).join("");
 }
 
 function addMessage(type, word, note = "") {
   const isMine = type === "player";
-  const displayName = isMine ? state.nickname : type === "ai" ? "단어든든 AI" : "게임 안내";
-  const avatar = isMine ? state.nickname[0] : type === "ai" ? "AI" : "끝";
+  const displayName = isMine ? state.nickname : type === "ai" ? "단어든든 AI" : type === "remote" ? note.split("::")[0] || "플레이어" : "게임 안내";
+  const visibleNote = type === "remote" ? note.split("::").slice(1).join("::") : note;
+  const avatar = isMine ? state.nickname[0] : type === "ai" ? "AI" : type === "remote" ? displayName[0] : "끝";
   const body = type === "system"
     ? `<div class="chat-note">${word}</div>`
-    : `<div class="word-bubble">${word}</div>${note ? `<div class="fact-inline">✓ ${note}</div>` : ""}`;
+    : `<div class="word-bubble">${word}</div>${visibleNote ? `<div class="fact-inline">✓ ${visibleNote}</div>` : ""}`;
   const html = `<div class="chat-message ${isMine ? "mine" : ""}"><span class="chat-avatar ${type === "ai" ? "ai" : ""}">${avatar}</span><div class="chat-content"><div class="chat-meta"><strong>${displayName}</strong><span>${type === "system" ? "지금" : "방금"}</span></div>${body}</div></div>`;
   $("#chatLog").insertAdjacentHTML("beforeend", html);
   $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+}
+
+function startMatchEventPolling() {
+  clearInterval(state.eventPollId);
+  state.eventPollId = setInterval(pollMatchEvents, 750);
+  pollMatchEvents();
+}
+
+async function pollMatchEvents() {
+  if (state.gameMode !== "human" || !state.matchId) return;
+  const response = await fetch(`/api/matches/${state.matchId}/events?after=${state.eventCursor}`);
+  if (!response.ok) return;
+  const payload = await response.json();
+  state.eventCursor = payload.cursor;
+  for (const event of payload.events) {
+    if (event.playerId === state.playerId) continue;
+    if (event.timeout) {
+      state.currentPlayer = "me";
+      state.requiredInitial = event.nextInitial;
+      addMessage("system", `${event.nickname}님의 시간이 끝났어요. 당신의 턴입니다.`);
+      $("#turnStatus").textContent = "당신의 턴이에요";
+      $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
+      renderPlayers();
+      startTimer();
+      continue;
+    }
+    state.usedWords.add(event.word);
+    state.lastWord = event.word;
+    state.requiredInitial = event.nextInitial;
+    state.round += 1;
+    state.currentPlayer = "me";
+    addMessage("remote", event.word, `${event.nickname}::${event.note || getDefinition(event.word)} · 다음 글자 ${event.nextInitial}`);
+    $("#roundNumber").textContent = String(state.round).padStart(2, "0");
+    $("#turnStatus").textContent = "당신의 턴이에요";
+    $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'로 시작하는 단어를 이어주세요.`;
+    $("#factCheck").textContent = "✓ 다른 플레이어의 단어를 확인했어요.";
+    $("#factCheck").className = "fact-check success";
+    renderPlayers();
+    startTimer();
+    $("#wordInput").focus();
+  }
 }
 
 function startTimer() {
@@ -220,42 +295,73 @@ function startTimer() {
       clearInterval(state.timerId);
       addMessage("system", "시간이 끝났어요. 이번 턴은 자동으로 넘어갑니다.");
       showToast("시간이 끝나 턴이 넘어갔어요");
-      state.currentPlayer = "ai";
-      setTimeout(aiTurn, 650);
+      if (state.gameMode === "human") {
+        fetch(`/api/matches/${state.matchId}/timeout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId: state.playerId }) }).then((response) => response.ok ? response.json() : null).then((payload) => {
+          if (!payload) return;
+          state.eventCursor = payload.cursor;
+          state.currentPlayer = "remote";
+          $("#turnStatus").textContent = "상대의 턴이에요";
+          $("#turnPrompt").textContent = "다른 플레이어의 단어를 기다리는 중...";
+          renderPlayers();
+        });
+      } else {
+        state.currentPlayer = "ai";
+        setTimeout(aiTurn, 650);
+      }
     }
   }, 1000);
 }
 
-function validateWord(word) {
+async function validateWord(word) {
   if (!word) return { ok: false, message: "단어를 입력해 주세요.", kind: "error" };
-  if (!dictionary.has(word)) return { ok: false, message: "사전에서 확인되지 않은 단어예요. 다른 단어를 입력해 주세요.", kind: "error" };
   if (state.usedWords.has(word)) return { ok: false, message: "이미 나온 단어예요.", kind: "error" };
   if (firstSyllable(word) !== state.requiredInitial) return { ok: false, message: `첫 글자가 '${state.requiredInitial}'인 단어가 필요해요.`, kind: "error" };
+  try {
+    const response = await fetch(`/api/dictionary/lookup?word=${encodeURIComponent(word)}`);
+    const remote = await response.json();
+    if (remote.configured && !remote.valid) return { ok: false, message: "공식 국립국어원 사전에서 확인되지 않은 단어예요.", kind: "error" };
+    if (remote.configured) return { ok: true, definition: remote.definition || getDefinition(word), message: `공식 사전 확인 완료 · ${remote.definition || getDefinition(word)}`, kind: "success" };
+  } catch {
+    return { ok: false, message: "사전 검증 서버에 연결되지 않았어요. 잠시 후 다시 시도해 주세요.", kind: "error" };
+  }
+  if (!dictionary.has(word)) return { ok: false, message: "공식 사전 API 키가 연결되지 않아 아직 확인할 수 없는 단어예요.", kind: "error" };
   if (state.round === 1 && isOneShot(word)) return { ok: false, message: "첫 턴에는 상대가 이을 수 없는 한방단어를 사용할 수 없어요.", kind: "warning" };
-  return { ok: true, message: `사전 확인 완료 · ${getDefinition(word)}`, kind: "success" };
+  return { ok: true, definition: getDefinition(word), message: `사전 API 준비 중 · ${getDefinition(word)}`, kind: "warning" };
 }
 
-function submitWord(event) {
+async function submitWord(event) {
   event.preventDefault();
   if (state.currentPlayer !== "me") return showToast("상대의 턴을 기다려 주세요");
   const word = normalizeWord($("#wordInput").value);
-  const result = validateWord(word);
+  const result = await validateWord(word);
   $("#factCheck").textContent = result.message;
   $("#factCheck").className = `fact-check ${result.kind}`;
   if (!result.ok) return;
+
+  if (state.gameMode === "human") {
+    const response = await fetch(`/api/matches/${state.matchId}/word`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId: state.playerId, word, note: result.definition || getDefinition(word) }) });
+    if (!response.ok) {
+      $("#factCheck").textContent = "서버에서 턴 상태가 바뀌었어요. 다른 플레이어의 단어를 확인해 주세요.";
+      $("#factCheck").className = "fact-check error";
+      return;
+    }
+    const payload = await response.json();
+    state.eventCursor = payload.cursor;
+  }
+
   clearInterval(state.timerId);
   state.usedWords.add(word);
   state.lastWord = word;
   state.requiredInitial = lastSyllable(word);
-  addMessage("player", word, `${getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
+  addMessage("player", word, `${result.definition || getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
   $("#wordInput").value = "";
-  $("#factCheck").textContent = "✓ 단어가 이어졌어요. 상대의 단어를 기다리는 중...";
+  $("#factCheck").textContent = "✓ 단어가 이어졌어요. 실제 플레이어의 단어를 기다리는 중...";
   $("#factCheck").className = "fact-check success";
-  state.currentPlayer = "ai";
+  state.currentPlayer = state.gameMode === "human" ? "remote" : "ai";
   $("#turnStatus").textContent = "상대의 턴이에요";
-  $("#turnPrompt").textContent = `'${state.lastWord}' 다음 단어를 생각하고 있어요.`;
+  $("#turnPrompt").textContent = `'${state.lastWord}' 다음 단어를 기다리는 중...`;
   renderPlayers();
-  setTimeout(aiTurn, 800);
+  if (state.gameMode === "ai") setTimeout(aiTurn, 800);
 }
 
 function selectAIWord() {
@@ -301,7 +407,15 @@ function aiTurn() {
 function initGameControls() {
   $("#wordForm").addEventListener("submit", submitWord);
   $("#clearWordButton").addEventListener("click", () => { $("#wordInput").value = ""; $("#factCheck").textContent = ""; $("#wordInput").focus(); });
-  $("#leaveGameButton").addEventListener("click", () => { clearInterval(state.timerId); setView("lobby"); });
+  $("#leaveGameButton").addEventListener("click", () => {
+    clearInterval(state.timerId);
+    clearInterval(state.matchPollId);
+    clearInterval(state.eventPollId);
+    if (state.matchTicket) fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket: state.matchTicket }) }).catch(() => {});
+    state.matchTicket = null;
+    state.matchId = null;
+    setView("lobby");
+  });
   $("#copyGameCode").addEventListener("click", () => copyText(state.roomCode));
   $("#copyCodeButton").addEventListener("click", () => copyText(state.roomCode));
   $("#inviteButton").addEventListener("click", () => copyText(state.roomCode));
