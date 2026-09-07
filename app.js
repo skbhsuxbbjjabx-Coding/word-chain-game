@@ -69,6 +69,8 @@ const state = {
   playerNames: [],
   matchTicket: null,
   matchPollId: null,
+  roomPollId: null,
+  roomPlayerId: null,
   matchId: null,
   playerId: null,
   selfIndex: 0,
@@ -214,12 +216,64 @@ function setupLobby() {
   setMatchingLock(false);
 }
 
-function createRoomModal() {
-  const code = makeCode();
-  state.roomCode = code;
-  openModal(`<p class="panel-kicker">PRIVATE ROOM</p><h2 id="modalTitle">친구를 초대할 방이에요</h2><p>아래 코드를 친구에게 공유하면 같은 방에 들어올 수 있어요.</p><div class="modal-code"><span>초대 코드</span><strong>${code}</strong></div><div class="room-player"><i class="mini-avatar">${state.nickname[0]}</i><span>${state.nickname}</span><span class="room-status">방장</span></div><div class="room-player"><i class="mini-avatar mint">＋</i><span>친구를 기다리는 중</span><span class="room-status">0 / ${state.players - 1}</span></div><div class="modal-footer"><button class="secondary-button" id="copyRoomCode" style="min-height:42px"><span class="button-icon">⌘</span><span><strong>코드 복사</strong></span></button><button class="primary-button" id="startRoomButton">혼자 연습 시작</button></div>`);
-  $("#copyRoomCode").addEventListener("click", () => copyText(code));
-  $("#startRoomButton").addEventListener("click", () => { closeModal(); state.gameMode = "friend"; state.players = 2; state.roomCode = code; beginGame([state.nickname, "초대 대기 중"], "친구 방 · 2인"); });
+async function createRoomModal() {
+  try {
+    const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname: state.nickname, size: state.players }) });
+    if (!response.ok) throw new Error("room_create_failed");
+    const payload = await response.json();
+    state.roomCode = payload.code;
+    state.roomPlayerId = payload.playerId;
+    openRoomWaitingModal(payload, true);
+    startRoomPolling();
+  } catch {
+    showToast("방을 만들지 못했어요. 잠시 후 다시 시도해 주세요");
+  }
+}
+
+function openRoomWaitingModal(payload, isHost) {
+  const players = payload.players || [];
+  openModal(`<p class="panel-kicker">PRIVATE ROOM</p><h2 id="modalTitle">친구를 초대할 방이에요</h2><p>친구에게 6자리 코드를 공유하면 같은 방으로 연결됩니다.</p><div class="modal-code"><span>초대 코드</span><strong>${payload.code}</strong></div><div class="room-player"><i class="mini-avatar">${state.nickname[0]}</i><span>${state.nickname}</span><span class="room-status">${isHost ? "방장" : "참가자"}</span></div><div class="room-player"><i class="mini-avatar mint">＋</i><span id="roomWaitingText">친구를 기다리는 중</span><span class="room-status" id="roomPlayerCount">${players.length} / ${payload.size}</span></div><div class="modal-footer"><button class="secondary-button" id="copyRoomCode" style="min-height:42px"><span class="button-icon">⌘</span><span><strong>코드 복사</strong></span></button><button class="ghost-button" id="closeRoomWaiting" style="width:auto;margin:0;padding:12px 17px">닫기</button></div>`);
+  $("#copyRoomCode").addEventListener("click", () => copyText(payload.code));
+  $("#closeRoomWaiting").addEventListener("click", closeModal);
+}
+
+function clearRoomPolling() {
+  clearInterval(state.roomPollId);
+  state.roomPollId = null;
+}
+
+function startRoomPolling() {
+  clearRoomPolling();
+  pollRoomStatus();
+  state.roomPollId = setInterval(pollRoomStatus, 900);
+}
+
+function startRoomGame(payload) {
+  clearRoomPolling();
+  closeModal();
+  state.gameMode = "human";
+  state.players = payload.players.length;
+  state.matchId = payload.matchId;
+  state.playerId = payload.playerId;
+  state.selfIndex = payload.selfIndex;
+  state.eventCursor = 0;
+  state.roomCode = payload.code;
+  beginGame(payload.players, `친구 방 · ${payload.players.length}인`, payload.startWord);
+}
+
+async function pollRoomStatus() {
+  if (!state.roomCode || !state.roomPlayerId) return;
+  const response = await fetch(`/api/rooms/status?code=${encodeURIComponent(state.roomCode)}&playerId=${encodeURIComponent(state.roomPlayerId)}`);
+  if (!response.ok) return;
+  const payload = await response.json();
+  if (payload.status === "waiting") {
+    const count = $("#roomPlayerCount");
+    const waiting = $("#roomWaitingText");
+    if (count) count.textContent = `${payload.players.length} / ${payload.size}`;
+    if (waiting) waiting.textContent = `${payload.players.length}명이 모였어요 · 친구를 기다리는 중`;
+    return;
+  }
+  if (payload.status === "matched") startRoomGame(payload);
 }
 
 function aiMatchModal() {
@@ -243,10 +297,23 @@ function joinRoomModal() {
   openModal(`<p class="panel-kicker">JOIN ROOM</p><h2 id="modalTitle">친구의 코드를 입력하세요</h2><p>친구에게 받은 6자리 코드를 입력하면 방으로 이동합니다.</p><label class="modal-label" for="roomCodeInput">초대 코드</label><input class="modal-input" id="roomCodeInput" maxlength="6" placeholder="예: MANGO7" autocomplete="off" /><div class="modal-footer"><button class="ghost-button" id="cancelJoin" style="width:auto;margin:0;padding:12px 17px">취소</button><button class="primary-button" id="joinRoomSubmit">방 입장</button></div>`);
   $("#roomCodeInput").focus();
   $("#cancelJoin").addEventListener("click", closeModal);
-  $("#joinRoomSubmit").addEventListener("click", () => {
+  $("#joinRoomSubmit").addEventListener("click", async () => {
     const code = normalizeWord($("#roomCodeInput").value).toUpperCase();
     if (code.length < 4) return showToast("초대 코드를 확인해 주세요");
-    closeModal(); state.gameMode = "friend"; state.players = 2; state.roomCode = code; beginGame([state.nickname, "친구 플레이어"], "친구 방 · 2인");
+    const button = $("#joinRoomSubmit");
+    button.disabled = true;
+    try {
+      const response = await fetch("/api/rooms/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, nickname: state.nickname }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "room_join_failed");
+      state.roomCode = payload.code;
+      state.roomPlayerId = payload.playerId;
+      if (payload.started) startRoomGame(payload);
+      else { openRoomWaitingModal(payload, false); startRoomPolling(); }
+    } catch (error) {
+      button.disabled = false;
+      showToast(error.message === "room_not_found" ? "초대 코드를 찾을 수 없어요" : error.message === "room_full" ? "이미 꽉 찬 방이에요" : "방에 입장하지 못했어요");
+    }
   });
 }
 
@@ -563,8 +630,11 @@ function initGameControls() {
     clearInterval(state.timerId);
     clearInterval(state.matchPollId);
     clearInterval(state.eventPollId);
+    clearRoomPolling();
     if (state.matchTicket) fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket: state.matchTicket }) }).catch(() => {});
     state.matchTicket = null;
+    state.roomCode = "QUICK";
+    state.roomPlayerId = null;
     state.matchId = null;
     state.currentPlayer = "me";
     resetMatchControls();

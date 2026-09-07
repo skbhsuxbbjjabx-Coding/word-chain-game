@@ -32,11 +32,11 @@ function makeCode(prefix = "") {
   return `${prefix}${randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase()}`;
 }
 
-function makeMatch(players) {
+function makeMatch(players, roomCode = null) {
   const startWord = START_WORDS[Math.floor(Math.random() * START_WORDS.length)];
   const match = {
     id: randomUUID(),
-    roomCode: makeCode("P"),
+    roomCode: roomCode || makeCode("P"),
     players,
     events: [],
     startWord,
@@ -149,10 +149,21 @@ export async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/api/rooms") {
     const body = await readJson(request);
-    const code = makeCode("F");
-    const room = { code, size: [2, 3, 4].includes(Number(body.size)) ? Number(body.size) : 2, players: [{ id: randomUUID(), nickname: String(body.nickname || "단어수집가").trim().slice(0, 12) }], started: false };
+    const code = makeCode();
+    const playerId = randomUUID();
+    const room = { code, size: [2, 3, 4].includes(Number(body.size)) ? Number(body.size) : 2, players: [{ id: playerId, nickname: String(body.nickname || "단어수집가").trim().slice(0, 12) }], started: false };
     rooms.set(code, room);
-    return sendJson(response, 200, { code, size: room.size, players: room.players });
+    return sendJson(response, 200, { code, size: room.size, playerId, players: room.players.map((player) => player.nickname), started: false });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/rooms/status") {
+    const room = rooms.get(String(url.searchParams.get("code") || "").trim().toUpperCase());
+    const playerId = String(url.searchParams.get("playerId") || "");
+    if (!room) return sendJson(response, 404, { error: "room_not_found" });
+    if (!room.players.some((player) => player.id === playerId)) return sendJson(response, 403, { error: "not_in_room" });
+    if (!room.started) return sendJson(response, 200, { status: "waiting", code: room.code, size: room.size, players: room.players.map((player) => player.nickname) });
+    const playerIndex = room.match.players.findIndex((player) => player.id === playerId);
+    return sendJson(response, 200, { status: "matched", code: room.code, size: room.size, matchId: room.match.id, startWord: room.match.startWord, playerId, selfIndex: playerIndex, players: room.match.players.map((player) => player.nickname) });
   }
 
   if (request.method === "POST" && url.pathname === "/api/rooms/join") {
@@ -160,9 +171,11 @@ export async function handleApi(request, response, url) {
     const room = rooms.get(String(body.code || "").trim().toUpperCase());
     if (!room) return sendJson(response, 404, { error: "room_not_found" });
     if (room.players.length >= room.size) return sendJson(response, 409, { error: "room_full" });
-    room.players.push({ id: randomUUID(), nickname: String(body.nickname || "플레이어").trim().slice(0, 12) });
-    if (room.players.length >= room.size) { room.started = true; room.match = makeMatch(room.players); }
-    return sendJson(response, 200, { code: room.code, size: room.size, players: room.players, started: room.started, matchId: room.match?.id || null });
+    const playerId = randomUUID();
+    room.players.push({ id: playerId, nickname: String(body.nickname || "플레이어").trim().slice(0, 12) });
+    if (room.players.length >= room.size) { room.started = true; room.match = makeMatch(room.players, room.code); }
+    const playerIndex = room.started ? room.match.players.findIndex((player) => player.id === playerId) : -1;
+    return sendJson(response, 200, { code: room.code, size: room.size, playerId, players: room.players.map((player) => player.nickname), started: room.started, matchId: room.match?.id || null, startWord: room.match?.startWord || null, selfIndex: playerIndex });
   }
 
   return false;
