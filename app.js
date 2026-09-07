@@ -274,7 +274,10 @@ async function startQuickMatch() {
     const response = await fetch("/api/matchmaking/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname: state.nickname, size: count }) });
     if (!response.ok) throw new Error("match_join_failed");
     const payload = await response.json();
-    if (!state.isMatching || requestNonce !== state.matchNonce) return;
+    if (!state.isMatching || requestNonce !== state.matchNonce) {
+      if (payload.ticket) fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket: payload.ticket }) }).catch(() => null);
+      return;
+    }
     state.matchTicket = payload.ticket;
     await pollQuickMatch();
     if (state.isMatching) state.matchPollId = setInterval(pollQuickMatch, 900);
