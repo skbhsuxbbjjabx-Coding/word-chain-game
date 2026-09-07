@@ -62,3 +62,16 @@ h1, h2, p { margin-top: 0; }.welcome-row h1 { margin-bottom: 13px; font-size: cl
 .heart-status .heart { transition: color .2s ease, opacity .2s ease; }
 .heart-status .heart.lost { color: #d7dfda; opacity: .7; }
 button:disabled, input:disabled { cursor: not-allowed; opacity: .55; }
+.next-initial { display: inline-flex; align-items: center; gap: 5px; color: var(--green-dark); font-weight: 850; }
+.next-initial::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--coral); }
+.result-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(30, 48, 41, .34); }
+.result-overlay[hidden] { display: none; }
+.result-panel { width: min(100%, 360px); padding: 34px 28px 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 24px 70px rgba(37, 70, 57, .2); text-align: center; animation: result-in .38s ease both; }
+.result-mark { width: 66px; height: 66px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; color: white; background: var(--green); font-size: 30px; font-weight: 900; animation: result-mark .65s cubic-bezier(.2,.8,.2,1) both; }
+.result-overlay.result-loss .result-mark { color: #a75240; background: #ffe5dd; animation: result-shake .45s ease both; }
+.result-panel h2 { margin: 0; color: var(--ink); font-size: 28px; letter-spacing: -.04em; }
+.result-panel p:not(.panel-kicker) { margin: 10px 0 22px; color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+@keyframes result-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes result-mark { from { transform: scale(.45) rotate(-18deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes result-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (max-width: 420px) { .round-banner > span:nth-child(2) { order: 2; flex: 1; flex-basis: auto; text-align: center; margin-top: 0; }.round-banner > span:nth-child(3) { order: 5; flex-basis: 100%; text-align: left; margin-top: 4px; }.heart-status { order: 3; }.timer { order: 4; } }

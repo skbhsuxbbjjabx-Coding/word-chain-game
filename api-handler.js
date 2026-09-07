@@ -66,6 +66,7 @@ function makeMatch(players, roomCode = null) {
     roomCode: roomCode || makeCode("P"),
     players,
     events: [],
+    leftPlayers: [],
     startWord,
     nextInitial: [...startWord].at(-1),
     createdAt: Date.now()
@@ -131,6 +132,21 @@ export async function handleApi(request, response, url) {
     return sendJson(response, 200, { events: match.events.slice(after), cursor: match.events.length });
   }
 
+  const leaveMatch = url.pathname.match(/^\/api\/matches\/([^/]+)\/leave$/);
+  if (request.method === "POST" && leaveMatch) {
+    const match = await getMatch(leaveMatch[1]);
+    if (!match) return sendJson(response, 404, { error: "match_not_found" });
+    const body = await readJson(request);
+    const player = match.players.find((candidate) => candidate.id === body.playerId);
+    if (!player) return sendJson(response, 403, { error: "not_in_match" });
+    if (!match.leftPlayers.includes(player.id)) {
+      match.leftPlayers.push(player.id);
+      match.events.push({ playerId: player.id, nickname: player.nickname, leave: true, word: "", nextInitial: match.nextInitial, createdAt: Date.now() });
+      await saveMatch(match);
+    }
+    return sendJson(response, 200, { ok: true, cursor: match.events.length });
+  }
+
   const wordMatch = url.pathname.match(/^\/api\/matches\/([^/]+)\/word$/);
   if (request.method === "POST" && wordMatch) {
     const match = await getMatch(wordMatch[1]);
@@ -145,24 +161,6 @@ export async function handleApi(request, response, url) {
     match.nextInitial = event.nextInitial;
     await saveMatch(match);
     return sendJson(response, 200, { ok: true, event, cursor: match.events.length });
-  }
-
-  if (request.method === "GET" && url.pathname === "/api/dictionary/lookup") {
-    const word = String(url.searchParams.get("word") || "").trim().replace(/\s+/g, "");
-    const apiKey = process.env.KDICT_API_KEY;
-    if (!word) return sendJson(response, 400, { error: "word_required" });
-    if (!apiKey) return sendJson(response, 200, { configured: false, provider: "krdict" });
-    const apiUrl = new URL("https://krdict.korean.go.kr/api/search");
-    apiUrl.searchParams.set("key", apiKey);
-    apiUrl.searchParams.set("q", word);
-    apiUrl.searchParams.set("part", "word");
-    apiUrl.searchParams.set("num", "100");
-    const apiResponse = await fetch(apiUrl);
-    const xml = await apiResponse.text();
-    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((match) => match[1]);
-    const exact = items.find((item) => (item.match(/<word>([\s\S]*?)<\/word>/)?.[1] || "").trim() === word);
-    const definitions = exact ? [...exact.matchAll(/<definition>([\s\S]*?)<\/definition>/g)].map((match) => match[1].replace(/<[^>]+>/g, "").trim()).filter(Boolean) : [];
-    return sendJson(response, 200, { configured: true, provider: "krdict", valid: Boolean(exact), definition: definitions[0] || "", sourceUrl: "https://krdict.korean.go.kr" });
   }
 
   const timeoutMatch = url.pathname.match(/^\/api\/matches\/([^/]+)\/timeout$/);

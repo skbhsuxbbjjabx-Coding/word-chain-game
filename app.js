@@ -1,3 +1,4 @@
+const isKoreanWord = (word) => /^[가-힣]{2,12}$/.test(word);
 const WORD_BANK = [
   ["마음", "사람의 생각이나 감정이 깃드는 곳"], ["음악", "소리로 감정과 생각을 표현하는 예술"], ["악수", "두 사람이 손을 마주 잡는 인사"], ["수박", "여름에 즐겨 먹는 큰 과일"], ["박수", "손뼉을 쳐서 기쁨을 나타냄"], ["수업", "학교나 교육 기관에서 배우는 시간"], ["업무", "맡아서 하는 일"], ["무지개", "비 온 뒤 하늘에 나타나는 일곱 빛깔"], ["개나리", "봄에 노란 꽃을 피우는 나무"], ["리본", "끈이나 천을 묶어 장식하는 것"], ["본능", "배우지 않아도 자연스럽게 나타나는 행동"], ["능력", "어떤 일을 해낼 수 있는 힘"], ["력사", "역사의 북한어"], ["사과", "잘못을 인정하고 용서를 비는 말"], ["과일", "나무나 풀에서 나는 먹을 수 있는 열매"], ["일기", "날마다 있었던 일을 적은 기록"], ["기차", "철길 위를 달리는 교통수단"], ["차표", "차를 타기 위해 사는 표"], ["표정", "마음속 감정이 얼굴에 드러난 모양"], ["정답", "질문이나 문제에 대한 바른 답"], ["답장", "편지나 메시지에 대한 회답"], ["장미", "가시가 있는 아름다운 꽃"], ["미소", "소리 없이 웃는 표정"], ["소나기", "갑자기 세차게 내리는 비"], ["기억", "지난 일을 잊지 않고 간직하는 것"], ["억울", "잘못이 없는데도 부당하게 당한 느낌"], ["울음", "슬프거나 아플 때 내는 소리"], ["음식", "사람이 먹는 것"], ["식탁", "음식을 차려 놓는 상"], ["탁구", "공을 라켓으로 넘기는 운동"], ["구름", "하늘에 떠 있는 수증기 덩어리"], ["름름", "소리를 흉내 낸 옛말"], ["름자", "이름을 낮추어 이르는 말"], ["자전거", "사람이 페달을 밟아 움직이는 탈것"], ["거울", "모습을 비추어 보는 물건"], ["울타리", "경계를 둘러막는 시설"], ["리더", "무리를 이끄는 사람"], ["더위", "기온이 높아 덥게 느껴지는 기운"], ["위치", "일정한 곳에 자리한 자리"], ["치약", "이를 닦는 데 쓰는 약"], ["약속", "서로 지키기로 정한 일"], ["속도", "움직이는 빠르기의 정도"], ["도서관", "책을 모아 두고 빌려주는 곳"], ["관심", "어떤 것에 마음을 기울임"], ["심장", "피를 온몸으로 보내는 기관"], ["장난", "재미로 하는 짓"], ["난로", "방을 따뜻하게 하는 기구"], ["로봇", "사람을 대신하여 일을 하는 기계"], ["봇물", "보에서 흘러나오는 물"], ["물고기", "물에서 사는 동물"], ["기린", "목이 긴 초식 동물"], ["린스", "머리를 감은 뒤 쓰는 세정제"], ["스키", "눈 위를 미끄러져 내려오는 운동"], ["키위", "새콤한 맛의 갈색 과일"], ["위성", "행성 주위를 도는 천체"], ["성냥", "불을 붙이는 작은 도구"], ["냥이", "고양이를 친근하게 부르는 말"], ["이야기", "사실이나 생각을 말로 풀어 놓은 것"], ["기분", "마음에 느껴지는 상태"], ["분필", "칠판에 글을 쓰는 도구"], ["필통", "필기구를 넣는 통"], ["통나무", "베어 낸 나무의 줄기"], ["무지", "아는 것이 없음"], ["지구", "우리가 사는 행성"], ["구두", "발에 신는 가죽 신발"], ["두부", "콩으로 만든 흰 음식"], ["부엌", "음식을 만드는 공간"], ["억새", "가을 들판에 자라는 풀"], ["새우", "껍데기가 있는 물속 동물"], ["우산", "비나 햇빛을 가리는 물건"], ["산책", "바람을 쐬며 천천히 걷는 일"], ["책상", "책을 놓고 공부하는 상"], ["상자", "물건을 넣는 네모난 용기"], ["자동차", "엔진으로 움직이는 탈것"], ["차례", "순서에 따라 돌아오는 차례"], ["례절", "예의와 절도를 아울러 이르는 말"], ["절약", "아껴서 씀"], ["약간", "얼마 안 되는 정도"], ["간식", "끼니 사이에 먹는 음식"], ["식물", "땅에 뿌리를 내리고 사는 생물"], ["물감", "그림을 그릴 때 쓰는 색 재료"], ["감자", "땅속에서 자라는 먹거리"], ["자두", "붉거나 보라색인 과일"], ["두꺼비", "몸이 크고 피부가 울퉁불퉁한 양서류"], ["비누", "몸이나 물건을 씻는 세정제"], ["누나", "남자가 손위 누이를 부르는 말"], ["나무", "줄기가 굵고 가지가 뻗는 식물"], ["무궁화", "우리나라의 나라꽃"], ["화분", "꽃을 심어 가꾸는 그릇"], ["분수", "물을 뿜어 올리는 시설"], ["수영", "물속에서 헤엄치는 운동"], ["영화", "움직이는 영상을 보여 주는 예술"], ["화산", "땅속의 마그마가 분출하는 산"], ["산책로", "산책을 위해 만든 길"], ["로맨스", "사랑을 주제로 한 이야기"], ["스마트폰", "전화와 인터넷이 가능한 휴대 기기"], ["폰트", "글자의 모양과 디자인"], ["트럭", "짐을 싣고 나르는 자동차"], ["럭비", "공을 들고 달리는 구기 종목"], ["비행기", "하늘을 나는 교통수단"], ["기상", "대기 중에서 일어나는 현상"], ["상상", "실제로 없지만 마음속으로 그려 봄"], ["상어", "바다에 사는 큰 물고기"], ["어깨", "팔과 몸통이 이어지는 부분"], ["깨소금", "볶은 참깨를 빻은 양념"], ["금요일", "일주일의 다섯째 날"], ["일몰", "해가 지는 일"], ["몰입", "한 가지 일에 깊이 빠져듦"], ["입구", "들어가는 곳"], ["구경", "둘러보며 보는 일"], ["경기", "운동이나 경쟁을 벌이는 일"], ["기회", "어떤 일을 할 수 있는 때"], ["회사", "일정한 목적을 가진 조직"], ["사무실", "사무를 보는 공간"], ["실내", "건물 안"], ["내일", "오늘의 다음 날"], ["일출", "해가 떠오르는 일"], ["출발", "길을 떠남"], ["발자국", "발로 밟은 자리에 남은 흔적"], ["국수", "밀가루나 곡물로 만든 면 음식"], ["수건", "몸을 닦는 천"], ["건강", "몸과 마음이 튼튼한 상태"], ["강물", "강을 흐르는 물"], ["물결", "물이 움직이며 이루는 물무늬"], ["결심", "마음을 굳게 정함"], ["심부름", "부탁받은 일을 해 주는 것"], ["름새", "생김새를 낮추어 이르는 말"], ["새벽", "날이 밝기 전의 시간"], ["벽돌", "건축에 쓰는 네모난 돌"], ["돌고래", "바다에 사는 포유동물"], ["래퍼", "랩을 하는 가수"], ["퍼즐", "조각을 맞추는 놀이"], ["즐거움", "즐겁게 느끼는 마음"], ["음료", "마시는 액체"], ["료리", "요리의 북한어"], ["리듬", "음악의 규칙적인 흐름"], ["듬성듬성", "드문드문 떨어져 있는 모양"], ["성공", "목적을 이루는 것"], ["공원", "사람들이 쉬거나 노는 곳"], ["원숭이", "나무를 잘 타는 동물"], ["이불", "잠잘 때 덮는 침구"], ["불꽃", "타오르는 불의 모양"], ["꽃병", "꽃을 꽂아 두는 병"], ["병원", "환자를 치료하는 곳"], ["원두", "볶기 전 커피 열매"], ["두더지", "땅속에 사는 포유동물"], ["지우개", "글씨를 지우는 도구"], ["개미", "작고 부지런한 곤충"], ["미술", "그림이나 조형으로 표현하는 예술"], ["술잔", "술을 담는 잔"], ["잔디", "마당이나 운동장에 까는 풀"], ["디자인", "모양과 기능을 계획하는 일"], ["인형", "사람이나 동물 모양 장난감"], ["형제", "같은 부모에게서 난 사람"], ["제비", "봄에 돌아오는 작은 새"], ["비밀", "남에게 알리지 않은 일"], ["밀가루", "밀을 빻아 만든 가루"], ["루비", "붉은 보석"], ["비상", "긴급한 상황"], ["상태", "현재 놓여 있는 형편"], ["태양", "스스로 빛을 내는 항성"], ["양말", "발에 신는 옷"], ["말풍선", "만화에서 말을 담는 모양"], ["선물", "고마움이나 축하의 뜻으로 주는 물건"], ["물병", "물을 담는 병"], ["병아리", "어린 닭"], ["리모컨", "기계를 멀리서 조종하는 장치"], ["컨디션", "몸과 마음의 상태"], ["션트", "전류를 우회시키는 장치"], ["트로피", "경기 우승자에게 주는 상"], ["피아노", "건반을 눌러 연주하는 악기"], ["노을", "해 질 무렵 하늘의 붉은 빛"], ["을지로", "서울의 거리 이름"], ["로켓", "추진력으로 우주로 날아가는 비행체"], ["켓찹", "토마토로 만든 조미료"], ["찹쌀", "찰기가 많은 쌀"], ["쌀밥", "쌀로 지은 밥"], ["밥상", "밥을 차려 놓은 상"], ["상쾌", "기분이 시원하고 산뜻함"], ["쾌속", "매우 빠른 속도"], ["속담", "교훈을 담은 짧은 말"], ["담요", "몸을 덮는 두꺼운 천"], ["요리", "재료를 익혀 음식을 만듦"], ["리어카", "사람이 끌고 다니는 수레"], ["카메라", "사진이나 영상을 찍는 기계"], ["라디오", "전파로 소리를 보내는 기기"], ["오리", "물과 땅에서 사는 새"], ["리더십", "집단을 이끄는 힘"], ["십자수", "실로 수를 놓는 공예"], ["수학", "수와 도형을 연구하는 학문"], ["학원", "학교 밖에서 공부하는 곳"], ["원칙", "행동의 기준이 되는 법칙"], ["칙령", "임금이 내린 명령"], ["령도", "앞장서서 이끎"], ["도시", "사람이 많이 모여 사는 지역"], ["시계", "시간을 알려 주는 기계"], ["계절", "일 년을 나눈 때"], ["절벽", "깎아지른 듯한 낭떠러지"], ["벽화", "벽에 그린 그림"], ["화요일", "일주일의 둘째 날"], ["일상", "날마다 반복되는 생활"], ["상담", "서로 이야기하며 의논함"], ["담당", "일을 맡아 처리함"], ["당근", "주황색 뿌리채소"], ["근육", "몸을 움직이는 힘줄"], ["육교", "사람이 건너도록 만든 다리"], ["교실", "수업을 하는 방"], ["실수", "잘못하거나 틀림"], ["수도", "나라의 중심 도시"], ["도깨비", "한국 설화에 나오는 존재"], ["비둘기", "도시에서 자주 보이는 새"], ["기러기", "먼 거리를 이동하는 새"], ["기차역", "기차가 서는 곳"], ["역사", "과거에 일어난 일"], ["사전", "낱말의 뜻을 풀이한 책"], ["전구", "전기로 빛을 내는 기구"], ["구급차", "응급 환자를 나르는 차"], ["차가운", "온도가 낮은 상태"], ["운동", "몸을 움직이는 활동"], ["동물", "스스로 움직이는 생물"], ["물리", "물질과 힘을 연구하는 학문"], ["리더보드", "순위를 보여 주는 판"], ["드라마", "사건과 인물을 표현한 작품"], ["마라톤", "긴 거리를 달리는 경기"], ["톤업", "색이나 분위기를 밝게 함"], ["업데이트", "최신 상태로 고침"], ["트리", "나무 모양의 구조"], ["리액션", "반응이나 호응"], ["션샤인", "햇빛을 뜻하는 말"], ["인사", "만나거나 헤어질 때 하는 말"], ["사랑", "아끼고 소중히 여기는 마음"], ["랑데부", "약속한 만남"], ["부채", "바람을 일으키는 도구"], ["채소", "밭에서 기르는 먹거리"], ["소나무", "사철 푸른 나무"], ["무대", "공연을 하는 자리"], ["대화", "마주 보며 나누는 이야기"], ["화음", "여러 음이 어울린 소리"], ["음표", "음의 길이와 높이를 나타내는 기호"], ["표현", "생각이나 느낌을 나타냄"], ["현관", "건물의 출입구"], ["관찰", "주의 깊게 살펴봄"], ["찰떡", "찹쌀로 만든 떡"], ["떡볶이", "떡을 양념에 볶은 음식"], ["이야기꽃", "즐겁게 나누는 이야기"], ["꽃게", "옆으로 걷는 바다 동물"], ["게임", "규칙에 따라 즐기는 놀이"], ["임무", "맡은 일"], ["무승부", "승패가 나지 않음"], ["부엉이", "밤에 활동하는 새"], ["이상", "생각이나 기준보다 높거나 나음"], ["상상력", "상상하는 힘"], ["역할", "맡은 구실"], ["할인", "값을 깎아 줌"], ["인기", "사람들의 관심을 많이 받음"]
 ];
@@ -42,8 +43,10 @@ const EXTRA_WORD_BANK = [
   ["햄버거", "빵 사이에 고기와 채소를 넣은 음식"], ["행복", "기쁘고 만족스러운 마음"], ["허리", "몸통의 가운데 부분"], ["호수", "물이 고여 있는 넓은 곳"], ["휴대폰", "들고 다니며 쓰는 전화기"], ["희망", "바라는 일이 이루어지기를 기대하는 마음"]
 ];
 
-const INVALID_BANK_WORDS = new Set(["름름", "름자", "켓찹"]);
-const dictionary = new Map([...WORD_BANK, ...EXTRA_WORD_BANK]);
+const BULK_WORD_BANK = `가방,가수,가슴,가위,가이드,가정,가치,각도,간격,간단,간판,갈비,갈색,감각,감기,감동,감사,감자탕,강당,강변,강사,강점,강철,개구리,개발,개별,개선,개성,개수,개인,개척,개편,거울,거절,건물,건설,건전,걸음,검사,검색,검은색,게시판,결과,결정,결혼식,경계,경고,경력,경영,경우,경쟁,경제,계곡,계산,계약,계획,고객,고급,고기집,고속,고향,곡식,곤충,골목,골프,공간,공개,공격,공기청정기,공동,공식,공연,공장,공주,공책,과거,과목,과학,관계,관광,관리,관문,관습,광고,광선,광역,교과서,교장,교환,구름,구름다리,구분,구조,구청,국가,국기,국민,국어,국회,군인,궁금,귀가,귀국,귀여움,규칙,균형,그네,그동안,극장,근거,근무,근본,금액,금요일,급식,기계,기념,기능,기대,기록,기린,기부,기본,기사,기숙사,기술,기억력,기준,기차표,기회,나날,나눔,나들이,나무꾼,나비효과,나이,나침반,낙엽,난방,날개,날짜,남극,남녀,남북,남산,낭만,내과,내부,내비게이션,내역,냄비,냇물,냉면,냉동,너비,넓이,네모,노력,노란색,노을빛,농부,농장,높이,누구,눈동자,눈물,눈빛,눈사태,눈치,느낌,능선,다람쥐,다방,다수,다음,다이어리,다짐,단계,단골,단맛,단순,단체,달걀,달빛,달리기,담배,담장,답변,대답,대문,대상,대신,대학원,대회,더하기,덕분,도구,도덕,도서,도심,도자기,도전,독서,독수리,독일,돌멩이,동굴,동네,동료,동물원,동작,동전,동화,돼지,두꺼운,두뇌,두유,둥지,드레스,드림,등대,등불,등장,디지털,딸기우유,땅콩,떡국,떡잎,라디오,라면사리,라운드,라이트,락커,런닝,레몬,레스토랑,레일,로션,로터리,로프,리듬감,리모델링,리본,리본끈,리빙,마녀,마당,마라탕,마법,마스크,마음씨,마이크,마지막,막내,막대기,만남,만화,말투,맛집,망원경,맞춤,매력,매장,매표소,머리카락,먹거리,먼지,멋쟁이,메모,멜론,명령,명절,모래,모양,목걸이,목소리,목표,몸살,무게,무늬,무덤,무더위,무역,문구,문법,문서,문장,문화,물결,물놀이,물방울,물소리,미디어,미래,미로,미리,미소,미역,민들레,민속,믿음,바구니,바닥,바닷가,바닷물,바람개비,바로,바른말,박물관,반드시,반장,발견,발명,발목,발음,방문,방송,방식,방울,방학,배경,배낭,배달,배우,배움,백곰,백설,백조,버섯,버튼,법원,벼락,벽시계,변경,변호사,별빛,병원,보관,보물,보통,복도,복습,본격,본부,본인,봉투,부모,부산,부엌칼,분명,분위기,불고기,불빛,불편,붕어,비교,비극,비닐,비디오,비상구,비타민,빌딩,빗방울,사거리,사계절,사냥,사다리,사람들,사물,사방,사장,사전,사탕,산길,산책,살림,삼각형,상담,상록수,상류,상식,상어,새소리,새우깡,색연필,생각,생명,생물,생활,서점,서쪽,선거,선글라스,선택,설명,설문,섬유,성격,성장,세금,세탁,소나무,소리,소방관,소설,소식,소풍,속담,손님,손목,손바닥,손수건,솔방울,송편,수건,수도꼭지,수박씨,수비,수영장,수요일,수입,수출,숲길,시계,시내,시선,시장,식빵,식사,식품,신기루,신호,실력,실망,실험,심리,심부름,십년,아기,아래,아무것,아버지,아이디어,아파트,악기,안내,안전,안쪽,알약,암기,앞날,앞뒤,애기,애정,야구,야경,야외,약속,양념,양치,어깨동무,언어,얼굴,엄마,업적,에너지,여권,여동생,여왕,여우,연결,연구,연극,연못,열기,열매,영양,영역,예능,예방,예술,오늘,오리발,오전,오후,옥수수,온기,올해,옷걸이,요금,용기,용돈,우동,우물,우유,운명,운전,운동장,울산,원숭이,원인,위기,위로,위반,유리,유리창,유명,유산,유적,유치원,육상,음료수,음악회,응답,의견,의미,의사,이름,이마,이모,이발소,이상형,이웃,이유,이자,인간,인도,인물,인쇄,일기장,일등,일요일,입맛,입장,자격,자국,자랑,자물쇠,자료,자연,자원,작가,작년,작품,잔치,잠자리,장면,장소,장식,재료,재미,저녁,전국,전망,전문가,전시,전통,절반,점심,점수,접근,정답,정도,정문,정상,정원,제목,제도,제자리,조각,조명,조용,조카,존중,졸업,종이,종합,좋은말,주머니,주변,주소,주인,주차,준비,중간,중국,중요,증거,지구본,지능,지도자,지붕,지식,지하,직업,진실,진주,질문,집게,집안,짜장면,차량,차림,차선,차원,참새,참여,창고,창작,책갈피,책방,처음,천사,천천히,철도,철학,청년,청바지,체육,초대,초록,초밥,초원,초점,총리,최고,추억,축제,출구,출근,출석,취미,치마,치약,친구들,친절,칠판,카드,카메라,커피,컴퓨터,케이블,코끼리풀,코미디,콘서트,쿠키,크기,크림,큰길,타자,태권도,태풍,택시,테니스,토마토,통계,통로,통장,퇴근,투명,특별,티셔츠,파란색,파리,파티,팔꿈치,팔찌,편의점,평균,평생,포도,포장,표범,풍경,피곤,피부,필요,하늘색,하루,하숙,학교길,학생,한글,한복,한숨,한자,할머니,할아버지,해변,해설,해외,해질녘,핸드백,허가,허수아비,현금,현대,현상,현실,형광등,호기심,호랑이,호텔,홍차,화가,화면,화분,화장,화재,환영,활동,회관,회복,회사원,회전,횡단보도,효과,후배,휴식,휴일,흐름,희생,힘줄,가속,가로수,가사,가식,각본,간부,감독,감염,강의,개념,개혁,거짓말,건축,결론,경찰서,계산기,고민,공감,공부방,과자집,관객,광복,교복,교육,구름꽃,국립,국물,귀여운,그림자,극복,근처,기록장,기본기,기상청,기차길,나무늘보,나침반표,남극곰,내일모레,노란빛,달나라,달팽이,도깨비불,독립,동화책,두근두근,등산화,마음가짐,마음속,마중,말하기,모험,무지개빛,문화재,미끄럼틀,바닷속,발걸음,방문객,배추김치,별자리,보리차,부지런,불장난,비밀,사랑방,사랑해,산길,새싹,생일날,소나기,손전등,수상,신기술,실내화,아름다움,안내판,약속시간,여름밤,연습,열대,영양소,오래,오솔길,우산,운동화,웃음,원두커피,위험,유리병,음식점,이야기,자전거,장난감,전기차,전화기,절약,정리함,주방,주인공,지구촌,지하철,진달래,창밖,천둥,청소기,초등학교,친구사이,컴퓨터실,키보드,태양빛,토끼풀,파란하늘,편지,평화,포근,하얀색,행복감,허브,호수,휴대용,희망사항`.split(/[,\s]+/).filter((word) => isKoreanWord(word)).map((word) => [word, "내장 단어 데이터에 등록된 낱말"]);
+
+const INVALID_BANK_WORDS = new Set(["름름", "름자", "켓찹", "름새", "례절", "료리", "력사", "션샤인"]);
+const dictionary = new Map([...WORD_BANK, ...EXTRA_WORD_BANK, ...BULK_WORD_BANK]);
 const words = [...dictionary.keys()].filter(word => !INVALID_BANK_WORDS.has(word));
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -73,6 +76,7 @@ const state = {
   roomPlayerId: null,
   matchId: null,
   playerId: null,
+  leftNotified: false,
   selfIndex: 0,
   eventCursor: 0,
   eventPollId: null,
@@ -84,7 +88,6 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const normalizeWord = (value) => value.trim().replace(/\s+/g, "");
 const lastSyllable = (word) => [...word].at(-1) || "";
 const firstSyllable = (word) => [...word][0] || "";
-const isKoreanWord = (word) => /^[가-힣]{2,12}$/.test(word);
 const roParticle = (syllable) => { const code = syllable.codePointAt(0); return code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 === 0 ? "로" : "으로"; };
 const getCandidates = (initial, used = state.usedWords) => words.filter((word) => firstSyllable(word) === initial && !used.has(word) && !INVALID_BANK_WORDS.has(word));
 const responseCount = (word, used) => getCandidates(lastSyllable(word), used).length;
@@ -130,7 +133,28 @@ function resetMatchControls() {
   }
 }
 
-function finishGame(message) {
+function renderNextInitial() {
+  const nextInitial = $("#nextInitial");
+  if (nextInitial) nextInitial.textContent = `다음 글자: ${state.requiredInitial}`;
+}
+
+function showGameResult(result, message) {
+  const won = result === "win";
+  const overlay = $("#resultOverlay");
+  overlay.className = `result-overlay ${won ? "result-win" : "result-loss"}`;
+  $("#resultMark").textContent = won ? "★" : "×";
+  $("#resultKicker").textContent = won ? "VICTORY" : "GAME OVER";
+  $("#resultTitle").textContent = won ? "승리했어요!" : "게임이 끝났어요";
+  $("#resultMessage").textContent = message;
+  overlay.hidden = false;
+}
+
+function hideGameResult() {
+  $("#resultOverlay").hidden = true;
+}
+
+function finishGame(message, result = "loss") {
+  if (state.currentPlayer === "ended") return;
   clearInterval(state.timerId);
   clearInterval(state.eventPollId);
   state.timerId = null;
@@ -143,6 +167,7 @@ function finishGame(message) {
   $("#turnStatus").textContent = "게임 종료";
   $("#turnPrompt").textContent = message;
   addMessage("system", message);
+  showGameResult(result, message);
   showToast(message);
 }
 
@@ -151,7 +176,7 @@ function loseHeart() {
   updateHearts();
   addMessage("system", `시간이 끝났어요. 하트 1개를 잃었어요. (${state.hearts}/${state.maxHearts})`);
   if (state.hearts === 0) {
-    finishGame("하트를 모두 잃었어요. 이번 게임은 종료됐어요.");
+    finishGame("하트를 모두 잃었어요. 이번 게임은 종료됐어요.", "loss");
     return false;
   }
   showToast(`하트 1개를 잃었어요 · ${state.hearts}개 남음`);
@@ -318,11 +343,11 @@ function joinRoomModal() {
 }
 
 function rulesModal() {
-  openModal(`<p class="panel-kicker">RULE BOOK</p><h2 id="modalTitle">끝잇 게임 룰</h2><p>공식 단어를 이어가며 마지막까지 살아남는 사람이 승리해요.</p><div class="rule-list" style="grid-template-columns:1fr;margin-top:18px"><div class="rule-item"><span class="rule-symbol">가</span><div><strong>단어 검증</strong><small>공식 사전 API를 서버에서 확인한 뒤 판정합니다.</small></div></div><div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이어갈 후보가 없는 단어는 첫 단어로 사용할 수 없습니다.</small></div></div><div class="rule-item"><span class="rule-symbol time">♥</span><div><strong>하트 2개 · 턴 제한 20초</strong><small>시간이 끝날 때마다 하트 1개를 잃고, 모두 잃으면 게임이 끝납니다.</small></div></div></div>`);
+  openModal(`<p class="panel-kicker">RULE BOOK</p><h2 id="modalTitle">끝잇 게임 룰</h2><p>등록된 단어를 이어가며 마지막까지 살아남는 사람이 승리해요.</p><div class="rule-list" style="grid-template-columns:1fr;margin-top:18px"><div class="rule-item"><span class="rule-symbol">가</span><div><strong>단어 검증</strong><small>게임에 내장된 정적 단어 목록과 뜻 데이터로 즉시 확인합니다.</small></div></div><div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이어갈 후보가 없는 단어는 첫 단어로 사용할 수 없습니다.</small></div></div><div class="rule-item"><span class="rule-symbol time">♥</span><div><strong>하트 2개 · 턴 제한 20초</strong><small>시간이 끝날 때마다 하트 1개를 잃고, 모두 잃으면 게임이 끝납니다.</small></div></div></div>`);
 }
 
 function helpModal() {
-  openModal(`<p class="panel-kicker">QUICK HELP</p><h2 id="modalTitle">처음이라면 이렇게 해보세요</h2><p>화면에 표시된 마지막 글자로 시작하는 단어를 입력하면 됩니다. 단어 아래의 작은 설명은 끝잇이 확인한 사전 뜻이에요.</p><div class="modal-code" style="text-align:left"><strong style="font-size:16px;letter-spacing:0">마음 → 음악 → 악수</strong><span style="margin-top:8px">마지막 글자와 다음 단어의 첫 글자를 이어보세요.</span></div>`);
+  openModal(`<p class="panel-kicker">QUICK HELP</p><h2 id="modalTitle">처음이라면 이렇게 해보세요</h2><p>화면에 표시된 다음 글자로 시작하는 단어를 입력하면 됩니다. 단어 아래의 작은 설명은 게임에 내장된 뜻 데이터예요.</p><div class="modal-code" style="text-align:left"><strong style="font-size:16px;letter-spacing:0">마음 → 음악 → 악수</strong><span style="margin-top:8px">다음 글자와 단어의 첫 글자를 이어보세요.</span></div>`);
 }
 
 function settingsModal() {
@@ -397,6 +422,7 @@ function beginGame(names, title, openingWord = pickOpeningWord()) {
   state.playerNames = names;
   state.gameMode = state.gameMode || "quick";
   state.hearts = state.maxHearts;
+  state.leftNotified = false;
   state.round = 1;
   state.currentPlayer = state.gameMode === "human" && state.selfIndex !== 0 ? "remote" : "me";
   state.startWord = openingWord;
@@ -414,8 +440,10 @@ function beginGame(names, title, openingWord = pickOpeningWord()) {
   $("#wordInput").disabled = false;
   $("#wordForm button[type=submit]").disabled = false;
   updateHearts();
+  renderNextInitial();
+  hideGameResult();
   $("#turnStatus").textContent = state.currentPlayer === "me" ? "당신의 턴이에요" : "첫 플레이어의 턴이에요";
-  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
+  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
   $("#factCheck").textContent = "";
   $("#wordInput").value = "";
   setView("game");
@@ -460,12 +488,17 @@ async function pollMatchEvents() {
   state.eventCursor = payload.cursor;
   for (const event of payload.events) {
     if (event.playerId === state.playerId) continue;
+    if (event.leave) {
+      finishGame(`${event.nickname}님이 나가서 승리했어요.`, "win");
+      continue;
+    }
     if (event.timeout) {
       state.currentPlayer = "me";
       state.requiredInitial = event.nextInitial;
+      renderNextInitial();
       addMessage("system", `${event.nickname}님의 시간이 끝났어요. 당신의 턴입니다.`);
       $("#turnStatus").textContent = "당신의 턴이에요";
-      $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
+      $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
       renderPlayers();
       startTimer();
       continue;
@@ -473,12 +506,13 @@ async function pollMatchEvents() {
     state.usedWords.add(event.word);
     state.lastWord = event.word;
     state.requiredInitial = event.nextInitial;
+    renderNextInitial();
     state.round += 1;
     state.currentPlayer = "me";
     addMessage("remote", event.word, `${event.nickname}::${event.note || getDefinition(event.word)} · 다음 글자 ${event.nextInitial}`);
     $("#roundNumber").textContent = String(state.round).padStart(2, "0");
     $("#turnStatus").textContent = "당신의 턴이에요";
-    $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
+    $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
     $("#factCheck").textContent = "✓ 다른 플레이어의 단어를 확인했어요.";
     $("#factCheck").className = "fact-check success";
     renderPlayers();
@@ -520,17 +554,9 @@ async function validateWord(word) {
   if (!isKoreanWord(word)) return { ok: false, message: "한글 2~12글자 단어를 입력해 주세요.", kind: "error" };
   if (state.usedWords.has(word)) return { ok: false, message: "이미 나온 단어예요.", kind: "error" };
   if (firstSyllable(word) !== state.requiredInitial) return { ok: false, message: `첫 글자가 '${state.requiredInitial}'인 단어가 필요해요.`, kind: "error" };
-  try {
-    const response = await fetch(`/api/dictionary/lookup?word=${encodeURIComponent(word)}`);
-    const remote = await response.json();
-    if (remote.configured && !remote.valid) return { ok: false, message: "공식 국립국어원 사전에서 확인되지 않은 단어예요.", kind: "error" };
-    if (remote.configured) return { ok: true, definition: remote.definition || getDefinition(word), message: `공식 사전 확인 완료 · ${remote.definition || getDefinition(word)}`, kind: "success" };
-  } catch {
-    return { ok: false, message: "사전 검증 서버에 연결되지 않았어요. 잠시 후 다시 시도해 주세요.", kind: "error" };
-  }
-  if (state.round === 1 && dictionary.has(word) && isOneShot(word)) return { ok: false, message: "첫 턴에는 상대가 이을 수 없는 한방단어를 사용할 수 없어요.", kind: "warning" };
-  if (!dictionary.has(word)) return { ok: true, definition: "한글 단어 형식 확인 · 공식 사전 키 연결 시 뜻을 추가 확인합니다.", message: "한글 단어 형식 확인 · 공식 사전 키 연결 시 뜻을 추가 확인합니다.", kind: "warning" };
-  return { ok: true, definition: getDefinition(word), message: `사전 API 준비 중 · ${getDefinition(word)}`, kind: "warning" };
+  if (!dictionary.has(word) || INVALID_BANK_WORDS.has(word)) return { ok: false, message: "내장 단어 목록에 없는 단어예요.", kind: "error" };
+  if (state.round === 1 && isOneShot(word)) return { ok: false, message: "첫 턴에는 상대가 이을 수 없는 한방단어를 사용할 수 없어요.", kind: "warning" };
+  return { ok: true, definition: getDefinition(word), message: `✓ 내장 단어 확인 완료 · ${getDefinition(word)}`, kind: "success" };
 }
 
 async function submitWord(event) {
@@ -557,6 +583,7 @@ async function submitWord(event) {
   state.usedWords.add(word);
   state.lastWord = word;
   state.requiredInitial = lastSyllable(word);
+  renderNextInitial();
   addMessage("player", word, `${result.definition || getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
   $("#wordInput").value = "";
   $("#factCheck").textContent = "✓ 단어가 이어졌어요. 실제 플레이어의 단어를 기다리는 중...";
@@ -572,7 +599,7 @@ function lookAhead(word, used, depth = 2, memo = new Map()) {
   const nextUsed = new Set([...used, word]);
   const key = `${word}|${depth}|${[...used].sort().join(",")}`;
   if (memo.has(key)) return memo.get(key);
-  const replies = getCandidates(lastSyllable(word), nextUsed).sort((a, b) => responseCount(a, nextUsed) - responseCount(b, nextUsed)).slice(0, 32);
+  const replies = getCandidates(lastSyllable(word), nextUsed).sort((a, b) => responseCount(a, nextUsed) - responseCount(b, nextUsed)).slice(0, 48);
   if (depth <= 0 || !replies.length) return { replies: replies.length, future: 0 };
   const future = Math.max(...replies.map((reply) => lookAhead(reply, nextUsed, depth - 1, memo).replies));
   const result = { replies: replies.length, future };
@@ -585,15 +612,15 @@ function selectAIWord() {
   if (state.round === 1) candidates = candidates.filter((word) => !isOneShot(word));
   if (!candidates.length) return null;
   if (state.difficulty === "easy") return pick(candidates);
-  candidates = candidates.sort((a, b) => responseCount(a, state.usedWords) - responseCount(b, state.usedWords)).slice(0, 80);
+  candidates = candidates.sort((a, b) => responseCount(a, state.usedWords) - responseCount(b, state.usedWords)).slice(0, 140);
   const memo = new Map();
   const scored = candidates.map((word) => {
-    const forecast = lookAhead(word, state.usedWords, state.difficulty === "hard" ? 4 : 2, memo);
+    const forecast = lookAhead(word, state.usedWords, state.difficulty === "hard" ? 5 : 3, memo);
     const deadEndBonus = forecast.replies === 0 ? 80 : 0;
     const pressure = -forecast.replies * (state.difficulty === "hard" ? 18 : 7);
     const futurePressure = -forecast.future * (state.difficulty === "hard" ? 6 : 2);
     const lengthBonus = Math.min(word.length, 4) * (state.difficulty === "hard" ? 1.2 : .4);
-    return { word, score: deadEndBonus + pressure + futurePressure + lengthBonus + Math.random() * (state.difficulty === "hard" ? .4 : 4) };
+    return { word, score: deadEndBonus + pressure + futurePressure + lengthBonus + Math.random() * (state.difficulty === "hard" ? .05 : 2) };
   }).sort((a, b) => b.score - a.score);
   return scored[0].word;
 }
@@ -602,20 +629,19 @@ function aiTurn() {
   if (!$("#gameView").classList.contains("active-view")) return;
   const word = selectAIWord();
   if (!word) {
-    addMessage("system", "상대가 이을 단어를 찾지 못했어요. 당신의 승리입니다!");
-    showToast("축하해요. 이번 판에서 승리했어요");
-    $("#turnStatus").textContent = "승리했어요";
+    finishGame("상대가 이을 단어를 찾지 못했어요. 당신의 승리입니다!", "win");
     return;
   }
   state.usedWords.add(word);
   state.lastWord = word;
   state.requiredInitial = lastSyllable(word);
+  renderNextInitial();
   state.round += 1;
   state.currentPlayer = "me";
   addMessage("ai", word, `${getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
   $("#roundNumber").textContent = String(state.round).padStart(2, "0");
   $("#turnStatus").textContent = "당신의 턴이에요";
-  $("#turnPrompt").textContent = `마지막 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
+  $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
   $("#factCheck").textContent = `✓ AI가 후보 ${getCandidates(state.requiredInitial).length}개를 살피고 다음 수까지 계산했어요.`;
   $("#factCheck").className = "fact-check success";
   renderPlayers();
@@ -623,10 +649,23 @@ function aiTurn() {
   $("#wordInput").focus();
 }
 
+function notifyMatchLeave() {
+  if (state.gameMode !== "human" || !state.matchId || !state.playerId || state.leftNotified || state.currentPlayer === "ended") return;
+  state.leftNotified = true;
+  const body = JSON.stringify({ playerId: state.playerId });
+  const url = `/api/matches/${state.matchId}/leave`;
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+  } else {
+    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => null);
+  }
+}
+
 function initGameControls() {
   $("#wordForm").addEventListener("submit", submitWord);
   $("#clearWordButton").addEventListener("click", () => { $("#wordInput").value = ""; $("#factCheck").textContent = ""; $("#wordInput").focus(); });
-  $("#leaveGameButton").addEventListener("click", () => {
+  $("#leaveGameButton").addEventListener("click", async () => {
+    notifyMatchLeave();
     clearInterval(state.timerId);
     clearInterval(state.matchPollId);
     clearInterval(state.eventPollId);
@@ -636,7 +675,9 @@ function initGameControls() {
     state.roomCode = "QUICK";
     state.roomPlayerId = null;
     state.matchId = null;
+    state.playerId = null;
     state.currentPlayer = "me";
+    hideGameResult();
     resetMatchControls();
     setView("lobby");
   });
@@ -644,9 +685,11 @@ function initGameControls() {
   $("#copyCodeButton").addEventListener("click", () => copyText(state.roomCode));
   $("#inviteButton").addEventListener("click", () => copyText(state.roomCode));
   $("#gameRulesButton").addEventListener("click", rulesModal);
+  $("#resultLobbyButton").addEventListener("click", () => $("#leaveGameButton").click());
 }
 
 $("#modalClose").addEventListener("click", closeModal);
 $("#modalBackdrop").addEventListener("click", (event) => { if (event.target === $("#modalBackdrop")) closeModal(); });
 setupLobby();
 initGameControls();
+window.addEventListener("pagehide", notifyMatchLeave);
