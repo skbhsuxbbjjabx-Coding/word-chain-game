@@ -1,18 +1,4 @@
-import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = fileURLToPath(new URL(".", import.meta.url));
-const port = Number(process.env.PORT || 4173);
-const mimeTypes = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml"
-};
 
 const queues = new Map([[2, []], [3, []], [4, []]]);
 const tickets = new Map();
@@ -180,42 +166,4 @@ export async function handleApi(request, response, url) {
   }
 
   return false;
-}
-
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url || "/", `http://${request.headers.host}`);
-
-  if (url.pathname.startsWith("/api/")) {
-    try {
-      const handled = await handleApi(request, response, url);
-      if (handled !== false) return;
-    } catch (error) {
-      console.error(error);
-      return sendJson(response, 500, { error: "server_error" });
-    }
-  }
-
-  const requested = url.pathname === "/" ? "/index.html" : url.pathname;
-  const filePath = normalize(join(root, requested));
-
-  if (!filePath.startsWith(root)) {
-    response.writeHead(403);
-    response.end("Forbidden");
-    return;
-  }
-
-  try {
-    const file = await readFile(filePath);
-    response.writeHead(200, { "Content-Type": mimeTypes[extname(filePath)] || "application/octet-stream" });
-    response.end(file);
-  } catch {
-    response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-    response.end("Not found");
-  }
-});
-
-if (process.env.VERCEL !== "1") {
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`Word Chain Game is running at http://127.0.0.1:${port}`);
-  });
 }
