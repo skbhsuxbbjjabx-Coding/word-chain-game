@@ -1,4 +1,4 @@
-import { handleApi } from "../server.js";
+import { handleApi } from "../api-handler.js";
 
 function createResponseBridge() {
   const headers = new Headers();
