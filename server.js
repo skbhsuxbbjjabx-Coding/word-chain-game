@@ -26,6 +26,12 @@ function sendJson(response, status, payload) {
 }
 
 function readJson(request) {
+  if (request.body !== undefined) {
+    if (typeof request.body === "string") {
+      try { return Promise.resolve(request.body ? JSON.parse(request.body) : {}); } catch (error) { return Promise.reject(error); }
+    }
+    return Promise.resolve(request.body || {});
+  }
   return new Promise((resolve, reject) => {
     let body = "";
     request.on("data", (chunk) => { body += chunk; });
@@ -70,7 +76,7 @@ function tryMatch(size) {
   }
 }
 
-async function handleApi(request, response, url) {
+export async function handleApi(request, response, url) {
   if (request.method === "POST" && url.pathname === "/api/matchmaking/join") {
     const body = await readJson(request);
     const size = Number(body.size);
@@ -208,6 +214,8 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Word Chain Game is running at http://127.0.0.1:${port}`);
-});
+if (process.env.VERCEL !== "1") {
+  server.listen(port, "127.0.0.1", () => {
+    console.log(`Word Chain Game is running at http://127.0.0.1:${port}`);
+  });
+}
