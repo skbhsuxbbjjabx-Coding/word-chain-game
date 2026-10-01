@@ -10,5 +10,5 @@ echo - 다른 사람 / 스마트폰 (같은 와이파이): http://192.168.219.10
 echo.
 echo 서버를 시작하고 브라우저를 엽니다...
 start http://127.0.0.1:3000
-node server.js
+node local-server.js
 pause

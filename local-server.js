@@ -74,52 +74,76 @@ const invalidParts = new Set(['어미', '접사', '조사', '인명', '지명', 
 
 console.time('📖 52만 공인 사전 데이터 로드');
 
-function loadDictionary(filename) {
-  const filePath = path.join(DATA_DIR, filename);
-  if (!fs.existsSync(filePath)) {
-    console.warn(`[사전 로드 경고] 파일을 찾을 수 없습니다: ${filePath}`);
-    return;
-  }
+let loadedFromJson = false;
+const jsonPath = path.join(DATA_DIR, 'dictionary.json');
+if (fs.existsSync(jsonPath)) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n');
-
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
-      const parts = line.split(',');
-      const raw = parts[0] || '';
-      const part = parts[1] || '명사';
-
-      if (invalidParts.has(part)) continue;
-
-      const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
-      if (!clean || clean.length < 2) continue;
-
-      const isPure = !raw.includes('-') && !raw.includes('^');
-
-      const existing = wordInfoMap.get(clean);
-      if (!existing || (!existing.isPure && isPure)) {
-        wordInfoMap.set(clean, { word: clean, isPure, part, raw });
+    const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    for (const [s, wordList] of Object.entries(rawData)) {
+      for (const w of wordList) {
+        const item = { word: w, isPure: true, part: '명사', raw: w };
+        wordInfoMap.set(w, item);
+        if (!startMap.has(s)) startMap.set(s, []);
+        startMap.get(s).push(item);
+        const e = w[w.length - 1];
+        if (!endMap.has(e)) endMap.set(e, []);
+        endMap.get(e).push(item);
       }
     }
+    loadedFromJson = true;
   } catch (err) {
-    console.error(`[사전 읽기 오류] ${filename}:`, err.message);
+    console.warn('[사전 JSON 로드 실패, CSV 폴백]', err.message);
   }
 }
 
-loadDictionary('kr_korean.csv');
-loadDictionary('kp_korean.csv');
+if (!loadedFromJson) {
+  function loadDictionary(filename) {
+    const filePath = path.join(DATA_DIR, filename);
+    if (!fs.existsSync(filePath)) {
+      console.warn(`[사전 로드 경고] 파일을 찾을 수 없습니다: ${filePath}`);
+      return;
+    }
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const lines = content.split('\n');
 
-for (const item of wordInfoMap.values()) {
-  const s = item.word[0];
-  const e = item.word[item.word.length - 1];
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        const parts = line.split(',');
+        const raw = parts[0] || '';
+        const part = parts[1] || '명사';
 
-  if (!startMap.has(s)) startMap.set(s, []);
-  startMap.get(s).push(item);
+        if (invalidParts.has(part)) continue;
 
-  if (!endMap.has(e)) endMap.set(e, []);
-  endMap.get(e).push(item);
+        const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
+        if (!clean || clean.length < 2) continue;
+
+        const isPure = !raw.includes('-') && !raw.includes('^');
+
+        const existing = wordInfoMap.get(clean);
+        if (!existing || (!existing.isPure && isPure)) {
+          wordInfoMap.set(clean, { word: clean, isPure, part, raw });
+        }
+      }
+    } catch (err) {
+      console.error(`[사전 읽기 오류] ${filename}:`, err.message);
+    }
+  }
+
+  loadDictionary('kr_korean.csv');
+  loadDictionary('kp_korean.csv');
+
+  for (const item of wordInfoMap.values()) {
+    const s = item.word[0];
+    const e = item.word[item.word.length - 1];
+
+    if (!startMap.has(s)) startMap.set(s, []);
+    startMap.get(s).push(item);
+
+    if (!endMap.has(e)) endMap.set(e, []);
+    endMap.get(e).push(item);
+  }
 }
 
 console.timeEnd('📖 52만 공인 사전 데이터 로드');

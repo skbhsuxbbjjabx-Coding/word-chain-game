@@ -2,10 +2,10 @@
   "name": "word-chain-game",
   "version": "4.0.0",
   "description": "끝말잇기 마스터 AI (WordChain Master AI)",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node local-server.js",
+    "start": "node local-server.js"
   },
   "dependencies": {
     "localtunnel": "^2.0.2",

@@ -1,5 +1,8 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
+  "outputDirectory": ".",
   "rewrites": [
     {
       "source": "/api",
@@ -14,7 +17,7 @@
     "api/index.js": {
       "includeFiles": "data/**",
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 15
     }
   }
 }
