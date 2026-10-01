@@ -75,24 +75,40 @@ const invalidParts = new Set(['어미', '접사', '조사', '인명', '지명', 
 console.time('📖 52만 공인 사전 데이터 로드');
 
 let loadedFromJson = false;
-const jsonPath = path.join(DATA_DIR, 'dictionary.json');
-if (fs.existsSync(jsonPath)) {
-  try {
-    const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-    for (const [s, wordList] of Object.entries(rawData)) {
-      for (const w of wordList) {
-        const item = { word: w, isPure: true, part: '명사', raw: w };
-        wordInfoMap.set(w, item);
-        if (!startMap.has(s)) startMap.set(s, []);
-        startMap.get(s).push(item);
-        const e = w[w.length - 1];
-        if (!endMap.has(e)) endMap.set(e, []);
-        endMap.get(e).push(item);
-      }
+try {
+  const rawData = require('./data/dictionary.json');
+  for (const [s, wordList] of Object.entries(rawData)) {
+    for (const w of wordList) {
+      const item = { word: w, isPure: true, part: '명사', raw: w };
+      wordInfoMap.set(w, item);
+      if (!startMap.has(s)) startMap.set(s, []);
+      startMap.get(s).push(item);
+      const e = w[w.length - 1];
+      if (!endMap.has(e)) endMap.set(e, []);
+      endMap.get(e).push(item);
     }
-    loadedFromJson = true;
-  } catch (err) {
-    console.warn('[사전 JSON 로드 실패, CSV 폴백]', err.message);
+  }
+  loadedFromJson = true;
+} catch (e1) {
+  const jsonPath = path.join(DATA_DIR, 'dictionary.json');
+  if (fs.existsSync(jsonPath)) {
+    try {
+      const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      for (const [s, wordList] of Object.entries(rawData)) {
+        for (const w of wordList) {
+          const item = { word: w, isPure: true, part: '명사', raw: w };
+          wordInfoMap.set(w, item);
+          if (!startMap.has(s)) startMap.set(s, []);
+          startMap.get(s).push(item);
+          const e = w[w.length - 1];
+          if (!endMap.has(e)) endMap.set(e, []);
+          endMap.get(e).push(item);
+        }
+      }
+      loadedFromJson = true;
+    } catch (err) {
+      console.warn('[사전 JSON 로드 실패, CSV 폴백]', err.message);
+    }
   }
 }
 
