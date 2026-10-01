@@ -5,7 +5,24 @@ const url = require('url');
 const os = require('os');
 
 const PORT = 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+
+function findDataDir() {
+  const candidates = [
+    path.join(__dirname, 'data'),
+    path.join(process.cwd(), 'data'),
+    path.join(__dirname, '..', 'data'),
+    path.join('/var/task', 'data')
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p) && fs.existsSync(path.join(p, 'kr_korean.csv'))) {
+        return p;
+      }
+    } catch (e) {}
+  }
+  return path.join(process.cwd(), 'data');
+}
+const DATA_DIR = findDataDir();
 
 console.log('⚡ [WordChain AI v4.0] 서버 초기화 시작 (Minimax 2수앞 지능 엔진 & 끄투 배틀 시스템)...');
 
@@ -59,28 +76,35 @@ console.time('📖 52만 공인 사전 데이터 로드');
 
 function loadDictionary(filename) {
   const filePath = path.join(DATA_DIR, filename);
-  if (!fs.existsSync(filePath)) return;
-  const content = fs.readFileSync(filePath, 'utf8');
-  const lines = content.split('\n');
+  if (!fs.existsSync(filePath)) {
+    console.warn(`[사전 로드 경고] 파일을 찾을 수 없습니다: ${filePath}`);
+    return;
+  }
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
 
-  for (let line of lines) {
-    line = line.trim();
-    if (!line) continue;
-    const parts = line.split(',');
-    const raw = parts[0] || '';
-    const part = parts[1] || '명사';
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      const parts = line.split(',');
+      const raw = parts[0] || '';
+      const part = parts[1] || '명사';
 
-    if (invalidParts.has(part)) continue;
+      if (invalidParts.has(part)) continue;
 
-    const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
-    if (!clean || clean.length < 2) continue;
+      const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
+      if (!clean || clean.length < 2) continue;
 
-    const isPure = !raw.includes('-') && !raw.includes('^');
+      const isPure = !raw.includes('-') && !raw.includes('^');
 
-    const existing = wordInfoMap.get(clean);
-    if (!existing || (!existing.isPure && isPure)) {
-      wordInfoMap.set(clean, { word: clean, isPure, part, raw });
+      const existing = wordInfoMap.get(clean);
+      if (!existing || (!existing.isPure && isPure)) {
+        wordInfoMap.set(clean, { word: clean, isPure, part, raw });
+      }
     }
+  } catch (err) {
+    console.error(`[사전 읽기 오류] ${filename}:`, err.message);
   }
 }
 
@@ -1259,10 +1283,43 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'master'
   };
 }
 
-// 8. HTTP API 및 정적 파일 서버
-const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
+async function parseRequestBody(req) {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'object') return req.body;
+    if (typeof req.body === 'string') {
+      try { return JSON.parse(req.body); } catch (e) { return {}; }
+    }
+  }
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch (e) {
+        resolve({});
+      }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
+// 8. HTTP API 및 정적 파일 서버 핸들러
+async function handleRequest(req, res) {
+  let rawUrl = (req.headers && req.headers['x-forwarded-uri'])
+    || (req.headers && req.headers['x-matched-path'] && !req.headers['x-matched-path'].includes('/api/index') ? req.headers['x-matched-path'] : null)
+    || req.url
+    || '/';
+
+  const parsedUrl = url.parse(rawUrl, true);
+  let pathname = parsedUrl.pathname || '/';
+
+  // Vercel rewrite _route 파라미터 매핑 지원
+  if (pathname === '/api/index.js' || pathname === '/api' || pathname === '/api/') {
+    if (parsedUrl.query && parsedUrl.query._route) {
+      pathname = '/api/' + parsedUrl.query._route;
+    }
+  }
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -1280,7 +1337,8 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       localIps: getLocalIpAddresses(),
       publicTunnelUrl: publicTunnelUrl || null,
-      port: PORT
+      port: PORT,
+      isVercel: !!process.env.VERCEL
     }));
     return;
   }
@@ -1306,19 +1364,15 @@ const server = http.createServer(async (req, res) => {
 
   // API 2: 챗봇
   if (pathname === '/api/chat' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const data = JSON.parse(body || '{}');
-        const reply = await generateAiChatResponse(data.message || '', data.history || []);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(reply));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
+    try {
+      const data = await parseRequestBody(req);
+      const reply = await generateAiChatResponse(data.message || '', data.history || []);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(reply));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
     return;
   }
 
@@ -1350,20 +1404,16 @@ const server = http.createServer(async (req, res) => {
 
   // API 4: 배틀
   if (pathname === '/api/game/move' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; });
-    req.on('end', async () => {
-      try {
-        const data = JSON.parse(body || '{}');
-        const result = await processGameMove(data.userWord || '', data.history || [], data.difficulty || 'master');
+    try {
+      const data = await parseRequestBody(req);
+      const result = await processGameMove(data.userWord || '', data.history || [], data.difficulty || 'master');
 
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify(result));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-        res.end(JSON.stringify({ success: false, message: err.message }));
-      }
-    });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: false, message: err.message }));
+    }
     return;
   }
 
@@ -1393,8 +1443,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 정적 파일 서빙
-  let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
+  // 정적 파일 서빙 (로컬 서버 또는 Vercel fallback)
+  const baseDir = fs.existsSync(path.join(__dirname, 'index.html'))
+    ? __dirname
+    : (fs.existsSync(path.join(process.cwd(), 'index.html')) ? process.cwd() : __dirname);
+
+  let targetFile = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  let filePath = path.join(baseDir, targetFile);
   const ext = path.extname(filePath).toLowerCase();
 
   const mimeTypes = {
@@ -1423,7 +1478,9 @@ const server = http.createServer(async (req, res) => {
       res.end(content, 'utf-8');
     }
   });
-});
+}
+
+const server = http.createServer(handleRequest);
 
 function getLocalIpAddresses() {
   const nets = os.networkInterfaces();
@@ -1461,15 +1518,20 @@ async function startPublicTunnel() {
   }
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  const localIps = getLocalIpAddresses();
-  console.log(`\n======================================================`);
-  console.log(`🚀 [WordChain AI v4.0] Minimax 지능 엔진 & 끄투 배틀 서버 가동!`);
-  console.log(`🏠 내 컴퓨터 접속 주소:   http://localhost:${PORT} (또는 http://127.0.0.1:${PORT})`);
-  localIps.forEach(item => {
-    console.log(`📱 다른 사람 / 같은 와이파이: http://${item.address}:${PORT} (${item.name})`);
-  });
-  console.log(`======================================================`);
+// 로컬 환경에서 직접 실행 시에만 포트 바인딩 및 터널 개시
+if (require.main === module && !process.env.VERCEL) {
+  server.listen(PORT, '0.0.0.0', () => {
+    const localIps = getLocalIpAddresses();
+    console.log(`\n======================================================`);
+    console.log(`🚀 [WordChain AI v4.0] Minimax 지능 엔진 & 끄투 배틀 서버 가동!`);
+    console.log(`🏠 내 컴퓨터 접속 주소:   http://localhost:${PORT} (또는 http://127.0.0.1:${PORT})`);
+    localIps.forEach(item => {
+      console.log(`📱 다른 사람 / 같은 와이파이: http://${item.address}:${PORT} (${item.name})`);
+    });
+    console.log(`======================================================`);
 
-  startPublicTunnel();
-});
+    startPublicTunnel();
+  });
+}
+
+module.exports = handleRequest;
