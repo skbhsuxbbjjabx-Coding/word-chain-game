@@ -1,695 +1,1464 @@
-const isKoreanWord = (word) => /^[가-힣]{2,12}$/.test(word);
-const WORD_BANK = [
-  ["마음", "사람의 생각이나 감정이 깃드는 곳"], ["음악", "소리로 감정과 생각을 표현하는 예술"], ["악수", "두 사람이 손을 마주 잡는 인사"], ["수박", "여름에 즐겨 먹는 큰 과일"], ["박수", "손뼉을 쳐서 기쁨을 나타냄"], ["수업", "학교나 교육 기관에서 배우는 시간"], ["업무", "맡아서 하는 일"], ["무지개", "비 온 뒤 하늘에 나타나는 일곱 빛깔"], ["개나리", "봄에 노란 꽃을 피우는 나무"], ["리본", "끈이나 천을 묶어 장식하는 것"], ["본능", "배우지 않아도 자연스럽게 나타나는 행동"], ["능력", "어떤 일을 해낼 수 있는 힘"], ["력사", "역사의 북한어"], ["사과", "잘못을 인정하고 용서를 비는 말"], ["과일", "나무나 풀에서 나는 먹을 수 있는 열매"], ["일기", "날마다 있었던 일을 적은 기록"], ["기차", "철길 위를 달리는 교통수단"], ["차표", "차를 타기 위해 사는 표"], ["표정", "마음속 감정이 얼굴에 드러난 모양"], ["정답", "질문이나 문제에 대한 바른 답"], ["답장", "편지나 메시지에 대한 회답"], ["장미", "가시가 있는 아름다운 꽃"], ["미소", "소리 없이 웃는 표정"], ["소나기", "갑자기 세차게 내리는 비"], ["기억", "지난 일을 잊지 않고 간직하는 것"], ["억울", "잘못이 없는데도 부당하게 당한 느낌"], ["울음", "슬프거나 아플 때 내는 소리"], ["음식", "사람이 먹는 것"], ["식탁", "음식을 차려 놓는 상"], ["탁구", "공을 라켓으로 넘기는 운동"], ["구름", "하늘에 떠 있는 수증기 덩어리"], ["름름", "소리를 흉내 낸 옛말"], ["름자", "이름을 낮추어 이르는 말"], ["자전거", "사람이 페달을 밟아 움직이는 탈것"], ["거울", "모습을 비추어 보는 물건"], ["울타리", "경계를 둘러막는 시설"], ["리더", "무리를 이끄는 사람"], ["더위", "기온이 높아 덥게 느껴지는 기운"], ["위치", "일정한 곳에 자리한 자리"], ["치약", "이를 닦는 데 쓰는 약"], ["약속", "서로 지키기로 정한 일"], ["속도", "움직이는 빠르기의 정도"], ["도서관", "책을 모아 두고 빌려주는 곳"], ["관심", "어떤 것에 마음을 기울임"], ["심장", "피를 온몸으로 보내는 기관"], ["장난", "재미로 하는 짓"], ["난로", "방을 따뜻하게 하는 기구"], ["로봇", "사람을 대신하여 일을 하는 기계"], ["봇물", "보에서 흘러나오는 물"], ["물고기", "물에서 사는 동물"], ["기린", "목이 긴 초식 동물"], ["린스", "머리를 감은 뒤 쓰는 세정제"], ["스키", "눈 위를 미끄러져 내려오는 운동"], ["키위", "새콤한 맛의 갈색 과일"], ["위성", "행성 주위를 도는 천체"], ["성냥", "불을 붙이는 작은 도구"], ["냥이", "고양이를 친근하게 부르는 말"], ["이야기", "사실이나 생각을 말로 풀어 놓은 것"], ["기분", "마음에 느껴지는 상태"], ["분필", "칠판에 글을 쓰는 도구"], ["필통", "필기구를 넣는 통"], ["통나무", "베어 낸 나무의 줄기"], ["무지", "아는 것이 없음"], ["지구", "우리가 사는 행성"], ["구두", "발에 신는 가죽 신발"], ["두부", "콩으로 만든 흰 음식"], ["부엌", "음식을 만드는 공간"], ["억새", "가을 들판에 자라는 풀"], ["새우", "껍데기가 있는 물속 동물"], ["우산", "비나 햇빛을 가리는 물건"], ["산책", "바람을 쐬며 천천히 걷는 일"], ["책상", "책을 놓고 공부하는 상"], ["상자", "물건을 넣는 네모난 용기"], ["자동차", "엔진으로 움직이는 탈것"], ["차례", "순서에 따라 돌아오는 차례"], ["례절", "예의와 절도를 아울러 이르는 말"], ["절약", "아껴서 씀"], ["약간", "얼마 안 되는 정도"], ["간식", "끼니 사이에 먹는 음식"], ["식물", "땅에 뿌리를 내리고 사는 생물"], ["물감", "그림을 그릴 때 쓰는 색 재료"], ["감자", "땅속에서 자라는 먹거리"], ["자두", "붉거나 보라색인 과일"], ["두꺼비", "몸이 크고 피부가 울퉁불퉁한 양서류"], ["비누", "몸이나 물건을 씻는 세정제"], ["누나", "남자가 손위 누이를 부르는 말"], ["나무", "줄기가 굵고 가지가 뻗는 식물"], ["무궁화", "우리나라의 나라꽃"], ["화분", "꽃을 심어 가꾸는 그릇"], ["분수", "물을 뿜어 올리는 시설"], ["수영", "물속에서 헤엄치는 운동"], ["영화", "움직이는 영상을 보여 주는 예술"], ["화산", "땅속의 마그마가 분출하는 산"], ["산책로", "산책을 위해 만든 길"], ["로맨스", "사랑을 주제로 한 이야기"], ["스마트폰", "전화와 인터넷이 가능한 휴대 기기"], ["폰트", "글자의 모양과 디자인"], ["트럭", "짐을 싣고 나르는 자동차"], ["럭비", "공을 들고 달리는 구기 종목"], ["비행기", "하늘을 나는 교통수단"], ["기상", "대기 중에서 일어나는 현상"], ["상상", "실제로 없지만 마음속으로 그려 봄"], ["상어", "바다에 사는 큰 물고기"], ["어깨", "팔과 몸통이 이어지는 부분"], ["깨소금", "볶은 참깨를 빻은 양념"], ["금요일", "일주일의 다섯째 날"], ["일몰", "해가 지는 일"], ["몰입", "한 가지 일에 깊이 빠져듦"], ["입구", "들어가는 곳"], ["구경", "둘러보며 보는 일"], ["경기", "운동이나 경쟁을 벌이는 일"], ["기회", "어떤 일을 할 수 있는 때"], ["회사", "일정한 목적을 가진 조직"], ["사무실", "사무를 보는 공간"], ["실내", "건물 안"], ["내일", "오늘의 다음 날"], ["일출", "해가 떠오르는 일"], ["출발", "길을 떠남"], ["발자국", "발로 밟은 자리에 남은 흔적"], ["국수", "밀가루나 곡물로 만든 면 음식"], ["수건", "몸을 닦는 천"], ["건강", "몸과 마음이 튼튼한 상태"], ["강물", "강을 흐르는 물"], ["물결", "물이 움직이며 이루는 물무늬"], ["결심", "마음을 굳게 정함"], ["심부름", "부탁받은 일을 해 주는 것"], ["름새", "생김새를 낮추어 이르는 말"], ["새벽", "날이 밝기 전의 시간"], ["벽돌", "건축에 쓰는 네모난 돌"], ["돌고래", "바다에 사는 포유동물"], ["래퍼", "랩을 하는 가수"], ["퍼즐", "조각을 맞추는 놀이"], ["즐거움", "즐겁게 느끼는 마음"], ["음료", "마시는 액체"], ["료리", "요리의 북한어"], ["리듬", "음악의 규칙적인 흐름"], ["듬성듬성", "드문드문 떨어져 있는 모양"], ["성공", "목적을 이루는 것"], ["공원", "사람들이 쉬거나 노는 곳"], ["원숭이", "나무를 잘 타는 동물"], ["이불", "잠잘 때 덮는 침구"], ["불꽃", "타오르는 불의 모양"], ["꽃병", "꽃을 꽂아 두는 병"], ["병원", "환자를 치료하는 곳"], ["원두", "볶기 전 커피 열매"], ["두더지", "땅속에 사는 포유동물"], ["지우개", "글씨를 지우는 도구"], ["개미", "작고 부지런한 곤충"], ["미술", "그림이나 조형으로 표현하는 예술"], ["술잔", "술을 담는 잔"], ["잔디", "마당이나 운동장에 까는 풀"], ["디자인", "모양과 기능을 계획하는 일"], ["인형", "사람이나 동물 모양 장난감"], ["형제", "같은 부모에게서 난 사람"], ["제비", "봄에 돌아오는 작은 새"], ["비밀", "남에게 알리지 않은 일"], ["밀가루", "밀을 빻아 만든 가루"], ["루비", "붉은 보석"], ["비상", "긴급한 상황"], ["상태", "현재 놓여 있는 형편"], ["태양", "스스로 빛을 내는 항성"], ["양말", "발에 신는 옷"], ["말풍선", "만화에서 말을 담는 모양"], ["선물", "고마움이나 축하의 뜻으로 주는 물건"], ["물병", "물을 담는 병"], ["병아리", "어린 닭"], ["리모컨", "기계를 멀리서 조종하는 장치"], ["컨디션", "몸과 마음의 상태"], ["션트", "전류를 우회시키는 장치"], ["트로피", "경기 우승자에게 주는 상"], ["피아노", "건반을 눌러 연주하는 악기"], ["노을", "해 질 무렵 하늘의 붉은 빛"], ["을지로", "서울의 거리 이름"], ["로켓", "추진력으로 우주로 날아가는 비행체"], ["켓찹", "토마토로 만든 조미료"], ["찹쌀", "찰기가 많은 쌀"], ["쌀밥", "쌀로 지은 밥"], ["밥상", "밥을 차려 놓은 상"], ["상쾌", "기분이 시원하고 산뜻함"], ["쾌속", "매우 빠른 속도"], ["속담", "교훈을 담은 짧은 말"], ["담요", "몸을 덮는 두꺼운 천"], ["요리", "재료를 익혀 음식을 만듦"], ["리어카", "사람이 끌고 다니는 수레"], ["카메라", "사진이나 영상을 찍는 기계"], ["라디오", "전파로 소리를 보내는 기기"], ["오리", "물과 땅에서 사는 새"], ["리더십", "집단을 이끄는 힘"], ["십자수", "실로 수를 놓는 공예"], ["수학", "수와 도형을 연구하는 학문"], ["학원", "학교 밖에서 공부하는 곳"], ["원칙", "행동의 기준이 되는 법칙"], ["칙령", "임금이 내린 명령"], ["령도", "앞장서서 이끎"], ["도시", "사람이 많이 모여 사는 지역"], ["시계", "시간을 알려 주는 기계"], ["계절", "일 년을 나눈 때"], ["절벽", "깎아지른 듯한 낭떠러지"], ["벽화", "벽에 그린 그림"], ["화요일", "일주일의 둘째 날"], ["일상", "날마다 반복되는 생활"], ["상담", "서로 이야기하며 의논함"], ["담당", "일을 맡아 처리함"], ["당근", "주황색 뿌리채소"], ["근육", "몸을 움직이는 힘줄"], ["육교", "사람이 건너도록 만든 다리"], ["교실", "수업을 하는 방"], ["실수", "잘못하거나 틀림"], ["수도", "나라의 중심 도시"], ["도깨비", "한국 설화에 나오는 존재"], ["비둘기", "도시에서 자주 보이는 새"], ["기러기", "먼 거리를 이동하는 새"], ["기차역", "기차가 서는 곳"], ["역사", "과거에 일어난 일"], ["사전", "낱말의 뜻을 풀이한 책"], ["전구", "전기로 빛을 내는 기구"], ["구급차", "응급 환자를 나르는 차"], ["차가운", "온도가 낮은 상태"], ["운동", "몸을 움직이는 활동"], ["동물", "스스로 움직이는 생물"], ["물리", "물질과 힘을 연구하는 학문"], ["리더보드", "순위를 보여 주는 판"], ["드라마", "사건과 인물을 표현한 작품"], ["마라톤", "긴 거리를 달리는 경기"], ["톤업", "색이나 분위기를 밝게 함"], ["업데이트", "최신 상태로 고침"], ["트리", "나무 모양의 구조"], ["리액션", "반응이나 호응"], ["션샤인", "햇빛을 뜻하는 말"], ["인사", "만나거나 헤어질 때 하는 말"], ["사랑", "아끼고 소중히 여기는 마음"], ["랑데부", "약속한 만남"], ["부채", "바람을 일으키는 도구"], ["채소", "밭에서 기르는 먹거리"], ["소나무", "사철 푸른 나무"], ["무대", "공연을 하는 자리"], ["대화", "마주 보며 나누는 이야기"], ["화음", "여러 음이 어울린 소리"], ["음표", "음의 길이와 높이를 나타내는 기호"], ["표현", "생각이나 느낌을 나타냄"], ["현관", "건물의 출입구"], ["관찰", "주의 깊게 살펴봄"], ["찰떡", "찹쌀로 만든 떡"], ["떡볶이", "떡을 양념에 볶은 음식"], ["이야기꽃", "즐겁게 나누는 이야기"], ["꽃게", "옆으로 걷는 바다 동물"], ["게임", "규칙에 따라 즐기는 놀이"], ["임무", "맡은 일"], ["무승부", "승패가 나지 않음"], ["부엉이", "밤에 활동하는 새"], ["이상", "생각이나 기준보다 높거나 나음"], ["상상력", "상상하는 힘"], ["역할", "맡은 구실"], ["할인", "값을 깎아 줌"], ["인기", "사람들의 관심을 많이 받음"]
-];
+// 끝말잇기 마스터 AI v2.0 프론트엔드 컨트롤러
+document.addEventListener('DOMContentLoaded', () => {
+  // DOM 요소 캐싱
+  const soundToggleBtn = document.getElementById('soundToggleBtn');
+  const soundIcon = document.getElementById('soundIcon');
+  const soundText = document.getElementById('soundText');
+  const newChatBtn = document.getElementById('newChatBtn');
 
-const EXTRA_WORD_BANK = [
-  ["가게", "물건을 사고파는 곳"], ["가구", "집 안에 놓는 물건"], ["가을", "사계절 중 하나"], ["가족", "혈연이나 혼인으로 맺어진 사람들"],
-  ["가지", "나무의 줄기에서 뻗은 부분"], ["간장", "콩으로 만든 조미료"], ["간호사", "환자를 돌보는 의료인"], ["감정", "느끼고 생각하는 마음"],
-  ["강아지", "개의 새끼"], ["거북이", "등딱지가 있는 파충류"], ["거리", "두 곳 사이의 공간"], ["건강", "몸과 마음이 튼튼한 상태"],
-  ["건물", "사람이 살거나 일하는 구조물"], ["겨울", "사계절 중 추운 계절"], ["결혼", "부부가 되는 일"], ["경찰", "사회의 질서를 지키는 사람"],
-  ["경험", "실제로 겪어 본 일"], ["계단", "높낮이를 오르내리는 시설"], ["고기", "동물의 살"], ["고래", "바다에 사는 큰 포유류"],
-  ["고양이", "몸이 유연한 반려동물"], ["공기", "지구를 둘러싼 기체"], ["공부", "지식이나 기술을 배우는 일"], ["과자", "간식으로 먹는 음식"],
-  ["광장", "사람들이 모일 수 있는 넓은 장소"], ["괴물", "상상 속의 무서운 존재"], ["교통", "사람이나 물건을 실어 나르는 일"], ["구슬", "둥글고 작은 알"],
-  ["국밥", "국에 밥을 말아 먹는 음식"], ["군대", "나라를 지키는 조직"], ["귀걸이", "귀에 다는 장신구"], ["그림", "선과 색으로 나타낸 작품"],
-  ["그릇", "음식을 담는 용기"], ["근처", "가까운 곳"], ["금메달", "경기에서 우승한 사람에게 주는 메달"], ["기도", "바라는 일을 비는 행위"],
-  ["기숙사", "학생이나 직원이 함께 생활하는 집"], ["길이", "물건의 한쪽 끝에서 다른 끝까지의 거리"], ["나비", "날개가 있는 곤충"], ["나침반", "방향을 알려 주는 기구"],
-  ["날씨", "하루의 기온과 하늘 상태"], ["남자", "성별이 남성인 사람"], ["냉장고", "음식을 차갑게 보관하는 기계"], ["노래", "목소리로 부르는 음악"],
-  ["농구", "공을 바구니에 넣는 구기 종목"], ["눈사람", "눈을 뭉쳐 만든 사람 모양"], ["뉴스", "새로 일어난 일을 전하는 보도"], ["다리", "사람이나 차가 건너는 시설"],
-  ["단어", "뜻을 가진 말의 단위"], ["달력", "날짜와 요일을 적은 표"], ["닭고기", "닭의 고기"], ["대학교", "고등 교육을 하는 학교"],
-  ["도로", "사람과 차가 다니는 길"], ["도시락", "밖에 가지고 다니며 먹는 밥"], ["동생", "같은 부모에게서 태어난 손아래 사람"], ["두통", "머리가 아픈 증상"],
-  ["등산", "산에 오르는 활동"], ["딸기", "붉고 달콤한 과일"], ["라면", "면을 국물에 끓여 먹는 음식"], ["마늘", "향이 강한 채소"],
-  ["마을", "사람들이 모여 사는 동네"], ["막걸리", "쌀로 빚은 전통 술"], ["만두", "속을 넣어 빚은 음식"], ["매일", "하루도 빠짐없이"],
-  ["메뉴", "식당에서 고를 수 있는 음식 목록"], ["모자", "머리에 쓰는 물건"], ["목소리", "사람이 말할 때 나는 소리"], ["목요일", "일주일의 넷째 날"],
-  ["몸매", "몸의 생김새"], ["무릎", "다리가 굽혀지는 관절"], ["문어", "다리가 여덟 개인 바다 동물"], ["미술관", "미술 작품을 전시하는 곳"],
-  ["바람", "공기의 움직임"], ["바위", "큰 돌"], ["반달", "반쪽처럼 보이는 달"], ["반찬", "밥과 함께 먹는 음식"],
-  ["밤하늘", "밤에 보이는 하늘"], ["배추", "김치를 담그는 채소"], ["백화점", "여러 상품을 파는 큰 상점"], ["버스", "많은 사람을 태우는 자동차"],
-  ["벚꽃", "봄에 피는 연분홍 꽃"], ["보리", "곡식의 한 종류"], ["보석", "아름답고 귀한 돌"], ["복숭아", "부드러운 털이 있는 과일"],
-  ["볼펜", "잉크로 글씨를 쓰는 필기구"], ["사과", "둥글고 단맛이 나는 과일"], ["사진", "카메라로 찍은 영상"], ["사회", "사람들이 모여 사는 공동체"],
-  ["산길", "산에 난 길"], ["살구", "노란빛의 둥근 과일"], ["삼겹살", "돼지의 배 부분 고기"], ["색깔", "사물에서 느껴지는 빛의 종류"],
-  ["생일", "태어난 날"], ["서랍", "물건을 넣었다 빼는 수납공간"], ["선생님", "학생을 가르치는 사람"], ["설탕", "단맛을 내는 조미료"],
-  ["세상", "사람이 살아가는 사회와 세계"], ["소금", "짠맛을 내는 조미료"], ["손가락", "손에 달린 가느다란 부분"], ["송아지", "소의 새끼"],
-  ["수박", "여름에 먹는 큰 과일"], ["숟가락", "국이나 밥을 떠먹는 도구"], ["시골", "도시에서 떨어진 농촌 지역"], ["신발", "발에 신는 물건"],
-  ["실내", "건물 안"], ["아침", "하루가 시작되는 때"], ["안경", "눈을 보호하거나 시력을 돕는 도구"], ["약국", "약을 파는 곳"],
-  ["양파", "겹겹이 싸인 둥근 채소"], ["여름", "사계절 중 더운 계절"], ["여행", "다른 곳에 가서 구경하는 일"], ["연필", "흑연으로 글씨를 쓰는 도구"],
-  ["열쇠", "자물쇠를 여는 도구"], ["오렌지", "주황색의 둥근 과일"], ["온도", "따뜻하고 차가운 정도"], ["우체국", "편지와 소포를 보내는 곳"],
-  ["의자", "사람이 앉는 가구"], ["자동차", "엔진으로 움직이는 차"], ["자석", "쇠붙이를 끌어당기는 물체"], ["장갑", "손에 끼는 물건"],
-  ["장마", "여름철에 오래 내리는 비"], ["전기", "전자의 흐름으로 생기는 에너지"], ["전화", "멀리 있는 사람과 말하는 통신 수단"], ["접시", "음식을 담는 납작한 그릇"],
-  ["정리", "흩어진 것을 가지런히 하는 일"], ["주말", "토요일과 일요일"], ["주전자", "물을 끓이거나 담는 용기"], ["지도", "지역의 모습을 나타낸 그림"],
-  ["지갑", "돈과 카드를 넣는 물건"], ["창문", "빛과 공기가 드나드는 문"], ["천장", "방의 위쪽 면"], ["청소", "더러운 것을 치우는 일"],
-  ["초콜릿", "카카오로 만든 달콤한 간식"], ["축구", "발로 공을 차는 구기 종목"], ["칫솔", "이를 닦는 도구"], ["카레", "향신료를 넣은 음식"],
-  ["코끼리", "코가 긴 큰 육지 동물"], ["콩나물", "콩에서 싹을 틔운 식재료"], ["키보드", "컴퓨터에 글자를 입력하는 장치"], ["타이어", "자동차 바퀴의 고무 부분"],
-  ["토끼", "귀가 길고 뛰기를 잘하는 동물"], ["파도", "바람으로 생기는 바닷물의 움직임"], ["학교", "학생이 공부하는 곳"], ["한강", "서울을 가로지르는 강"],
-  ["햄버거", "빵 사이에 고기와 채소를 넣은 음식"], ["행복", "기쁘고 만족스러운 마음"], ["허리", "몸통의 가운데 부분"], ["호수", "물이 고여 있는 넓은 곳"], ["휴대폰", "들고 다니며 쓰는 전화기"], ["희망", "바라는 일이 이루어지기를 기대하는 마음"]
-];
+  // 챗 관련 DOM
+  const chatMessages = document.getElementById('chatMessages');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const quickChips = document.querySelectorAll('.query-chip');
 
-const BULK_WORD_BANK = `가방,가수,가슴,가위,가이드,가정,가치,각도,간격,간단,간판,갈비,갈색,감각,감기,감동,감사,감자탕,강당,강변,강사,강점,강철,개구리,개발,개별,개선,개성,개수,개인,개척,개편,거울,거절,건물,건설,건전,걸음,검사,검색,검은색,게시판,결과,결정,결혼식,경계,경고,경력,경영,경우,경쟁,경제,계곡,계산,계약,계획,고객,고급,고기집,고속,고향,곡식,곤충,골목,골프,공간,공개,공격,공기청정기,공동,공식,공연,공장,공주,공책,과거,과목,과학,관계,관광,관리,관문,관습,광고,광선,광역,교과서,교장,교환,구름,구름다리,구분,구조,구청,국가,국기,국민,국어,국회,군인,궁금,귀가,귀국,귀여움,규칙,균형,그네,그동안,극장,근거,근무,근본,금액,금요일,급식,기계,기념,기능,기대,기록,기린,기부,기본,기사,기숙사,기술,기억력,기준,기차표,기회,나날,나눔,나들이,나무꾼,나비효과,나이,나침반,낙엽,난방,날개,날짜,남극,남녀,남북,남산,낭만,내과,내부,내비게이션,내역,냄비,냇물,냉면,냉동,너비,넓이,네모,노력,노란색,노을빛,농부,농장,높이,누구,눈동자,눈물,눈빛,눈사태,눈치,느낌,능선,다람쥐,다방,다수,다음,다이어리,다짐,단계,단골,단맛,단순,단체,달걀,달빛,달리기,담배,담장,답변,대답,대문,대상,대신,대학원,대회,더하기,덕분,도구,도덕,도서,도심,도자기,도전,독서,독수리,독일,돌멩이,동굴,동네,동료,동물원,동작,동전,동화,돼지,두꺼운,두뇌,두유,둥지,드레스,드림,등대,등불,등장,디지털,딸기우유,땅콩,떡국,떡잎,라디오,라면사리,라운드,라이트,락커,런닝,레몬,레스토랑,레일,로션,로터리,로프,리듬감,리모델링,리본,리본끈,리빙,마녀,마당,마라탕,마법,마스크,마음씨,마이크,마지막,막내,막대기,만남,만화,말투,맛집,망원경,맞춤,매력,매장,매표소,머리카락,먹거리,먼지,멋쟁이,메모,멜론,명령,명절,모래,모양,목걸이,목소리,목표,몸살,무게,무늬,무덤,무더위,무역,문구,문법,문서,문장,문화,물결,물놀이,물방울,물소리,미디어,미래,미로,미리,미소,미역,민들레,민속,믿음,바구니,바닥,바닷가,바닷물,바람개비,바로,바른말,박물관,반드시,반장,발견,발명,발목,발음,방문,방송,방식,방울,방학,배경,배낭,배달,배우,배움,백곰,백설,백조,버섯,버튼,법원,벼락,벽시계,변경,변호사,별빛,병원,보관,보물,보통,복도,복습,본격,본부,본인,봉투,부모,부산,부엌칼,분명,분위기,불고기,불빛,불편,붕어,비교,비극,비닐,비디오,비상구,비타민,빌딩,빗방울,사거리,사계절,사냥,사다리,사람들,사물,사방,사장,사전,사탕,산길,산책,살림,삼각형,상담,상록수,상류,상식,상어,새소리,새우깡,색연필,생각,생명,생물,생활,서점,서쪽,선거,선글라스,선택,설명,설문,섬유,성격,성장,세금,세탁,소나무,소리,소방관,소설,소식,소풍,속담,손님,손목,손바닥,손수건,솔방울,송편,수건,수도꼭지,수박씨,수비,수영장,수요일,수입,수출,숲길,시계,시내,시선,시장,식빵,식사,식품,신기루,신호,실력,실망,실험,심리,심부름,십년,아기,아래,아무것,아버지,아이디어,아파트,악기,안내,안전,안쪽,알약,암기,앞날,앞뒤,애기,애정,야구,야경,야외,약속,양념,양치,어깨동무,언어,얼굴,엄마,업적,에너지,여권,여동생,여왕,여우,연결,연구,연극,연못,열기,열매,영양,영역,예능,예방,예술,오늘,오리발,오전,오후,옥수수,온기,올해,옷걸이,요금,용기,용돈,우동,우물,우유,운명,운전,운동장,울산,원숭이,원인,위기,위로,위반,유리,유리창,유명,유산,유적,유치원,육상,음료수,음악회,응답,의견,의미,의사,이름,이마,이모,이발소,이상형,이웃,이유,이자,인간,인도,인물,인쇄,일기장,일등,일요일,입맛,입장,자격,자국,자랑,자물쇠,자료,자연,자원,작가,작년,작품,잔치,잠자리,장면,장소,장식,재료,재미,저녁,전국,전망,전문가,전시,전통,절반,점심,점수,접근,정답,정도,정문,정상,정원,제목,제도,제자리,조각,조명,조용,조카,존중,졸업,종이,종합,좋은말,주머니,주변,주소,주인,주차,준비,중간,중국,중요,증거,지구본,지능,지도자,지붕,지식,지하,직업,진실,진주,질문,집게,집안,짜장면,차량,차림,차선,차원,참새,참여,창고,창작,책갈피,책방,처음,천사,천천히,철도,철학,청년,청바지,체육,초대,초록,초밥,초원,초점,총리,최고,추억,축제,출구,출근,출석,취미,치마,치약,친구들,친절,칠판,카드,카메라,커피,컴퓨터,케이블,코끼리풀,코미디,콘서트,쿠키,크기,크림,큰길,타자,태권도,태풍,택시,테니스,토마토,통계,통로,통장,퇴근,투명,특별,티셔츠,파란색,파리,파티,팔꿈치,팔찌,편의점,평균,평생,포도,포장,표범,풍경,피곤,피부,필요,하늘색,하루,하숙,학교길,학생,한글,한복,한숨,한자,할머니,할아버지,해변,해설,해외,해질녘,핸드백,허가,허수아비,현금,현대,현상,현실,형광등,호기심,호랑이,호텔,홍차,화가,화면,화분,화장,화재,환영,활동,회관,회복,회사원,회전,횡단보도,효과,후배,휴식,휴일,흐름,희생,힘줄,가속,가로수,가사,가식,각본,간부,감독,감염,강의,개념,개혁,거짓말,건축,결론,경찰서,계산기,고민,공감,공부방,과자집,관객,광복,교복,교육,구름꽃,국립,국물,귀여운,그림자,극복,근처,기록장,기본기,기상청,기차길,나무늘보,나침반표,남극곰,내일모레,노란빛,달나라,달팽이,도깨비불,독립,동화책,두근두근,등산화,마음가짐,마음속,마중,말하기,모험,무지개빛,문화재,미끄럼틀,바닷속,발걸음,방문객,배추김치,별자리,보리차,부지런,불장난,비밀,사랑방,사랑해,산길,새싹,생일날,소나기,손전등,수상,신기술,실내화,아름다움,안내판,약속시간,여름밤,연습,열대,영양소,오래,오솔길,우산,운동화,웃음,원두커피,위험,유리병,음식점,이야기,자전거,장난감,전기차,전화기,절약,정리함,주방,주인공,지구촌,지하철,진달래,창밖,천둥,청소기,초등학교,친구사이,컴퓨터실,키보드,태양빛,토끼풀,파란하늘,편지,평화,포근,하얀색,행복감,허브,호수,휴대용,희망사항`.split(/[,\s]+/).filter((word) => isKoreanWord(word)).map((word) => [word, "내장 단어 데이터에 등록된 낱말"]);
+  // 탭 네비게이션 DOM
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
 
-const INVALID_BANK_WORDS = new Set(["름름", "름자", "켓찹", "름새", "례절", "료리", "력사", "션샤인"]);
-const dictionary = new Map([...WORD_BANK, ...EXTRA_WORD_BANK, ...BULK_WORD_BANK]);
-const words = [...dictionary.keys()].filter(word => !INVALID_BANK_WORDS.has(word));
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-const state = {
-  nickname: localStorage.getItem("kkeutit-nickname") || "단어수집가",
-  players: 3,
-  difficulty: "hard",
-  roomCode: "QUICK",
-  gameMode: "quick",
-  requiredInitial: "마",
-  lastWord: "마음",
-  usedWords: new Set(["마음"]),
-  round: 1,
-  currentPlayer: "me",
-  timer: 20,
-  timerId: null,
-  hearts: 2,
-  maxHearts: 2,
-  sound: localStorage.getItem("kkeutit-sound") !== "off",
-  queueId: null,
-  isMatching: false,
-  matchNonce: 0,
-  playerNames: [],
-  matchTicket: null,
-  matchPollId: null,
-  roomPollId: null,
-  roomPlayerId: null,
-  matchId: null,
-  playerId: null,
-  leftNotified: false,
-  selfIndex: 0,
-  eventCursor: 0,
-  eventPollId: null,
-  startWord: "마음"
-};
+  // 끄투 배틀 게임 DOM 캐싱
+  const targetCharDisplay = document.getElementById('targetCharDisplay');
+  const dueumNoticeDisplay = document.getElementById('dueumNoticeDisplay');
+  const gameInputForm = document.getElementById('gameInputForm');
+  const gameWordInput = document.getElementById('gameWordInput');
+  const chainChipsFlow = document.getElementById('chainChipsFlow');
+  const rallyCountBadge = document.getElementById('rallyCountBadge');
+  const turnIndicator = document.getElementById('turnIndicator');
+  const aiDifficultyBadge = document.getElementById('aiDifficultyBadge');
+  const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+  const resetGameBtn = document.getElementById('resetGameBtn');
 
-const avatarClasses = ["mint", "coral", "blue"];
-const pick = (list) => list[Math.floor(Math.random() * list.length)];
-const normalizeWord = (value) => value.trim().replace(/\s+/g, "");
-const lastSyllable = (word) => [...word].at(-1) || "";
-const firstSyllable = (word) => [...word][0] || "";
-const roParticle = (syllable) => { const code = syllable.codePointAt(0); return code >= 0xAC00 && code <= 0xD7A3 && (code - 0xAC00) % 28 === 0 ? "로" : "으로"; };
-const getCandidates = (initial, used = state.usedWords) => words.filter((word) => firstSyllable(word) === initial && !used.has(word) && !INVALID_BANK_WORDS.has(word));
-const responseCount = (word, used) => getCandidates(lastSyllable(word), used).length;
-const isOneShot = (word, used = state.usedWords) => responseCount(word, used) === 0;
-const getDefinition = (word) => dictionary.get(word) || "끝잇 단어 데이터에 등록된 낱말";
-const pickOpeningWord = () => pick(words.filter((word) => responseCount(word, new Set([word])) >= 2));
+  // 끄투 전용 DOM 요소
+  const timerProgressCircle = document.getElementById('timerProgressCircle');
+  const timerSecondsText = document.getElementById('timerSecondsText');
+  const userScoreDisplay = document.getElementById('userScoreDisplay');
+  const aiScoreDisplay = document.getElementById('aiScoreDisplay');
+  const aiThinkingPulse = document.getElementById('aiThinkingPulse');
+  const prefixChar = document.getElementById('prefixChar');
+  const latestWordCard = document.getElementById('latestWordCard');
+  const comboBanner = document.getElementById('comboBanner');
+  const outCountHintBadge = document.getElementById('outCountHintBadge');
 
-function showToast(message) {
-  const toast = $("#toast");
-  toast.textContent = message;
-  toast.classList.add("show");
-  clearTimeout(showToast.timeout);
-  showToast.timeout = setTimeout(() => toast.classList.remove("show"), 2200);
-}
+  // 사전 분석실 DOM
+  const inspectorForm = document.getElementById('inspectorForm');
+  const inspectorInput = document.getElementById('inspectorInput');
+  const inspectorResultContainer = document.getElementById('inspectorResultContainer');
 
-function updateHearts() {
-  const heartStatus = $("#heartStatus");
-  if (!heartStatus) return;
-  $$("#heartStatus .heart").forEach((heart, index) => heart.classList.toggle("lost", index >= state.hearts));
-  heartStatus.setAttribute("aria-label", `남은 하트 ${state.hearts}개`);
-}
+  // 한방 도감 DOM
+  const lexiconGrid = document.getElementById('lexiconGrid');
 
-function setMatchingLock(locked) {
-  state.isMatching = locked;
-  const lobbyControls = $$("#lobbyView button:not(#quickMatchButton):not(#cancelMatchButton), #lobbyView input, #soundToggle, #settingsButton");
-  lobbyControls.forEach((control) => { control.disabled = locked; });
-  const quickButton = $("#quickMatchButton");
-  const cancelButton = $("#cancelMatchButton");
-  if (quickButton) quickButton.disabled = locked;
-  if (cancelButton) {
-    cancelButton.hidden = !locked;
-    cancelButton.disabled = !locked;
-  }
-  document.body.classList.toggle("matching-active", locked);
-}
+  // 토스트 DOM
+  const toastContainer = document.getElementById('toastContainer');
 
-function resetMatchControls() {
-  setMatchingLock(false);
-  const button = $("#quickMatchButton");
-  if (button) {
-    button.disabled = false;
-    button.innerHTML = '<span>⌁</span> 빠른 매칭 시작';
-  }
-}
+  // 게임 상태 변수
+  let currentDifficulty = 'master';
+  let gameHistory = [];
+  let currentTargetChar = '';
+  let isGameOver = false;
+  let userScore = 0;
+  let aiScore = 0;
+  let comboCount = 0;
 
-function renderNextInitial() {
-  const nextInitial = $("#nextInitial");
-  if (nextInitial) nextInitial.textContent = `다음 글자: ${state.requiredInitial}`;
-}
+  // 끄투 턴 타이머 상태
+  const TURN_LIMIT = 10; // 턴당 10초
+  let timerRemaining = TURN_LIMIT;
+  let timerInterval = null;
+  let currentTurn = 'user'; // 'user' or 'ai'
 
-function showGameResult(result, message) {
-  const won = result === "win";
-  const overlay = $("#resultOverlay");
-  overlay.className = `result-overlay ${won ? "result-win" : "result-loss"}`;
-  $("#resultMark").textContent = won ? "★" : "×";
-  $("#resultKicker").textContent = won ? "VICTORY" : "GAME OVER";
-  $("#resultTitle").textContent = won ? "승리했어요!" : "게임이 끝났어요";
-  $("#resultMessage").textContent = message;
-  overlay.hidden = false;
-}
-
-function hideGameResult() {
-  $("#resultOverlay").hidden = true;
-}
-
-function finishGame(message, result = "loss") {
-  if (state.currentPlayer === "ended") return;
-  clearInterval(state.timerId);
-  clearInterval(state.eventPollId);
-  state.timerId = null;
-  state.eventPollId = null;
-  state.currentPlayer = "ended";
-  const input = $("#wordInput");
-  const submit = $("#wordForm button[type=submit]");
-  if (input) input.disabled = true;
-  if (submit) submit.disabled = true;
-  $("#turnStatus").textContent = "게임 종료";
-  $("#turnPrompt").textContent = message;
-  addMessage("system", message);
-  showGameResult(result, message);
-  showToast(message);
-}
-
-function loseHeart() {
-  state.hearts = Math.max(0, state.hearts - 1);
-  updateHearts();
-  addMessage("system", `시간이 끝났어요. 하트 1개를 잃었어요. (${state.hearts}/${state.maxHearts})`);
-  if (state.hearts === 0) {
-    finishGame("하트를 모두 잃었어요. 이번 게임은 종료됐어요.", "loss");
-    return false;
-  }
-  showToast(`하트 1개를 잃었어요 · ${state.hearts}개 남음`);
-  return true;
-}
-
-function setView(view) {
-  $("#lobbyView").classList.toggle("active-view", view === "lobby");
-  $("#gameView").classList.toggle("active-view", view === "game");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function openModal(content) {
-  $("#modalContent").innerHTML = content;
-  $("#modalBackdrop").hidden = false;
-  document.body.style.overflow = "hidden";
-}
-
-function closeModal() {
-  $("#modalBackdrop").hidden = true;
-  document.body.style.overflow = "";
-}
-
-function makeCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from({ length: 6 }, () => pick([...alphabet])).join("");
-}
-
-function copyText(value) {
-  navigator.clipboard?.writeText(value).then(() => showToast(`${value} 복사했어요`)).catch(() => showToast("코드를 선택해서 복사해 주세요"));
-}
-
-function setupLobby() {
-  $("#nicknameInput").value = state.nickname;
-  $("#soundToggle").classList.toggle("active", state.sound);
-  $$(".count-option").forEach((button) => button.addEventListener("click", () => {
-    $$(".count-option").forEach((item) => item.classList.remove("selected"));
-    button.classList.add("selected");
-    state.players = Number(button.dataset.count);
-  }));
-  $("#nicknameInput").addEventListener("change", (event) => {
-    state.nickname = event.target.value.trim() || "단어수집가";
-    event.target.value = state.nickname;
-    localStorage.setItem("kkeutit-nickname", state.nickname);
-    showToast("닉네임을 저장했어요");
-  });
-  $("#quickMatchButton").addEventListener("click", startQuickMatch);
-  $("#cancelMatchButton").addEventListener("click", cancelQuickMatch);
-  $("#aiMatchButton").addEventListener("click", aiMatchModal);
-  $("#createRoomButton").addEventListener("click", createRoomModal);
-  $("#joinRoomButton").addEventListener("click", joinRoomModal);
-  $("#rulesButton").addEventListener("click", rulesModal);
-  $("#helpButton").addEventListener("click", helpModal);
-  $("#privacyButton").addEventListener("click", () => showToast("즐거운 플레이를 위해 비속어와 개인정보를 입력하지 마세요"));
-  $("#soundToggle").addEventListener("click", () => {
-    state.sound = !state.sound;
-    localStorage.setItem("kkeutit-sound", state.sound ? "on" : "off");
-    $("#soundToggle").classList.toggle("active", state.sound);
-    showToast(state.sound ? "소리를 켰어요" : "소리를 껐어요");
-  });
-  $("#settingsButton").addEventListener("click", settingsModal);
-  setMatchingLock(false);
-}
-
-async function createRoomModal() {
-  try {
-    const response = await fetch("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname: state.nickname, size: state.players }) });
-    if (!response.ok) throw new Error("room_create_failed");
-    const payload = await response.json();
-    state.roomCode = payload.code;
-    state.roomPlayerId = payload.playerId;
-    openRoomWaitingModal(payload, true);
-    startRoomPolling();
-  } catch {
-    showToast("방을 만들지 못했어요. 잠시 후 다시 시도해 주세요");
-  }
-}
-
-function openRoomWaitingModal(payload, isHost) {
-  const players = payload.players || [];
-  openModal(`<p class="panel-kicker">PRIVATE ROOM</p><h2 id="modalTitle">친구를 초대할 방이에요</h2><p>친구에게 6자리 코드를 공유하면 같은 방으로 연결됩니다.</p><div class="modal-code"><span>초대 코드</span><strong>${payload.code}</strong></div><div class="room-player"><i class="mini-avatar">${state.nickname[0]}</i><span>${state.nickname}</span><span class="room-status">${isHost ? "방장" : "참가자"}</span></div><div class="room-player"><i class="mini-avatar mint">＋</i><span id="roomWaitingText">친구를 기다리는 중</span><span class="room-status" id="roomPlayerCount">${players.length} / ${payload.size}</span></div><div class="modal-footer"><button class="secondary-button" id="copyRoomCode" style="min-height:42px"><span class="button-icon">⌘</span><span><strong>코드 복사</strong></span></button><button class="ghost-button" id="closeRoomWaiting" style="width:auto;margin:0;padding:12px 17px">닫기</button></div>`);
-  $("#copyRoomCode").addEventListener("click", () => copyText(payload.code));
-  $("#closeRoomWaiting").addEventListener("click", closeModal);
-}
-
-function clearRoomPolling() {
-  clearInterval(state.roomPollId);
-  state.roomPollId = null;
-}
-
-function startRoomPolling() {
-  clearRoomPolling();
-  pollRoomStatus();
-  state.roomPollId = setInterval(pollRoomStatus, 900);
-}
-
-function startRoomGame(payload) {
-  clearRoomPolling();
-  closeModal();
-  state.gameMode = "human";
-  state.players = payload.players.length;
-  state.matchId = payload.matchId;
-  state.playerId = payload.playerId;
-  state.selfIndex = payload.selfIndex;
-  state.eventCursor = 0;
-  state.roomCode = payload.code;
-  beginGame(payload.players, `친구 방 · ${payload.players.length}인`, payload.startWord);
-}
-
-async function pollRoomStatus() {
-  if (!state.roomCode || !state.roomPlayerId) return;
-  const response = await fetch(`/api/rooms/status?code=${encodeURIComponent(state.roomCode)}&playerId=${encodeURIComponent(state.roomPlayerId)}`);
-  if (!response.ok) return;
-  const payload = await response.json();
-  if (payload.status === "waiting") {
-    const count = $("#roomPlayerCount");
-    const waiting = $("#roomWaitingText");
-    if (count) count.textContent = `${payload.players.length} / ${payload.size}`;
-    if (waiting) waiting.textContent = `${payload.players.length}명이 모였어요 · 친구를 기다리는 중`;
-    return;
-  }
-  if (payload.status === "matched") startRoomGame(payload);
-}
-
-function aiMatchModal() {
-  openModal(`<p class="panel-kicker">PLAY WITH AI</p><h2 id="modalTitle">AI와 한 판 해볼까요?</h2><p>끝잇 AI는 현재 단어에서 이어질 수 있는 후보를 살펴보고, 난이도에 따라 영리하게 단어를 골라요.</p><label class="modal-label">난이도 선택</label><div class="difficulty-options" role="group" aria-label="AI 난이도 선택"><button class="difficulty-option" data-difficulty="easy"><strong>쉬움</strong><small>가끔 쉬운 길을 선택해요</small></button><button class="difficulty-option" data-difficulty="normal"><strong>보통</strong><small>균형 있게 이어가요</small></button><button class="difficulty-option selected" data-difficulty="hard"><strong>어려움</strong><small>카운터가 적은 단어를 찾아요</small></button></div><div class="modal-footer"><button class="ghost-button" id="cancelAi" style="width:auto;margin:0;padding:12px 17px">취소</button><button class="primary-button" id="startAiButton">AI 대전 시작</button></div>`);
-  $$(".difficulty-option").forEach((button) => button.addEventListener("click", () => {
-    $$(".difficulty-option").forEach((item) => item.classList.remove("selected"));
-    button.classList.add("selected");
-    state.difficulty = button.dataset.difficulty;
-  }));
-  $("#cancelAi").addEventListener("click", closeModal);
-  $("#startAiButton").addEventListener("click", () => {
-    closeModal();
-    state.gameMode = "ai";
-    state.players = 2;
-    state.roomCode = "AI-" + state.difficulty.toUpperCase();
-    beginGame([state.nickname, "단어든든 AI"], `AI 대전 · ${state.difficulty === "hard" ? "어려움" : state.difficulty === "normal" ? "보통" : "쉬움"}`);
-  });
-}
-
-function joinRoomModal() {
-  openModal(`<p class="panel-kicker">JOIN ROOM</p><h2 id="modalTitle">친구의 코드를 입력하세요</h2><p>친구에게 받은 6자리 코드를 입력하면 방으로 이동합니다.</p><label class="modal-label" for="roomCodeInput">초대 코드</label><input class="modal-input" id="roomCodeInput" maxlength="6" placeholder="예: MANGO7" autocomplete="off" /><div class="modal-footer"><button class="ghost-button" id="cancelJoin" style="width:auto;margin:0;padding:12px 17px">취소</button><button class="primary-button" id="joinRoomSubmit">방 입장</button></div>`);
-  $("#roomCodeInput").focus();
-  $("#cancelJoin").addEventListener("click", closeModal);
-  $("#joinRoomSubmit").addEventListener("click", async () => {
-    const code = normalizeWord($("#roomCodeInput").value).toUpperCase();
-    if (code.length < 4) return showToast("초대 코드를 확인해 주세요");
-    const button = $("#joinRoomSubmit");
-    button.disabled = true;
-    try {
-      const response = await fetch("/api/rooms/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, nickname: state.nickname }) });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "room_join_failed");
-      state.roomCode = payload.code;
-      state.roomPlayerId = payload.playerId;
-      if (payload.started) startRoomGame(payload);
-      else { openRoomWaitingModal(payload, false); startRoomPolling(); }
-    } catch (error) {
-      button.disabled = false;
-      showToast(error.message === "room_not_found" ? "초대 코드를 찾을 수 없어요" : error.message === "room_full" ? "이미 꽉 찬 방이에요" : "방에 입장하지 못했어요");
+  // 1. 사운드 시스템 제어
+  soundToggleBtn.addEventListener('click', () => {
+    const isMuted = window.soundEngine.toggleMute();
+    if (isMuted) {
+      soundIcon.textContent = '🔇';
+      soundText.textContent = '사운드 OFF';
+      soundToggleBtn.classList.remove('active');
+      showToast('사운드가 꺼졌습니다.');
+    } else {
+      soundIcon.textContent = '🔊';
+      soundText.textContent = '사운드 ON';
+      soundToggleBtn.classList.add('active');
+      window.soundEngine.playCopy();
+      showToast('사운드가 켜졌습니다.');
     }
   });
-}
 
-function rulesModal() {
-  openModal(`<p class="panel-kicker">RULE BOOK</p><h2 id="modalTitle">끝잇 게임 룰</h2><p>등록된 단어를 이어가며 마지막까지 살아남는 사람이 승리해요.</p><div class="rule-list" style="grid-template-columns:1fr;margin-top:18px"><div class="rule-item"><span class="rule-symbol">가</span><div><strong>단어 검증</strong><small>게임에 내장된 정적 단어 목록과 뜻 데이터로 즉시 확인합니다.</small></div></div><div class="rule-item"><span class="rule-symbol no">×</span><div><strong>첫 턴 한방단어 금지</strong><small>상대가 이어갈 후보가 없는 단어는 첫 단어로 사용할 수 없습니다.</small></div></div><div class="rule-item"><span class="rule-symbol time">♥</span><div><strong>하트 2개 · 턴 제한 20초</strong><small>시간이 끝날 때마다 하트 1개를 잃고, 모두 잃으면 게임이 끝납니다.</small></div></div></div>`);
-}
+  // 2. 토스트 알림 헬퍼
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    let icon = '⚡';
+    if (type === 'success') icon = '🎉';
+    if (type === 'error') icon = '⚠️';
+    if (type === 'copy') icon = '📋';
 
-function helpModal() {
-  openModal(`<p class="panel-kicker">QUICK HELP</p><h2 id="modalTitle">처음이라면 이렇게 해보세요</h2><p>화면에 표시된 다음 글자로 시작하는 단어를 입력하면 됩니다. 단어 아래의 작은 설명은 게임에 내장된 뜻 데이터예요.</p><div class="modal-code" style="text-align:left"><strong style="font-size:16px;letter-spacing:0">마음 → 음악 → 악수</strong><span style="margin-top:8px">다음 글자와 단어의 첫 글자를 이어보세요.</span></div>`);
-}
+    toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+    toastContainer.appendChild(toast);
 
-function settingsModal() {
-  openModal(`<p class="panel-kicker">SETTINGS</p><h2 id="modalTitle">플레이 설정</h2><p>닉네임과 소리 설정은 이 기기에 저장됩니다.</p><label class="modal-label" for="modalNickname">닉네임</label><input class="modal-input" id="modalNickname" maxlength="12" value="${state.nickname}" /><div class="modal-footer"><button class="primary-button" id="saveSettings">저장하기</button></div>`);
-  $("#saveSettings").addEventListener("click", () => { state.nickname = $("#modalNickname").value.trim() || "단어수집가"; $("#nicknameInput").value = state.nickname; localStorage.setItem("kkeutit-nickname", state.nickname); closeModal(); showToast("설정을 저장했어요"); });
-}
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      toast.style.transition = '0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
+  }
 
-async function startQuickMatch() {
-  if (state.isMatching) return;
-  const count = state.players;
-  const button = $("#quickMatchButton");
-  const requestNonce = ++state.matchNonce;
-  setMatchingLock(true);
-  button.innerHTML = '<span>◌</span> 실제 플레이어를 찾는 중...';
-  try {
-    const response = await fetch("/api/matchmaking/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nickname: state.nickname, size: count }) });
-    if (!response.ok) throw new Error("match_join_failed");
-    const payload = await response.json();
-    if (!state.isMatching || requestNonce !== state.matchNonce) {
-      if (payload.ticket) fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket: payload.ticket }) }).catch(() => null);
-      return;
+  // 3. 클립보드 복사 헬퍼
+  window.copyWordToClipboard = function(word) {
+    if (!word) return;
+    navigator.clipboard.writeText(word).then(() => {
+      window.soundEngine.playCopy();
+      showToast(`「${word}」 단어가 복사되었습니다!`, 'copy');
+    }).catch(() => {
+      showToast(`복사에 실패했습니다: ${word}`, 'error');
+    });
+  };
+
+  // 3-1. 클라이언트 두음법칙 변이 계산기 (표준 및 끄투 상호 교차 규칙)
+  function getDueumVariantsClient(char) {
+    if (!char || typeof char !== 'string') return [char];
+    const code = char.charCodeAt(0) - 0xAC00;
+    if (code < 0 || code > 11171) return [char];
+    const initial = Math.floor(code / 588);
+    const medial = Math.floor((code % 588) / 28);
+    const final = code % 28;
+    const variants = [char];
+
+    // 1) ㄴ -> ㅇ 또는 ㄹ (예: 냐/녀/뇨/뉴/니 -> 야/여/요/유/이, 늄 -> 윰/륨)
+    if (initial === 2) {
+      if ([2, 6, 12, 17, 20, 7].includes(medial)) {
+        variants.push(String.fromCharCode(0xAC00 + (11 * 588) + (medial * 28) + final));
+      }
+      const rChar = String.fromCharCode(0xAC00 + (5 * 588) + (medial * 28) + final);
+      variants.push(rChar);
     }
-    state.matchTicket = payload.ticket;
-    await pollQuickMatch();
-    if (state.isMatching) state.matchPollId = setInterval(pollQuickMatch, 900);
-  } catch {
-    if (requestNonce !== state.matchNonce) return;
-    state.matchTicket = null;
-    resetMatchControls();
-    showToast("매칭 서버에 연결하지 못했어요");
-  }
-}
-
-async function cancelQuickMatch() {
-  if (!state.isMatching) return;
-  ++state.matchNonce;
-  clearInterval(state.matchPollId);
-  state.matchPollId = null;
-  const ticket = state.matchTicket;
-  state.matchTicket = null;
-  resetMatchControls();
-  if (ticket) {
-    await fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket }) }).catch(() => null);
-  }
-  showToast("매칭을 종료했어요");
-}
-
-async function pollQuickMatch() {
-  if (!state.isMatching || !state.matchTicket) return;
-  const response = await fetch(`/api/matchmaking/status?ticket=${encodeURIComponent(state.matchTicket)}`);
-  if (!response.ok) return;
-  const status = await response.json();
-  const button = $("#quickMatchButton");
-  if (status.status === "waiting") {
-    button.innerHTML = `<span>◌</span> 실제 플레이어 ${status.waiting}명 대기 중...`;
-    return;
-  }
-  clearInterval(state.matchPollId);
-  state.matchPollId = null;
-  state.gameMode = "human";
-  state.matchId = status.matchId;
-  state.playerId = status.playerId;
-  state.selfIndex = status.selfIndex;
-  state.eventCursor = 0;
-  state.roomCode = status.roomCode;
-  state.startWord = status.startWord;
-  beginGame(status.players, `빠른 매칭 · ${status.players.length}인`, status.startWord);
-  resetMatchControls();
-}
-
-function beginGame(names, title, openingWord = pickOpeningWord()) {
-  state.playerNames = names;
-  state.gameMode = state.gameMode || "quick";
-  state.hearts = state.maxHearts;
-  state.leftNotified = false;
-  state.round = 1;
-  state.currentPlayer = state.gameMode === "human" && state.selfIndex !== 0 ? "remote" : "me";
-  state.startWord = openingWord;
-  state.lastWord = openingWord;
-  state.requiredInitial = lastSyllable(state.lastWord);
-  state.usedWords = new Set([openingWord]);
-  $("#gameTitle").textContent = title;
-  $("#playerCountLabel").textContent = `${names.length}명`;
-  $("#gameRoomCode").textContent = state.roomCode || "QUICK";
-  renderPlayers();
-  $("#chatLog").innerHTML = "";
-  addMessage("system", "게임이 시작됐어요. 첫 단어는 한방단어를 사용할 수 없습니다.");
-  addMessage("system", `시작 단어가 정해졌어요: ${openingWord} · ${getDefinition(openingWord)}`);
-  $("#roundNumber").textContent = "01";
-  $("#wordInput").disabled = false;
-  $("#wordForm button[type=submit]").disabled = false;
-  updateHearts();
-  renderNextInitial();
-  hideGameResult();
-  $("#turnStatus").textContent = state.currentPlayer === "me" ? "당신의 턴이에요" : "첫 플레이어의 턴이에요";
-  $("#turnPrompt").textContent = state.currentPlayer === "me" ? `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.` : "다른 플레이어의 첫 단어를 기다리는 중...";
-  $("#factCheck").textContent = "";
-  $("#wordInput").value = "";
-  setView("game");
-  if (state.gameMode === "human") startMatchEventPolling();
-  if (state.currentPlayer === "me") {
-    startTimer();
-    setTimeout(() => $("#wordInput").focus(), 250);
-  }
-}
-
-function renderPlayers() {
-  $("#playersList").innerHTML = state.playerNames.map((name, index) => {
-    const isMe = state.gameMode === "human" ? index === state.selfIndex : index === 0;
-    return `<div class="player-row"><span class="player-avatar ${avatarClasses[index % avatarClasses.length]}">${name[0]}</span><span class="player-info"><strong>${name}${isMe ? " (나)" : ""}</strong><small>${isMe ? "준비 완료" : index === 1 ? "좋은 단어를 찾는 중" : "플레이 중"}</small></span><i class="player-turn ${isMe && state.currentPlayer === "me" ? "active" : ""}"></i></div>`;
-  }).join("");
-}
-
-function addMessage(type, word, note = "") {
-  const isMine = type === "player";
-  const displayName = isMine ? state.nickname : type === "ai" ? "단어든든 AI" : type === "remote" ? note.split("::")[0] || "플레이어" : "게임 안내";
-  const visibleNote = type === "remote" ? note.split("::").slice(1).join("::") : note;
-  const avatar = isMine ? state.nickname[0] : type === "ai" ? "AI" : type === "remote" ? displayName[0] : "끝";
-  const body = type === "system"
-    ? `<div class="chat-note">${word}</div>`
-    : `<div class="word-bubble">${word}</div>${visibleNote ? `<div class="fact-inline">✓ ${visibleNote}</div>` : ""}`;
-  const html = `<div class="chat-message ${isMine ? "mine" : ""}"><span class="chat-avatar ${type === "ai" ? "ai" : ""}">${avatar}</span><div class="chat-content"><div class="chat-meta"><strong>${displayName}</strong><span>${type === "system" ? "지금" : "방금"}</span></div>${body}</div></div>`;
-  $("#chatLog").insertAdjacentHTML("beforeend", html);
-  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
-}
-
-function startMatchEventPolling() {
-  clearInterval(state.eventPollId);
-  state.eventPollId = setInterval(pollMatchEvents, 750);
-  pollMatchEvents();
-}
-
-async function pollMatchEvents() {
-  if (state.gameMode !== "human" || !state.matchId) return;
-  const response = await fetch(`/api/matches/${state.matchId}/events?after=${state.eventCursor}`);
-  if (!response.ok) return;
-  const payload = await response.json();
-  state.eventCursor = payload.cursor;
-  for (const event of payload.events) {
-    if (event.playerId === state.playerId) continue;
-    if (event.leave) {
-      finishGame(`${event.nickname}님이 나가서 승리했어요.`, "win");
-      continue;
-    }
-    if (event.timeout) {
-      state.currentPlayer = "me";
-      state.requiredInitial = event.nextInitial;
-      renderNextInitial();
-      addMessage("system", `${event.nickname}님의 시간이 끝났어요. 당신의 턴입니다.`);
-      $("#turnStatus").textContent = "당신의 턴이에요";
-      $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
-      renderPlayers();
-      startTimer();
-      continue;
-    }
-    state.usedWords.add(event.word);
-    state.lastWord = event.word;
-    state.requiredInitial = event.nextInitial;
-    renderNextInitial();
-    state.round += 1;
-    state.currentPlayer = "me";
-    addMessage("remote", event.word, `${event.nickname}::${event.note || getDefinition(event.word)} · 다음 글자 ${event.nextInitial}`);
-    $("#roundNumber").textContent = String(state.round).padStart(2, "0");
-    $("#turnStatus").textContent = "당신의 턴이에요";
-    $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
-    $("#factCheck").textContent = "✓ 다른 플레이어의 단어를 확인했어요.";
-    $("#factCheck").className = "fact-check success";
-    renderPlayers();
-    startTimer();
-    $("#wordInput").focus();
-  }
-}
-
-function startTimer() {
-  clearInterval(state.timerId);
-  state.timer = 20;
-  $("#timerValue").textContent = state.timer;
-  state.timerId = setInterval(() => {
-    state.timer -= 1;
-    $("#timerValue").textContent = Math.max(0, state.timer);
-    if (state.timer <= 0) {
-      clearInterval(state.timerId);
-      state.timerId = null;
-      if (!loseHeart()) return;
-      if (state.gameMode === "human") {
-        fetch(`/api/matches/${state.matchId}/timeout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId: state.playerId }) }).then((response) => response.ok ? response.json() : null).then((payload) => {
-          if (!payload) return;
-          state.eventCursor = payload.cursor;
-          state.currentPlayer = "remote";
-          $("#turnStatus").textContent = "상대의 턴이에요";
-          $("#turnPrompt").textContent = "다른 플레이어의 단어를 기다리는 중...";
-          renderPlayers();
-        });
-      } else {
-        state.currentPlayer = "ai";
-        setTimeout(aiTurn, 650);
+    // 2) ㄹ -> ㄴ 또는 ㅇ (예: 륨 -> 늄 / 윰, 랴/려/례/료/류/리 -> 야/여/예/요/유/이)
+    else if (initial === 5) {
+      const nChar = String.fromCharCode(0xAC00 + (2 * 588) + (medial * 28) + final);
+      variants.push(nChar);
+      if ([2, 6, 7, 12, 17, 20].includes(medial)) {
+        variants.push(String.fromCharCode(0xAC00 + (11 * 588) + (medial * 28) + final));
       }
     }
-  }, 1000);
-}
+    // 3) ㅇ -> ㄹ 또는 ㄴ (예: 윰 -> 륨 / 늄, 역 -> 력 / 녁 등 상호 연동)
+    else if (initial === 11) {
+      if ([2, 6, 7, 12, 17, 20].includes(medial)) {
+        const rChar = String.fromCharCode(0xAC00 + (5 * 588) + (medial * 28) + final);
+        const nChar = String.fromCharCode(0xAC00 + (2 * 588) + (medial * 28) + final);
+        variants.push(rChar);
+        variants.push(nChar);
+      }
+    }
+    return [...new Set(variants)];
+  }
 
-async function validateWord(word) {
-  if (!word) return { ok: false, message: "단어를 입력해 주세요.", kind: "error" };
-  if (!isKoreanWord(word)) return { ok: false, message: "한글 2~12글자 단어를 입력해 주세요.", kind: "error" };
-  if (state.usedWords.has(word)) return { ok: false, message: "이미 나온 단어예요.", kind: "error" };
-  if (firstSyllable(word) !== state.requiredInitial) return { ok: false, message: `첫 글자가 '${state.requiredInitial}'인 단어가 필요해요.`, kind: "error" };
-  if (!dictionary.has(word) || INVALID_BANK_WORDS.has(word)) return { ok: false, message: "내장 단어 목록에 없는 단어예요.", kind: "error" };
-  if (state.round === 1 && isOneShot(word)) return { ok: false, message: "첫 턴에는 상대가 이을 수 없는 한방단어를 사용할 수 없어요.", kind: "warning" };
-  return { ok: true, definition: getDefinition(word), message: `✓ 내장 단어 확인 완료 · ${getDefinition(word)}`, kind: "success" };
-}
+  // 4. 배틀에 단어 즉시 투입 헬퍼 (AI/사전/도감 100% 상호 연동)
+  window.useWordInBattle = function(word) {
+    if (!word) return;
+    switchTab('battle');
 
-async function submitWord(event) {
-  event.preventDefault();
-  if (state.currentPlayer !== "me") return showToast("상대의 턴을 기다려 주세요");
-  const word = normalizeWord($("#wordInput").value);
-  const result = await validateWord(word);
-  $("#factCheck").textContent = result.message;
-  $("#factCheck").className = `fact-check ${result.kind}`;
-  if (!result.ok) return;
-
-  if (state.gameMode === "human") {
-    const response = await fetch(`/api/matches/${state.matchId}/word`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId: state.playerId, word, note: result.definition || getDefinition(word) }) });
-    if (!response.ok) {
-      $("#factCheck").textContent = "서버에서 턴 상태가 바뀌었어요. 다른 플레이어의 단어를 확인해 주세요.";
-      $("#factCheck").className = "fact-check error";
+    // 게임이 끝났거나 아직 첫 단어 입력 전인 경우
+    if (isGameOver || gameHistory.length === 0) {
+      if (isGameOver) {
+        resetGame();
+      }
+      gameWordInput.value = word;
+      submitGameWord(word);
       return;
     }
-    const payload = await response.json();
-    state.eventCursor = payload.cursor;
+
+    // 이미 배틀 진행 중인 경우: 현재 글자와 맞으면 즉시 투입, 아니면 입력창에 준비
+    const lastWord = gameHistory[gameHistory.length - 1].word;
+    const requiredChar = lastWord[lastWord.length - 1];
+    const allowedStarts = getDueumVariantsClient(requiredChar);
+
+    if (allowedStarts.includes(word[0])) {
+      gameWordInput.value = word;
+      submitGameWord(word);
+    } else {
+      gameWordInput.value = word;
+      gameWordInput.focus();
+      showToast(`「${word}」 단어를 배틀 입력창에 준비했습니다! (현재 턴 시작 글자: '${currentTargetChar}')`, 'info');
+    }
+  };
+
+  // 4-1. 네이버 국어사전 52만 분석실 연동 헬퍼
+  window.inspectWordInDict = function(word) {
+    if (!word) return;
+    switchTab('inspector');
+    inspectorInput.value = word;
+    inspectorForm.dispatchEvent(new Event('submit'));
+    showToast(`사전 분석실에서 「${word}」 조회를 시작합니다.`, 'info');
+  };
+
+  // 4-2. AI 전략 참모에게 단어 질문 연동 헬퍼
+  window.askAiAboutWord = function(word) {
+    if (!word) return;
+    chatInput.value = `'${word}' 다음 끝말잇기 최선의 전략과 필승 단어 알려줘`;
+    chatForm.dispatchEvent(new Event('submit'));
+    showToast(`AI 참모에게 「${word}」 전략을 문의했습니다.`, 'info');
+  };
+
+  // 5. 탭 전환 (모바일 & 데스크톱 100% 반응형)
+  function switchTab(tabName) {
+    tabBtns.forEach(btn => {
+      if (btn.getAttribute('data-tab') === tabName) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    const chatPanel = document.querySelector('.chat-panel');
+    const isMobile = window.innerWidth <= 1024;
+
+    if (isMobile) {
+      if (tabName === 'chat') {
+        if (chatPanel) chatPanel.classList.add('mobile-active');
+        tabContents.forEach(content => content.classList.remove('active'));
+      } else {
+        if (chatPanel) chatPanel.classList.remove('mobile-active');
+        tabContents.forEach(content => {
+          if (content.id === `tab-${tabName}`) content.classList.add('active');
+          else content.classList.remove('active');
+        });
+      }
+    } else {
+      if (chatPanel) chatPanel.classList.remove('mobile-active');
+      tabContents.forEach(content => {
+        if (content.id === `tab-${tabName}`) content.classList.add('active');
+        else content.classList.remove('active');
+      });
+    }
+
+    if (tabName === 'lexicon') loadKillingLexicon();
   }
 
-  clearInterval(state.timerId);
-  state.usedWords.add(word);
-  state.lastWord = word;
-  state.requiredInitial = lastSyllable(word);
-  renderNextInitial();
-  addMessage("player", word, `${result.definition || getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
-  $("#wordInput").value = "";
-  $("#factCheck").textContent = "✓ 단어가 이어졌어요. 실제 플레이어의 단어를 기다리는 중...";
-  $("#factCheck").className = "fact-check success";
-  state.currentPlayer = state.gameMode === "human" ? "remote" : "ai";
-  $("#turnStatus").textContent = "상대의 턴이에요";
-  $("#turnPrompt").textContent = `'${state.lastWord}' 다음 단어를 기다리는 중...`;
-  renderPlayers();
-  if (state.gameMode === "ai") setTimeout(aiTurn, 800);
-}
-
-function lookAhead(word, used, depth = 2, memo = new Map()) {
-  const nextUsed = new Set([...used, word]);
-  const key = `${word}|${depth}|${[...used].sort().join(",")}`;
-  if (memo.has(key)) return memo.get(key);
-  const replies = getCandidates(lastSyllable(word), nextUsed).sort((a, b) => responseCount(a, nextUsed) - responseCount(b, nextUsed)).slice(0, 48);
-  if (depth <= 0 || !replies.length) return { replies: replies.length, future: 0 };
-  const future = Math.max(...replies.map((reply) => lookAhead(reply, nextUsed, depth - 1, memo).replies));
-  const result = { replies: replies.length, future };
-  memo.set(key, result);
-  return result;
-}
-
-function selectAIWord() {
-  let candidates = getCandidates(state.requiredInitial).filter((word) => isKoreanWord(word) && dictionary.has(word));
-  if (state.round === 1) candidates = candidates.filter((word) => !isOneShot(word));
-  if (!candidates.length) return null;
-  if (state.difficulty === "easy") return pick(candidates);
-  candidates = candidates.sort((a, b) => responseCount(a, state.usedWords) - responseCount(b, state.usedWords)).slice(0, 140);
-  const memo = new Map();
-  const scored = candidates.map((word) => {
-    const forecast = lookAhead(word, state.usedWords, state.difficulty === "hard" ? 5 : 3, memo);
-    const deadEndBonus = forecast.replies === 0 ? 80 : 0;
-    const pressure = -forecast.replies * (state.difficulty === "hard" ? 18 : 7);
-    const futurePressure = -forecast.future * (state.difficulty === "hard" ? 6 : 2);
-    const lengthBonus = Math.min(word.length, 4) * (state.difficulty === "hard" ? 1.2 : .4);
-    return { word, score: deadEndBonus + pressure + futurePressure + lengthBonus + Math.random() * (state.difficulty === "hard" ? .05 : 2) };
-  }).sort((a, b) => b.score - a.score);
-  return scored[0].word;
-}
-
-function aiTurn() {
-  if (!$("#gameView").classList.contains("active-view")) return;
-  const word = selectAIWord();
-  if (!word) {
-    finishGame("상대가 이을 단어를 찾지 못했어요. 당신의 승리입니다!", "win");
-    return;
-  }
-  state.usedWords.add(word);
-  state.lastWord = word;
-  state.requiredInitial = lastSyllable(word);
-  renderNextInitial();
-  state.round += 1;
-  state.currentPlayer = "me";
-  addMessage("ai", word, `${getDefinition(word)} · 다음 글자 ${state.requiredInitial}`);
-  $("#roundNumber").textContent = String(state.round).padStart(2, "0");
-  $("#turnStatus").textContent = "당신의 턴이에요";
-  $("#turnPrompt").textContent = `다음 글자 '${state.requiredInitial}'${roParticle(state.requiredInitial)} 시작하는 단어를 이어주세요.`;
-  $("#factCheck").textContent = `✓ AI가 후보 ${getCandidates(state.requiredInitial).length}개를 살피고 다음 수까지 계산했어요.`;
-  $("#factCheck").className = "fact-check success";
-  renderPlayers();
-  startTimer();
-  $("#wordInput").focus();
-}
-
-function notifyMatchLeave() {
-  if (state.gameMode !== "human" || !state.matchId || !state.playerId || state.leftNotified || state.currentPlayer === "ended") return;
-  state.leftNotified = true;
-  const body = JSON.stringify({ playerId: state.playerId });
-  const url = `/api/matches/${state.matchId}/leave`;
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-  } else {
-    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => null);
-  }
-}
-
-function initGameControls() {
-  $("#wordForm").addEventListener("submit", submitWord);
-  $("#clearWordButton").addEventListener("click", () => { $("#wordInput").value = ""; $("#factCheck").textContent = ""; $("#wordInput").focus(); });
-  $("#leaveGameButton").addEventListener("click", async () => {
-    notifyMatchLeave();
-    clearInterval(state.timerId);
-    clearInterval(state.matchPollId);
-    clearInterval(state.eventPollId);
-    clearRoomPolling();
-    if (state.matchTicket) fetch("/api/matchmaking/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ticket: state.matchTicket }) }).catch(() => {});
-    state.matchTicket = null;
-    state.roomCode = "QUICK";
-    state.roomPlayerId = null;
-    state.matchId = null;
-    state.playerId = null;
-    state.currentPlayer = "me";
-    hideGameResult();
-    resetMatchControls();
-    setView("lobby");
+  window.addEventListener('resize', () => {
+    const isMobile = window.innerWidth <= 1024;
+    const chatPanel = document.querySelector('.chat-panel');
+    if (!isMobile && chatPanel) {
+      chatPanel.classList.remove('mobile-active');
+      const activeBtn = document.querySelector('.tab-btn.active');
+      if (activeBtn && activeBtn.getAttribute('data-tab') === 'chat') {
+        switchTab('battle');
+      }
+    }
   });
-  $("#copyGameCode").addEventListener("click", () => copyText(state.roomCode));
-  $("#copyCodeButton").addEventListener("click", () => copyText(state.roomCode));
-  $("#inviteButton").addEventListener("click", () => copyText(state.roomCode));
-  $("#gameRulesButton").addEventListener("click", rulesModal);
-  $("#resultLobbyButton").addEventListener("click", () => $("#leaveGameButton").click());
-}
 
-$("#modalClose").addEventListener("click", closeModal);
-$("#modalBackdrop").addEventListener("click", (event) => { if (event.target === $("#modalBackdrop")) closeModal(); });
-setupLobby();
-initGameControls();
-window.addEventListener("pagehide", notifyMatchLeave);
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.soundEngine.playTyping();
+      switchTab(btn.getAttribute('data-tab'));
+    });
+  });
+
+  // 6. AI 어드바이저 챗 로직
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const query = chatInput.value.trim();
+    if (!query) return;
+
+    window.soundEngine.playTyping();
+    appendUserChatMessage(query);
+    chatInput.value = '';
+
+    try {
+      const loadingBubble = appendAiLoadingMessage();
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: query, history: [] })
+      });
+
+      const data = await res.json();
+      loadingBubble.remove();
+
+      if (data.text) {
+        appendAiChatMessage(data.text, data.analysis);
+      }
+    } catch (err) {
+      appendAiChatMessage('서버와의 통신 중 오류가 발생했습니다. 다시 시도해주세요.');
+      window.soundEngine.playError();
+    }
+  });
+
+  quickChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const q = chip.getAttribute('data-query');
+      chatInput.value = q;
+      chatForm.dispatchEvent(new Event('submit'));
+    });
+  });
+
+  function appendUserChatMessage(text) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message user';
+    msgDiv.innerHTML = `
+      <div class="message-sender"><span>플레이어</span></div>
+      <div class="message-bubble"><p>${escapeHtml(text)}</p></div>
+    `;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function appendAiLoadingMessage() {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message ai';
+    msgDiv.innerHTML = `
+      <div class="message-sender"><span>⚡ 끝말잇기 마스터 AI</span></div>
+      <div class="message-bubble" style="color: var(--neon-gold);">
+        <em>52만 네이버 국어사전 전수 스캔 및 상대방 반격 수 싸움 계산 중...</em>
+      </div>
+    `;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return msgDiv;
+  }
+
+  // ⭐ 단 하나의 궁극의 최고 단어 카드 (Ultimate Card) 렌더링
+  function appendAiChatMessage(text, analysis = null) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message ai';
+
+    let cardHtml = '';
+    if (analysis && analysis.ultimateWord) {
+      const u = analysis.ultimateWord;
+      const r = u.rebuttal;
+
+      // 되받아칠 단어 상태별 클래스 및 뱃지
+      let boxClass = 'rebuttal-analysis-box';
+      let badgeClass = 'rebuttal-count-badge many';
+      let badgeText = `되받아칠 단어: ${r.totalCount}개`;
+
+      if (r.totalCount === 0) {
+        boxClass += ' impossible';
+        badgeClass = 'rebuttal-count-badge zero';
+        badgeText = '💥 반격 불가 (0개 / 100% 즉시 승리)';
+      } else if (r.totalCount <= 3) {
+        boxClass += ' trapped';
+        badgeClass = 'rebuttal-count-badge few';
+        badgeText = `⚔️ 외통수 포위 (${r.totalCount}개뿐)`;
+      }
+
+      // 상대방의 반격 단어 칩들
+      let samplesHtml = '';
+      if (r.samples && r.samples.length > 0) {
+        samplesHtml = `
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+            상대방이 낼 수 있는 다음 단어 목록:
+          </div>
+          <div class="rebuttal-samples-flow">
+            ${r.samples.map(w => `<span class="rebuttal-chip" onclick="inspectWordInDict('${w}')" title="클릭 시 사전 분석실에서 확인">${w}</span>`).join('')}
+          </div>
+        `;
+      } else if (r.totalCount === 0) {
+        samplesHtml = `
+          <div style="font-size: 12px; color: #f87171; font-weight: 700; margin-top: 6px;">
+            ✔ 상대방이 사전에 등재된 단어를 단 1개도 이을 수 없어 게임이 즉시 종료됩니다!
+          </div>
+        `;
+      }
+
+      // 2수 앞 연계 공격 시뮬레이션
+      let counterHtml = '';
+      if (r.counterAnalysis && r.counterAnalysis.length > 0) {
+        counterHtml = `
+          <div style="font-size: 11px; color: var(--neon-cyan); margin-top: 8px; font-weight: 600;">
+            🎯 2수 앞 필승 연계 시뮬레이션:
+          </div>
+          <div style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">
+            ${r.counterAnalysis.map(ca => `
+              <div>• 상대가 「<strong style="cursor:pointer; text-decoration:underline;" onclick="inspectWordInDict('${ca.opponentWord}')" title="사전 분석">${ca.opponentWord}</strong>」을 내면 ➔ 나는 「<strong style="cursor:pointer; text-decoration:underline; color:var(--neon-gold);" onclick="useWordInBattle('${ca.myBestCounter}')" title="배틀에 사용">${ca.myBestCounter || '카운터'}</strong>」(으)로 즉시 반격!</div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // 차선책 대안 후보 칩들
+      let altsHtml = '';
+      if (analysis.alternatives && analysis.alternatives.length > 0) {
+        altsHtml = `
+          <div class="alternatives-bar">
+            <span>대안 후보:</span>
+            ${analysis.alternatives.map(alt => {
+              const tierShort = alt.tierName ? alt.tierName.split(':')[0].replace(/[^0-9순위]/g, '') : '';
+              return `
+                <span class="alt-pill ${alt.tierBadgeClass || ''}" onclick="inspectWordInDict('${alt.word}')" title="클릭 시 사전 분석실로 이동">
+                  ${alt.word} <span style="font-size: 10px; opacity: 0.85;">${tierShort ? `[${tierShort}] ` : ''}(${alt.rebuttalSummary})</span>
+                </span>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      const tierBadgeClass = u.tierInfo?.tierBadgeClass || 'tier-1';
+      const tierName = u.tierInfo?.tierName || '👑 최선·최적·최강·최상의 단어';
+      const tierIcon = u.tierInfo?.tierIcon || '👑';
+
+      cardHtml = `
+        <div class="ultimate-word-card">
+          <div class="ultimate-badge-row">
+            <div class="ultimate-title-badge ${tierBadgeClass}">
+              <span>${tierIcon}</span>
+              <span>${tierName}</span>
+            </div>
+            <span class="ultimate-pure-tag">✔ 공인 순수 표준어</span>
+          </div>
+
+          <div class="ultimate-word-display">
+            <span class="ultimate-main-word" onclick="inspectWordInDict('${u.word}')" style="cursor: pointer;" title="클릭 시 사전 분석실로 이동">${u.word}</span>
+            <span class="ultimate-part-tag">[${u.partOfSpeech || '명사'}]</span>
+          </div>
+
+          <!-- 상대방 되받아칠 단어 정밀 분석 패널 -->
+          <div class="${boxClass}">
+            <div class="rebuttal-header">
+              <span class="rebuttal-title">
+                <span>🎯</span>
+                <span>상대방 되받아칠 단어 정밀 분석</span>
+              </span>
+              <span class="${badgeClass}">${badgeText}</span>
+            </div>
+            <div style="font-size: 12px; color: #e2e8f0; line-height: 1.4;">
+              내가 <strong>「${u.word}」</strong>을(를) 내면, 상대는 끝글자 <strong>'${u.endChar}'</strong>${r.isDueumApplied ? `(두음: ${r.variants.join(', ')})` : ''}(으)로 이어야 합니다.
+            </div>
+            ${samplesHtml}
+            ${counterHtml}
+          </div>
+
+          <!-- 4대 선정 근거 그리드 -->
+          <div class="four-pillars-grid">
+            <div class="pillar-item">
+              <div class="pillar-label strongest">💥 최강 (위력)</div>
+              <div class="pillar-text">${u.strongestReason}</div>
+            </div>
+            <div class="pillar-item">
+              <div class="pillar-label optimal">⚔️ 최적 (수 싸움)</div>
+              <div class="pillar-text">${u.optimalReason}</div>
+            </div>
+            <div class="pillar-item">
+              <div class="pillar-label best">🛡️ 최선 (신뢰성)</div>
+              <div class="pillar-text">${u.bestReason}</div>
+            </div>
+            <div class="pillar-item">
+              <div class="pillar-label supreme">🌟 최상 (완성도)</div>
+              <div class="pillar-text">${u.supremeReason}</div>
+            </div>
+          </div>
+
+          <!-- 네이버 국어사전 실시간 공식 뜻풀이 -->
+          <div class="naver-meaning-section">
+            <div class="naver-label" style="display: flex; align-items: center; justify-content: space-between;">
+              <div><span>📚</span> 네이버 국어사전 공식 뜻풀이</div>
+              ${u.naverLink ? `<a href="${u.naverLink}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--neon-cyan); text-decoration: underline; font-weight: 500;">네이버 사전 바로가기 ↗</a>` : ''}
+            </div>
+            <div style="margin-top: 4px;">${escapeHtml(u.naverMeaning)}</div>
+          </div>
+
+          <!-- 액션 버튼 -->
+          <div class="ultimate-card-actions">
+            <button class="ultimate-action-btn copy" onclick="copyWordToClipboard('${u.word}')">
+              📋 복사
+            </button>
+            <button class="ultimate-action-btn play" onclick="useWordInBattle('${u.word}')">
+              ⚔️ 배틀에 즉시 사용
+            </button>
+            <button class="ultimate-action-btn inspect" onclick="inspectWordInDict('${u.word}')" style="background: rgba(30, 41, 59, 0.9); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);">
+              🔍 사전 정밀 분석
+            </button>
+          </div>
+
+          ${altsHtml}
+        </div>
+      `;
+    }
+
+    const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                              .replace(/\n\n/g, '</p><p>')
+                              .replace(/\n/g, '<br>');
+
+    msgDiv.innerHTML = `
+      <div class="message-sender"><span>⚡ 끝말잇기 마스터 AI</span></div>
+      <div class="message-bubble">
+        <p>${formattedText}</p>
+        ${cardHtml}
+      </div>
+    `;
+
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (analysis && analysis.ultimateWord && analysis.ultimateWord.outCount === 0) {
+      window.soundEngine.playKilling();
+    } else {
+      window.soundEngine.playTyping();
+    }
+  }
+
+  newChatBtn.addEventListener('click', () => {
+    chatMessages.innerHTML = `
+      <div class="message ai">
+        <div class="message-sender"><span>⚡ 끝말잇기 마스터 AI</span></div>
+        <div class="message-bubble">
+          <p>채팅이 초기화되었습니다. 궁금한 앞글자(예: <em>'기'</em>, <em>'마'</em>)나 단어를 다시 입력해보세요!</p>
+        </div>
+      </div>
+    `;
+    window.soundEngine.playCopy();
+    showToast('새 대화가 시작되었습니다.');
+  });
+
+  // ==========================================================================
+  // 🎮 7. 끄투코리아 스타일 AI 끝말잇기 배틀 (KKuTu Game Loop)
+  // ==========================================================================
+  
+  // 끄투 실시간 원형 턴 타이머 루프
+  function startTurnTimer(turnOwner = 'user') {
+    stopTurnTimer();
+    currentTurn = turnOwner;
+    timerRemaining = TURN_LIMIT;
+    updateTimerVisuals();
+
+    if (turnOwner === 'user') {
+      turnIndicator.className = 'kkutu-turn-banner user-turn';
+      turnIndicator.innerHTML = '<span>당신의 턴!</span>';
+      gameWordInput.disabled = false;
+      gameWordInput.focus();
+    } else {
+      turnIndicator.className = 'kkutu-turn-banner ai-turn';
+      turnIndicator.innerHTML = '<span>AI 생각 중...</span>';
+      gameWordInput.disabled = true;
+    }
+
+    let lastSec = Math.ceil(timerRemaining);
+
+    timerInterval = setInterval(() => {
+      if (isGameOver) {
+        stopTurnTimer();
+        return;
+      }
+
+      timerRemaining = Math.max(0, timerRemaining - 0.1);
+      updateTimerVisuals();
+
+      const currentSec = Math.ceil(timerRemaining);
+      if (currentSec !== lastSec) {
+        lastSec = currentSec;
+        if (timerRemaining <= 3.1 && timerRemaining > 0) {
+          window.soundEngine.playTick(true);
+        } else if (timerRemaining > 0) {
+          window.soundEngine.playTick(false);
+        }
+      }
+
+      if (timerRemaining <= 0.05) {
+        stopTurnTimer();
+        handleTimeout(currentTurn);
+      }
+    }, 100);
+  }
+
+  function stopTurnTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    timerProgressCircle.classList.remove('urgent');
+    timerSecondsText.classList.remove('urgent');
+  }
+
+  function updateTimerVisuals() {
+    const circumference = 264; // 2 * PI * 42
+    const progress = Math.max(0, Math.min(1, timerRemaining / TURN_LIMIT));
+    const offset = circumference * (1 - progress);
+    timerProgressCircle.style.strokeDashoffset = offset;
+
+    const displaySec = Math.ceil(timerRemaining);
+    timerSecondsText.textContent = displaySec;
+
+    if (timerRemaining <= 3.2) {
+      timerProgressCircle.classList.add('urgent');
+      timerSecondsText.classList.add('urgent');
+    } else {
+      timerProgressCircle.classList.remove('urgent');
+      timerSecondsText.classList.remove('urgent');
+    }
+  }
+
+  function handleTimeout(turnOwner) {
+    if (isGameOver) return;
+    isGameOver = true;
+    window.soundEngine.playTimeout();
+
+    if (turnOwner === 'user') {
+      turnIndicator.className = 'kkutu-turn-banner ai-turn';
+      turnIndicator.innerHTML = '<span>⏰ TIME OVER!</span>';
+      targetCharDisplay.textContent = '💀 패배';
+      dueumNoticeDisplay.textContent = '10초 제한시간이 초과되어 패배하였습니다!';
+      showToast('⏰ 턴 제한시간 10초가 초과되었습니다! 패배!', 'error');
+    } else {
+      turnIndicator.className = 'kkutu-turn-banner user-turn';
+      turnIndicator.innerHTML = '<span>🏆 승리!</span>';
+      targetCharDisplay.textContent = '🏆 승리';
+      dueumNoticeDisplay.textContent = 'AI가 제한시간 내에 응수하지 못했습니다!';
+      showToast('🎉 AI의 타임오버로 승리하였습니다!', 'success');
+      window.soundEngine.playVictory();
+    }
+    gameWordInput.disabled = true;
+  }
+
+  // 난이도 변경
+  difficultyBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficultyBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDifficulty = btn.getAttribute('data-diff');
+      
+      const badgeTexts = {
+        'safe': '트레이닝',
+        'master': '마스터',
+        'alpha': '알파고'
+      };
+      aiDifficultyBadge.textContent = badgeTexts[currentDifficulty] || '마스터';
+      window.soundEngine.playCopy();
+      showToast(`AI 난이도가 [${badgeTexts[currentDifficulty]}]로 설정되었습니다.`);
+    });
+  });
+
+  resetGameBtn.addEventListener('click', () => {
+    resetGame();
+  });
+
+  function resetGame() {
+    stopTurnTimer();
+    gameHistory = [];
+    currentTargetChar = '';
+    isGameOver = false;
+    userScore = 0;
+    aiScore = 0;
+    comboCount = 0;
+
+    userScoreDisplay.textContent = '0';
+    aiScoreDisplay.textContent = '0';
+    rallyCountBadge.textContent = '0 COMBO';
+    comboBanner.style.transform = 'scale(1)';
+
+    targetCharDisplay.textContent = '시작';
+    prefixChar.textContent = '시작';
+    dueumNoticeDisplay.textContent = '원하는 단어로 시작하세요 (2자 이상)';
+    chainChipsFlow.innerHTML = '<span class="chain-empty-label">아직 시작되지 않았습니다.</span>';
+    
+    latestWordCard.className = 'latest-word-card empty';
+    latestWordCard.innerHTML = '<div class="card-empty-text">첫 단어를 입력하여 끝말잇기 배틀을 시작하세요!</div>';
+    
+    outCountHintBadge.className = 'count-badge safe';
+    outCountHintBadge.textContent = '🟢 자유 시작 턴';
+
+    aiThinkingPulse.style.display = 'none';
+    gameWordInput.value = '';
+    gameWordInput.disabled = false;
+    gameWordInput.focus();
+
+    window.soundEngine.playCopy();
+    showToast('끄투 배틀이 새로 리셋되었습니다.');
+    startTurnTimer('user');
+  }
+
+  // 단어 입력 제출
+  gameInputForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (isGameOver) {
+      showToast('게임이 종료되었습니다. 새로고침 버튼을 눌러주세요.', 'error');
+      return;
+    }
+    const word = gameWordInput.value.trim();
+    if (!word) return;
+    submitGameWord(word);
+  });
+
+  async function submitGameWord(word) {
+    if (isGameOver) return;
+    stopTurnTimer();
+    window.soundEngine.playTyping();
+
+    // 임시 AI 대기 UI 전환
+    aiThinkingPulse.style.display = 'block';
+    turnIndicator.className = 'kkutu-turn-banner ai-turn';
+    turnIndicator.innerHTML = '<span>사전 검증 중...</span>';
+    gameWordInput.disabled = true;
+
+    try {
+      const res = await fetch('/api/game/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userWord: word,
+          history: gameHistory,
+          difficulty: currentDifficulty
+        })
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        aiThinkingPulse.style.display = 'none';
+        window.soundEngine.playError();
+        showToast(data.message, 'error');
+        startTurnTimer('user');
+        return;
+      }
+
+      gameWordInput.value = '';
+      if (gameHistory.length === 0) chainChipsFlow.innerHTML = '';
+
+      // 1. 유저 단어 성공 반영
+      comboCount++;
+      const userGain = word.length * 60 + (comboCount * 30);
+      userScore += userGain;
+      userScoreDisplay.textContent = userScore;
+
+      // 콤보 애니메이션
+      rallyCountBadge.textContent = `${comboCount} COMBO`;
+      comboBanner.style.transform = 'scale(1.25)';
+      setTimeout(() => { comboBanner.style.transform = 'scale(1)'; }, 250);
+      window.soundEngine.playCombo(comboCount);
+
+      // 끄투 단어 카드 팝업
+      updateLatestWordCard(data.userWord, 'user', data.userPartOfSpeech || '명사', data.userMeaning, userGain);
+      appendWordChip(data.userWord, 'user', data.userPartOfSpeech || '명사');
+      gameHistory.push({ word: data.userWord, sender: 'user' });
+
+      // 유저 승리 판정
+      if (data.gameOver && data.winner === 'user') {
+        isGameOver = true;
+        aiThinkingPulse.style.display = 'none';
+        window.soundEngine.playVictory();
+        targetCharDisplay.textContent = '🏆 승리!';
+        dueumNoticeDisplay.textContent = data.message;
+        turnIndicator.className = 'kkutu-turn-banner user-turn';
+        turnIndicator.innerHTML = '<span>🎉 플레이어 최종 승리!</span>';
+        showToast(data.message, 'success');
+        return;
+      }
+
+      // AI 턴 타이머 시작 (AI 생각 연출)
+      startTurnTimer('ai');
+
+      setTimeout(() => {
+        if (isGameOver) return;
+        aiThinkingPulse.style.display = 'none';
+
+        // 2. AI 단어 반영
+        const aiGain = data.aiWord.length * 60 + (comboCount * 25);
+        aiScore += aiGain;
+        aiScoreDisplay.textContent = aiScore;
+
+        updateLatestWordCard(data.aiWord, 'ai', data.aiPartOfSpeech || '명사', data.aiMeaning, aiGain);
+        appendWordChip(data.aiWord, 'ai', data.aiPartOfSpeech || '명사');
+        gameHistory.push({ word: data.aiWord, sender: 'ai' });
+
+        currentTargetChar = data.aiEndChar;
+        targetCharDisplay.textContent = currentTargetChar;
+        prefixChar.textContent = currentTargetChar;
+
+        fetchDueumNotice(currentTargetChar);
+        updateOutCountHint(currentTargetChar);
+
+        // AI 승리 판정 (치명타 한방)
+        if (data.gameOver && data.winner === 'ai') {
+          isGameOver = true;
+          stopTurnTimer();
+          window.soundEngine.playKilling();
+          turnIndicator.className = 'kkutu-turn-banner ai-turn';
+          turnIndicator.innerHTML = '<span>💀 AI 필승 한방!</span>';
+          dueumNoticeDisplay.innerHTML = `<strong style="color: var(--neon-rose);">${data.strategyBrief}</strong><br>「${data.aiWord}」의 끝글자 '${currentTargetChar}'(으)로 시작하는 단어가 국어사전에 없습니다.`;
+          showToast(`💀 AI가 한방 단어 「${data.aiWord}」을(를) 냈습니다! 패배하였습니다.`, 'error');
+        } else {
+          window.soundEngine.playTrap();
+          showToast(`AI 응수: 「${data.aiWord}」 (${data.strategyBrief})`);
+          startTurnTimer('user');
+        }
+      }, 500);
+
+    } catch (err) {
+      aiThinkingPulse.style.display = 'none';
+      window.soundEngine.playError();
+      showToast('게임 서버 응답 오류가 발생했습니다.', 'error');
+      startTurnTimer('user');
+    }
+  }
+
+  // 끄투 시그니처 단어 카드 팝업 업데이트 (사전 및 AI 100% 직결 연결)
+  function updateLatestWordCard(word, sender, pos, meaning, pts) {
+    latestWordCard.className = `latest-word-card ${sender}-move`;
+    const senderText = sender === 'user' ? '플레이어' : '마스터 AI';
+    const displayMeaning = meaning || '네이버 국어사전 공인 어휘';
+
+    latestWordCard.setAttribute('title', `클릭 시 「${word}」 네이버 사전 정밀 분석실로 즉시 이동합니다`);
+    latestWordCard.style.cursor = 'pointer';
+
+    latestWordCard.innerHTML = `
+      <div style="flex: 1; min-width: 0;">
+        <div class="card-word-title-row">
+          <span class="card-sender-pill ${sender}">${senderText}</span>
+          <span class="card-main-word">${escapeHtml(word)}</span>
+          <span class="card-pos-pill">${escapeHtml(pos)}</span>
+          <span class="card-link-hint" style="font-size: 11px; color: var(--neon-cyan); margin-left: 8px; font-weight: 500;">🔍 클릭 시 사전 정밀 분석</span>
+        </div>
+        <div class="card-word-meaning" title="${escapeHtml(displayMeaning)}">
+          ${escapeHtml(displayMeaning)}
+        </div>
+        <div class="card-inline-actions" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="card-mini-btn" onclick="event.stopPropagation(); inspectWordInDict('${escapeHtml(word)}')">
+            🔍 네이버 사전 분석
+          </button>
+          <button class="card-mini-btn" onclick="event.stopPropagation(); askAiAboutWord('${escapeHtml(word)}')">
+            💬 AI 참모에게 전략 묻기
+          </button>
+          <button class="card-mini-btn" onclick="event.stopPropagation(); copyWordToClipboard('${escapeHtml(word)}')">
+            📋 복사
+          </button>
+        </div>
+      </div>
+      <div class="card-pts-badge">+${pts} PTS</div>
+    `;
+
+    latestWordCard.onclick = () => {
+      inspectWordInDict(word);
+    };
+  }
+
+  function appendWordChip(word, sender, part = '명사') {
+    const chip = document.createElement('div');
+    chip.className = `word-chip ${sender}`;
+    chip.setAttribute('title', `클릭 시 「${word}」 사전 분석실로 이동`);
+    const senderIcon = sender === 'user' ? '👤' : '🤖';
+    chip.innerHTML = `
+      <span>${senderIcon} ${escapeHtml(word)}</span>
+      <span class="word-chip-tag">${escapeHtml(part)}</span>
+    `;
+    chip.onclick = () => {
+      inspectWordInDict(word);
+    };
+    chainChipsFlow.appendChild(chip);
+    chainChipsFlow.scrollLeft = chainChipsFlow.scrollWidth;
+  }
+
+  async function fetchDueumNotice(char) {
+    try {
+      const res = await fetch(`/api/recommend?query=${encodeURIComponent(char)}`);
+      const data = await res.json();
+      if (data.variants && data.variants.length > 1) {
+        dueumNoticeDisplay.textContent = `두음법칙 가능: '${data.variants.join("', '")}'`;
+      } else {
+        dueumNoticeDisplay.textContent = `'${char}'(으)로 시작하는 단어를 입력하세요.`;
+      }
+    } catch {
+      dueumNoticeDisplay.textContent = `'${char}'(으)로 시작하는 단어를 입력하세요.`;
+    }
+  }
+
+  async function updateOutCountHint(char) {
+    try {
+      const res = await fetch(`/api/recommend?query=${encodeURIComponent(char)}`);
+      const data = await res.json();
+      const count = data.candidateCount || 0;
+      if (count === 0) {
+        outCountHintBadge.className = 'count-badge danger';
+        outCountHintBadge.textContent = '💀 한방 글자 (0개 남음)';
+      } else if (count <= 3) {
+        outCountHintBadge.className = 'count-badge warning';
+        outCountHintBadge.textContent = `⚠️ 위험! 남은 단어: ${count}개`;
+      } else {
+        outCountHintBadge.className = 'count-badge safe';
+        outCountHintBadge.textContent = `🟢 이어갈 수 있는 단어: ${count.toLocaleString()}개`;
+      }
+    } catch {
+      outCountHintBadge.className = 'count-badge safe';
+      outCountHintBadge.textContent = `🟢 단어 수: 탐색 완료`;
+    }
+  }
+
+  // ==========================================================================
+  // 📚 8. 네이버 정통 국어사전 52만 전수 분석실 & 실시간 자동완성 컨트롤러
+  // ==========================================================================
+  const inspectorClearBtn = document.getElementById('inspectorClearBtn');
+  const dictAutocompleteDropdown = document.getElementById('dictAutocompleteDropdown');
+  const autocompleteList = document.getElementById('autocompleteList');
+  const quickDictChips = document.querySelectorAll('.quick-dict-chip');
+
+  let autocompleteTimer = null;
+  let activeAcIndex = -1;
+  let currentAcItems = [];
+
+  // 검색창 타이핑 시 실시간 국어사전 자동완성 드롭다운
+  inspectorInput.addEventListener('input', () => {
+    const val = inspectorInput.value.trim();
+    if (val.length > 0) {
+      if (inspectorClearBtn) inspectorClearBtn.style.display = 'flex';
+    } else {
+      if (inspectorClearBtn) inspectorClearBtn.style.display = 'none';
+      closeAutocomplete();
+      return;
+    }
+
+    clearTimeout(autocompleteTimer);
+    autocompleteTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/dict/search?word=${encodeURIComponent(val)}`);
+        const data = await res.json();
+        const matches = (data.matchedWords || []).slice(0, 8);
+        renderAutocompleteList(matches, val);
+      } catch (err) {
+        // 자동완성 오류 무시
+      }
+    }, 120);
+  });
+
+  // 검색창 키보드 탐색 (ArrowDown, ArrowUp, Enter, Escape)
+  inspectorInput.addEventListener('keydown', (e) => {
+    if (!dictAutocompleteDropdown || dictAutocompleteDropdown.style.display === 'none') return;
+
+    const items = autocompleteList.querySelectorAll('.ac-item');
+    if (items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeAcIndex = (activeAcIndex + 1) % items.length;
+      updateAcSelection(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeAcIndex = (activeAcIndex - 1 + items.length) % items.length;
+      updateAcSelection(items);
+    } else if (e.key === 'Enter' && activeAcIndex >= 0) {
+      e.preventDefault();
+      const chosenWord = currentAcItems[activeAcIndex]?.word;
+      if (chosenWord) {
+        selectAutocompleteWord(chosenWord);
+      }
+    } else if (e.key === 'Escape') {
+      closeAutocomplete();
+    }
+  });
+
+  function updateAcSelection(items) {
+    items.forEach((item, idx) => {
+      if (idx === activeAcIndex) {
+        item.classList.add('active');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  function renderAutocompleteList(matches, query) {
+    currentAcItems = matches;
+    activeAcIndex = -1;
+
+    if (!matches || matches.length === 0) {
+      closeAutocomplete();
+      return;
+    }
+
+    autocompleteList.innerHTML = matches.map((m, idx) => {
+      const isKilling = m.isKilling;
+      const powerClass = isKilling ? 'killing' : (m.outCount <= 3 ? 'trapped' : 'safe');
+      const powerText = isKilling ? '💥 한방' : (m.outCount <= 3 ? `⚔️ 외통수` : `안전`);
+
+      return `
+        <div class="ac-item" data-index="${idx}" onclick="selectAutocompleteWord('${escapeHtml(m.word)}')">
+          <div class="ac-item-left">
+            <span class="search-glass-icon" style="font-size: 14px; margin: 0;">📖</span>
+            <span class="ac-word">${highlightMatchedChars(m.word, query)}</span>
+            <span class="ac-pos">${escapeHtml(m.part || '명사')}</span>
+          </div>
+          <div class="ac-item-right">
+            <span class="match-badge tier-${m.matchTier}">${escapeHtml(m.matchBadge || '일치')}</span>
+            <span class="power-badge ${powerClass}">${powerText}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    dictAutocompleteDropdown.style.display = 'block';
+  }
+
+  window.selectAutocompleteWord = function(word) {
+    inspectorInput.value = word;
+    closeAutocomplete();
+    inspectorForm.dispatchEvent(new Event('submit'));
+  };
+
+  function closeAutocomplete() {
+    if (dictAutocompleteDropdown) {
+      dictAutocompleteDropdown.style.display = 'none';
+    }
+    activeAcIndex = -1;
+  }
+
+  // 바깥 클릭 시 자동완성 닫기
+  document.addEventListener('click', (e) => {
+    if (dictAutocompleteDropdown && !dictAutocompleteDropdown.contains(e.target) && e.target !== inspectorInput) {
+      closeAutocomplete();
+    }
+  });
+
+  // 검색창 지우기 버튼
+  if (inspectorClearBtn) {
+    inspectorClearBtn.addEventListener('click', () => {
+      inspectorInput.value = '';
+      inspectorClearBtn.style.display = 'none';
+      closeAutocomplete();
+      inspectorInput.focus();
+    });
+  }
+
+  // 인기 표제어 퀵 칩 클릭
+  quickDictChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const word = chip.getAttribute('data-word');
+      if (word) {
+        selectAutocompleteWord(word);
+      }
+    });
+  });
+
+  // 사전 검색 폼 제출
+  inspectorForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    closeAutocomplete();
+
+    const query = inspectorInput.value.trim();
+    if (!query) return;
+
+    window.soundEngine.playTyping();
+    inspectorResultContainer.style.display = 'block';
+    inspectorResultContainer.innerHTML = `
+      <div style="text-align: center; padding: 50px 20px; color: #10B981;">
+        <div style="font-size: 28px; margin-bottom: 12px; animation: spin 1s infinite linear;">📚</div>
+        <div style="font-size: 16px; font-weight: 800;">네이버 국어사전 52만 전수 데이터베이스 공식 조회 중...</div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">표준 표제어, 품사, 사전 뜻풀이 및 끝말잇기 실전 전술을 계산하고 있습니다.</div>
+      </div>
+    `;
+
+    try {
+      const dictRes = await fetch(`/api/dict/search?word=${encodeURIComponent(query)}`);
+      const dictData = await dictRes.json();
+
+      const lastChar = query[query.length - 1];
+      const recoRes = await fetch(`/api/recommend?query=${encodeURIComponent(lastChar)}`);
+      const recoData = await recoRes.json();
+
+      renderInspectorResult(dictData, recoData, query);
+    } catch (err) {
+      window.soundEngine.playError();
+      inspectorResultContainer.innerHTML = `
+        <div style="color: var(--neon-rose); padding: 30px; text-align: center; background: rgba(244, 63, 94, 0.1); border-radius: var(--radius-md); border: 1px solid var(--neon-rose);">
+          ❌ 사전 정보를 불러오는 데 실패했습니다. 다시 시도해주세요.
+        </div>
+      `;
+    }
+  });
+
+  // ⭐ 검색어와 겹치는 글자 하이라이트 헬퍼
+  function highlightMatchedChars(word, query) {
+    if (!word || !query) return escapeHtml(word || '');
+    const queryChars = new Set(query.replace(/[^가-힣]/g, '').split(''));
+    let html = '';
+    for (const ch of word) {
+      if (queryChars.has(ch)) {
+        html += `<span class="matched-char">${escapeHtml(ch)}</span>`;
+      } else {
+        html += escapeHtml(ch);
+      }
+    }
+    return html;
+  }
+
+  // ⭐ 일치도 필터링 전역 헬퍼
+  window.filterMatchedWords = function(filterType, btnElement) {
+    const container = document.getElementById('dictEntriesTable');
+    if (!container) return;
+
+    const allBtns = document.querySelectorAll('.matched-filter-btn');
+    allBtns.forEach(b => b.classList.remove('active'));
+    if (btnElement) btnElement.classList.add('active');
+
+    const items = container.querySelectorAll('.dict-entry-row');
+    items.forEach(item => {
+      const tier = parseInt(item.getAttribute('data-tier') || '0', 10);
+      const isKilling = item.getAttribute('data-killing') === 'true';
+
+      let show = true;
+      if (filterType === 'prefix') {
+        show = (tier <= 2);
+      } else if (filterType === 'contains') {
+        show = (tier === 3 || tier === 4);
+      } else if (filterType === 'char') {
+        show = (tier === 5);
+      } else if (filterType === 'killing') {
+        show = isKilling;
+      }
+      item.style.display = show ? 'flex' : 'none';
+    });
+  };
+
+  // ⭐ 네이버 정통 국어사전식 일치 어휘 목록 HTML 빌더
+  function buildMatchedWordsSectionHtml(matchedWords, query) {
+    if (!matchedWords || matchedWords.length === 0) {
+      return '';
+    }
+
+    const exactPrefixCount = matchedWords.filter(w => w.matchTier <= 2).length;
+    const containsCount = matchedWords.filter(w => w.matchTier === 3 || w.matchTier === 4).length;
+    const charMatchCount = matchedWords.filter(w => w.matchTier === 5).length;
+    const killingCount = matchedWords.filter(w => w.isKilling).length;
+
+    return `
+      <div class="dict-entries-list-section">
+        <div class="dict-entries-header">
+          <div class="dict-entries-title">
+            <span>📖</span>
+            <span>국어사전 연관 및 일치 표제어 목록</span>
+            <span class="matched-count-pill">${matchedWords.length}개</span>
+          </div>
+          <span style="font-size: 13px; color: var(--text-muted);">
+            가장 일치하는 단어부터 한 글자라도 일치하는 공인 단어까지 정확도 순 정렬
+          </span>
+        </div>
+
+        <!-- 필터 탭 -->
+        <div class="matched-filter-tabs">
+          <button class="matched-filter-btn active" data-filter="all" onclick="filterMatchedWords('all', this)">
+            전체 (${matchedWords.length})
+          </button>
+          ${exactPrefixCount > 0 ? `
+            <button class="matched-filter-btn" data-filter="prefix" onclick="filterMatchedWords('prefix', this)">
+              📌 완전/시작 일치 (${exactPrefixCount})
+            </button>
+          ` : ''}
+          ${containsCount > 0 ? `
+            <button class="matched-filter-btn" data-filter="contains" onclick="filterMatchedWords('contains', this)">
+              🔍 포함/끝 일치 (${containsCount})
+            </button>
+          ` : ''}
+          ${charMatchCount > 0 ? `
+            <button class="matched-filter-btn" data-filter="char" onclick="filterMatchedWords('char', this)">
+              💡 글자 일치 (${charMatchCount})
+            </button>
+          ` : ''}
+          ${killingCount > 0 ? `
+            <button class="matched-filter-btn" data-filter="killing" onclick="filterMatchedWords('killing', this)">
+              💥 한방 단어 (${killingCount})
+            </button>
+          ` : ''}
+        </div>
+
+        <!-- 사전식 행 리스트 -->
+        <div class="dict-entries-table" id="dictEntriesTable">
+          ${matchedWords.map((item, idx) => {
+            const isExact = item.matchTier === 1;
+            const isKilling = item.isKilling;
+            const powerClass = isKilling ? 'killing' : (item.outCount <= 3 ? 'trapped' : 'safe');
+            const powerText = isKilling ? '💥 한방' : (item.outCount <= 3 ? `⚔️ 외통수 (${item.outCount}개)` : `안전 (${item.outCount}개)`);
+            const tierBadgeClass = `tier-${item.matchTier}`;
+
+            return `
+              <div class="dict-entry-row ${isExact ? 'is-exact' : ''}" 
+                   data-tier="${item.matchTier}" 
+                   data-killing="${isKilling ? 'true' : 'false'}"
+                   data-match-type="${item.matchType}">
+                <div class="dict-row-main">
+                  <div class="dict-row-title-line">
+                    <span style="font-size: 13px; font-weight: 800; color: #10B981;">${idx + 1}.</span>
+                    <span class="dict-row-word">${highlightMatchedChars(item.word, query)}</span>
+                    <span class="dict-pos-pill" style="font-size: 11px; padding: 1px 6px;">「${escapeHtml(item.part || '명사')}」</span>
+                    <span class="match-badge ${tierBadgeClass}">${escapeHtml(item.matchBadge || '일치')}</span>
+                    <span class="power-badge ${powerClass}">${powerText}</span>
+                  </div>
+                  <div class="dict-row-meaning">
+                    끝글자 '${escapeHtml(item.endChar)}' ➔ 상대 반격 가능 어휘: ${item.outCount.toLocaleString()}개 (${escapeHtml(item.statusText)})
+                  </div>
+                </div>
+
+                <div class="dict-row-actions">
+                  <button class="matched-act-btn primary" onclick="selectAutocompleteWord('${escapeHtml(item.word)}')" title="사전 정밀 분석">
+                    🔍 상세
+                  </button>
+                  <button class="matched-act-btn" onclick="useWordInBattle('${escapeHtml(item.word)}')" title="배틀 투입">
+                    ⚔️ 배틀
+                  </button>
+                  <button class="matched-act-btn" onclick="copyWordToClipboard('${escapeHtml(item.word)}')" title="복사">
+                    📋
+                  </button>
+                  <a href="https://ko.dict.naver.com/#/search?query=${encodeURIComponent(item.word)}" target="_blank" rel="noopener noreferrer" class="matched-act-btn" title="네이버 사전 새 창">
+                    🔗
+                  </a>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ⭐ 네이버 정통 국어사전 검색 결과 뷰 렌더러
+  function renderInspectorResult(dict, reco, query) {
+    const isVerified = dict.isVerified;
+    const r = dict.rebuttal || { totalCount: 0, samples: [] };
+    const outCount = r.totalCount;
+    const matchedCount = dict.matchedCount || (dict.matchedWords || []).length;
+    const matchedHtml = buildMatchedWordsSectionHtml(dict.matchedWords || [], query);
+
+    // 1) 네이버 사전 요약 안내 바
+    const summaryBarHtml = `
+      <div class="naver-dict-summary-bar">
+        <div>
+          <span>‘<strong><span class="dict-summary-highlight">${escapeHtml(query)}</span></strong>’에 대한 네이버 국어사전 검색 결과</span>
+          <span style="margin-left: 8px; font-weight: 800; color: #10B981;">총 ${matchedCount}건</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          출처: 네이버 국어사전 (표준국어대사전 & 우리말샘) 공식 연동
+        </div>
+      </div>
+    `;
+
+    // 2) 사전 미등재 단어인 경우
+    if (!isVerified) {
+      const mainCardHtml = `
+        <div class="dict-main-entry-card" style="border-color: rgba(244, 63, 94, 0.5); background: linear-gradient(135deg, rgba(244, 63, 94, 0.1) 0%, rgba(15, 23, 42, 0.95) 100%);">
+          <div class="dict-entry-header">
+            <div class="dict-entry-title-row">
+              <span class="dict-entry-title">${escapeHtml(query)}</span>
+              <span style="font-size: 15px; color: var(--neon-rose); font-weight: 800;">[사전 미등재 어휘]</span>
+            </div>
+            <div class="dict-entry-badges">
+              <span class="dict-official-badge" style="background: rgba(244, 63, 94, 0.15); border-color: var(--neon-rose); color: var(--neon-rose);">
+                ✖ 네이버 국어사전 미등재
+              </span>
+            </div>
+          </div>
+
+          <div style="padding: 16px; background: rgba(2, 6, 23, 0.6); border-radius: var(--radius-sm); border-left: 3px solid var(--neon-rose); font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+            <strong>「${escapeHtml(query)}」</strong>은(는) 네이버 국어사전(표준국어대사전 및 우리말샘)에 표제어나 뜻풀이가 등재되지 않은 단어입니다.<br>
+            끝말잇기 실전 규칙상 사용할 수 없으며, 상대방이 냈을 경우 <strong>실격(패배)</strong> 처리됩니다. 아래의 연관 공인 어휘 목록을 참조하세요.
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <a href="${dict.link}" target="_blank" rel="noopener noreferrer" class="action-btn" style="text-decoration: none; color: var(--text-muted); border-color: rgba(255, 255, 255, 0.2);">
+              🔗 네이버 국어사전 공식 웹사이트에서 직접 검색 ↗
+            </a>
+          </div>
+        </div>
+      `;
+
+      inspectorResultContainer.innerHTML = `
+        <div class="naver-dict-view">
+          ${summaryBarHtml}
+          ${mainCardHtml}
+          ${matchedHtml}
+        </div>
+      `;
+      return;
+    }
+
+    // 3) 사전 공식 등재 단어인 경우 (네이버 정통 국어사전 뷰)
+    let attackPowerText = '보통';
+    let attackPowerClass = 'safe';
+    let attackBadge = '🛡️ 4순위: 안전 방어';
+
+    if (outCount === 0) {
+      attackPowerText = '💥 즉시 승리 한방 (반격 단어 0개)';
+      attackPowerClass = 'killing';
+      attackBadge = '💥 1순위: 즉시 승리 한방 단어';
+    } else if (outCount <= 3) {
+      attackPowerText = `⚔️ 외통수 포위 (반격 단어 ${outCount}개)`;
+      attackPowerClass = 'trapped';
+      attackBadge = '⚔️ 2순위: 반격해도 한방 외통수';
+    } else if (outCount <= 20) {
+      attackPowerText = `치명타 압박 (${outCount}개)`;
+      attackPowerClass = 'trapped';
+      attackBadge = '🔥 3순위: 거의 한방급 치명타';
+    } else {
+      attackPowerText = `안전 랠리 (${outCount.toLocaleString()}개)`;
+      attackPowerClass = 'safe';
+      attackBadge = '🛡️ 4순위: 안전하게 쓸 수 있는 방어 단어';
+    }
+
+    const meaningsList = (dict.meanings && dict.meanings.length > 0)
+      ? dict.meanings
+      : ['국립국어원 표준국어대사전 및 우리말샘 공인 표제어입니다.'];
+
+    const meaningsHtml = meaningsList.map((m, i) => `
+      <div class="dict-meaning-item">
+        <span class="dict-meaning-num">${i + 1}.</span>
+        <div class="dict-meaning-content">${escapeHtml(m)}</div>
+      </div>
+    `).join('');
+
+    const rebuttalSamplesHtml = (r.samples || []).length > 0
+      ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+          ${r.samples.map(w => `<span class="rebuttal-chip" onclick="selectAutocompleteWord('${escapeHtml(w)}')" title="클릭 시 이 단어로 사전 분석">${escapeHtml(w)}</span>`).join('')}
+         </div>`
+      : `<div style="font-size: 13px; color: var(--neon-rose); font-weight: 800; margin-top: 6px;">
+          ✔ 상대방이 이을 수 있는 단어가 국어사전에 단 1개도 없습니다! (100% 즉시 승리 한방)
+         </div>`;
+
+    const mainCardHtml = `
+      <div class="dict-main-entry-card">
+        <!-- 국어사전 표제어 헤더 -->
+        <div class="dict-entry-header">
+          <div class="dict-entry-title-row">
+            <span class="dict-entry-title">${escapeHtml(query)}</span>
+            <span class="dict-pos-pill">「${escapeHtml(dict.partOfSpeech || '명사')}」</span>
+          </div>
+
+          <div class="dict-entry-badges">
+            <span class="dict-official-badge">
+              <span>✔</span>
+              <span>${escapeHtml(dict.source || '네이버 국어사전 공식 표제어')}</span>
+            </span>
+            <span class="tactics-pill ${attackPowerClass}">${attackBadge}</span>
+          </div>
+        </div>
+
+        <!-- 정통 국어사전 번호 매겨진 뜻풀이 목록 -->
+        <div class="dict-meanings-container">
+          <div class="dict-meanings-header">
+            <span>📖</span>
+            <span>국어사전 공식 뜻풀이 (${meaningsList.length}개)</span>
+          </div>
+          ${meaningsHtml}
+        </div>
+
+        <!-- 끝말잇기 실전 전술 스트립 -->
+        <div class="dict-tactics-strip">
+          <div class="tactics-strip-header">
+            <span class="tactics-title">
+              <span>🎯</span>
+              <span>끝말잇기 실전 전술 분석 (끝글자: '${escapeHtml(query[query.length - 1])}')</span>
+            </span>
+            <div class="tactics-stat-pills">
+              <span class="tactics-pill ${attackPowerClass}">${attackPowerText}</span>
+              <span style="font-size: 12px; color: var(--text-muted);">
+                두음 변환: ${r.variants ? r.variants.map(escapeHtml).join(', ') : '해당 없음'}
+              </span>
+            </div>
+          </div>
+          <div>
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 700;">상대방이 낼 수 있는 다음 단어:</span>
+            ${rebuttalSamplesHtml}
+          </div>
+        </div>
+
+        <!-- 액션 툴바 -->
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px;">
+          <button class="action-btn" onclick="useWordInBattle('${escapeHtml(query)}')" style="background: linear-gradient(135deg, #03C75A 0%, #059669 100%); border-color: #10B981; color: #ffffff; font-weight: 800;">
+            ⚔️ 이 단어로 배틀 시작
+          </button>
+          <button class="action-btn" onclick="askAiAboutWord('${escapeHtml(query)}')" style="background: rgba(99, 102, 241, 0.2); border-color: var(--neon-purple); color: #e0e7ff; font-weight: 700;">
+            💬 AI에게 전략 묻기
+          </button>
+          <button class="action-btn" onclick="copyWordToClipboard('${escapeHtml(query)}')">
+            📋 단어 복사
+          </button>
+          <a href="${dict.link}" target="_blank" rel="noopener noreferrer" class="action-btn" style="text-decoration: none; color: #34d399; border-color: #10B981;">
+            🔗 네이버 국어사전 공식 웹페이지 열기 ↗
+          </a>
+        </div>
+      </div>
+    `;
+
+    inspectorResultContainer.innerHTML = `
+      <div class="naver-dict-view">
+        ${summaryBarHtml}
+        ${mainCardHtml}
+        ${matchedHtml}
+      </div>
+    `;
+  }
+
+  // 9. 한방 단어 렉시콘 로드
+  let lexiconLoaded = false;
+  async function loadKillingLexicon() {
+    if (lexiconLoaded) return;
+    try {
+      const res = await fetch('/api/killing-words');
+      const data = await res.json();
+      lexiconLoaded = true;
+
+      lexiconGrid.innerHTML = '';
+      for (const item of (data.items || [])) {
+        const card = document.createElement('div');
+        card.className = 'lexicon-card';
+
+        const wordsHtml = item.samples.map(w => `
+          <span class="sample-word-pill" onclick="event.stopPropagation(); inspectWordInDict('${w}')" title="클릭 시 「${w}」 사전 분석 및 배틀 사용">
+            ${w}
+          </span>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="lexicon-card-header">
+            <span class="lexicon-char">${item.char}</span>
+            <span class="lexicon-count">한방 단어 ${item.wordCount}개</span>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">대표 필승 단어 (클릭하여 복사):</div>
+          <div class="lexicon-words-sample">
+            ${wordsHtml}
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          switchTab('inspector');
+          inspectorInput.value = item.char;
+          inspectorForm.dispatchEvent(new Event('submit'));
+        });
+
+        lexiconGrid.appendChild(card);
+      }
+    } catch (err) {
+      lexiconGrid.innerHTML = '<div style="color: var(--neon-rose);">렉시콘 데이터를 불러오지 못했습니다.</div>';
+    }
+  }
+
+  // 10. 접속 링크 공유 버튼
+  const shareLinkBtn = document.getElementById('shareLinkBtn');
+  if (shareLinkBtn) {
+    shareLinkBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/server-info');
+        const data = await res.json();
+        const publicUrl = data.publicTunnelUrl;
+        const lanIp = data.localIps?.[0]?.address || '192.168.219.103';
+        const lanUrl = `http://${lanIp}:${data.port || 3000}`;
+
+        const bestShareUrl = publicUrl || lanUrl;
+        await navigator.clipboard.writeText(bestShareUrl);
+        window.soundEngine.playCopy();
+
+        alert(`🎉 다른 사람이 접속할 수 있는 주소입니다:\n\n` +
+              (publicUrl ? `🌐 [외부 인터넷 어디서나 접속 가능한 링크]:\n${publicUrl}\n(카톡이나 메신저로 친구에게 보내시면 바로 들어올 수 있습니다!)\n\n` : '') +
+              `📱 [같은 와이파이 / 스마트폰 접속]:\n${lanUrl}\n\n` +
+              `※ 접속 링크(${bestShareUrl})가 클립보드에 바로 복사되었습니다. 붙여넣기(Ctrl+V)해서 보내주세요!`);
+        showToast('접속 링크가 복사되었습니다! 🎉');
+      } catch (err) {
+        const fallback = 'http://192.168.219.103:3000';
+        await navigator.clipboard.writeText(fallback);
+        alert(`📱 스마트폰 / 다른 사람 접속 주소:\n${fallback}\n\n클립보드에 복사되었습니다!`);
+        showToast('접속 주소가 복사되었습니다.');
+      }
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+});

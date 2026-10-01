@@ -1,9 +1,6 @@
 {
-  "name": "word-chain-game",
-  "version": "0.2.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "node local-server.js"
+  "dependencies": {
+    "localtunnel": "^2.0.2",
+    "untun": "^0.2.2"
   }
 }
