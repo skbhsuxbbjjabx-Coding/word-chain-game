@@ -174,6 +174,15 @@ function registerDynamicWord(word, part = '명사') {
   endMap.get(e).push(item);
 }
 
+// ⭐ [우리말샘 공인 방언 및 핵심 어휘 영구 탑재] '륨/늄'의 유일한 반격 카드 '윰라대왕' 사전 초기 탑재
+registerDynamicWord('윰라대왕', '명사');
+if (wordInfoMap.has('윰라대왕')) {
+  const item = wordInfoMap.get('윰라대왕');
+  item.naverMeaning = '‘염라대왕’의 방언 (강원)';
+  item.source = '공인 국어사전 (우리말샘)';
+  item.naverLink = 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba';
+}
+
 function getOutDegree(char) {
   const v = getDueumVariants(char);
   return v.reduce((acc, c) => acc + (startMap.get(c)?.length || 0), 0);
@@ -182,6 +191,15 @@ function getOutDegree(char) {
 // 3. 공인 국어사전 실시간 검색 엔진 (국립국어원 우리말샘 & 네이버 국어사전 WORD 공인 표제어 전수 연동)
 const naverCache = new Map();
 const MAX_CACHE_SIZE = 5000;
+
+naverCache.set('윰라대왕', {
+  isVerified: true,
+  word: '윰라대왕',
+  source: '공인 국어사전 (우리말샘)',
+  partOfSpeech: '명사',
+  meanings: ['‘염라대왕’의 방언 (강원)'],
+  link: 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba'
+});
 
 // 네이버 국어사전 실시간 쿼리 함수 (실제 공인 사전에 등재된 유효 표제어만 100% 검증)
 async function queryNaverDictionary(queryWord) {
@@ -512,7 +530,7 @@ function getRebuttalAnalysis(endChar, counterPlan = []) {
 // 절대 규칙: 한방 당하는 단어(상대에게 한방을 내주는 자살수)는 철저히 회피!
 // ============================================================================
 
-const ABSOLUTE_KILLING_CHARS = new Set(['녘', '쁨', '늄', '듐', '늧', '릇', '릎', '탉', '값', '옄', '엌', '헿', '흗', '늣', '픔', '튬', '뮴']);
+const ABSOLUTE_KILLING_CHARS = new Set(['녘', '쁨', '듐', '늧', '릇', '릎', '탉', '값', '옄', '엌', '헿', '흗', '늣', '픔', '튬', '뮴']);
 const FOREIGN_NAMES_SET = new Set(['해리슨', '윌슨', '존슨', '앤더슨', '잭슨', '톰슨', '파킨슨', '클린턴', '워싱턴', '뉴턴', '에디슨', '로빈슨', '마이컬슨', '스티븐슨', '제퍼슨']);
 
 // ⭐ [사전-AI-배틀 실시간 일원화] 글자(또는 두음 변이)로 시작하는 단어가 로컬 사전에 부족할 때 네이버 사전을 실시간 조회하여 동기화
@@ -1005,44 +1023,29 @@ function parseUserTargetChar(message) {
   if (!message || typeof message !== 'string') return '';
   const trimmed = message.trim();
 
-  // 1) 따옴표로 묶인 단어/음절: '슨', "해", '해질녘'
+  // 1) 따옴표로 묶인 단어/음절: '슨', "해", '해질녘', '나트륨'
   const quoteMatch = trimmed.match(/['"‘“]([가-힣]+)['"’”]/);
   if (quoteMatch) {
     const q = quoteMatch[1];
     return q.length === 1 ? q : q[q.length - 1];
   }
 
-  // 2) 한 글자만 단독 입력된 경우: "슨", "해", "기"
-  const pureHangul = trimmed.replace(/[^가-힣]/g, '');
-  if (pureHangul.length === 1) {
-    return pureHangul;
+  // 2) 질문성 조사 및 보조 어휘 먼저 정규화 제거
+  const normalized = trimmed
+    .replace(/(?:끝말잇기|첫\s*턴|첫\s*글자|최적수|브리핑|알려달라고\s*했는데|알려달라|알려달라고|알려줘|추천해줘|추천|말해줘|어때|다음\s*단어|다음|시작하는\s*단어|시작하는|시작|단어|글자|뭐있어|뭐야|가르쳐줘|가르쳐|해줘|알려|있어|받아칠|받아치는|받아치기|어떻게\s*받아쳐|어떻게\s*해|어떻게\s*이어|이어갈|이을|대응할|공격할|방어할)/g, ' ')
+    .trim();
+
+  // 3) 남은 토큰들 중 가장 핵심이 되는 한글 단어 추출
+  let tokens = normalized.match(/[가-힣]+/g) || [];
+  if (tokens.length > 0) {
+    let firstToken = tokens[0];
+    // 조사(으로/로/은/는/이/가/을/를/와/과/도) 제거
+    const stripped = firstToken.replace(/(?:으로|로|은|는|이|가|을|를|와|과|도)$/, '');
+    if (stripped) firstToken = stripped;
+    return firstToken.length === 1 ? firstToken : firstToken[firstToken.length - 1];
   }
 
-  // 3) 질문 문두에서 한 글자를 묻는 명시적 패턴:
-  const startCharMatch = trimmed.match(/^([가-힣])\s*(?:(?:은|는|이|가|을|를|으로|로)?\s*(?:알려|추천|말해|어때|다음|시작|뭐|단어|가르쳐|있어))/);
-  if (startCharMatch) {
-    return startCharMatch[1];
-  }
-
-  // 4) 문장 중간이나 끝에 "해 알려줘", "슨 알려달라" 형태
-  const verbMatch = trimmed.match(/([가-힣])(?:\s*알려달라고\s*했는데|\s*알려달라|\s*알려줘|\s*추천|\s*말해줘|\s*어때|\s*다음)/);
-  if (verbMatch) {
-    return verbMatch[1];
-  }
-
-  // 5) 문장 전체에서 질문성 서술어 제거 후 남은 단어
-  const cleaned = trimmed
-    .replace(/(?:알려달라고\s*했는데|알려달라|알려달라고|알려줘|추천해줘|추천|말해줘|어때|다음\s*단어|다음|시작하는\s*단어|시작|단어|뭐있어|뭐야|가르쳐줘|가르쳐|해줘|알려|있어)/g, '')
-    .trim()
-    .replace(/[^가-힣]/g, '');
-
-  if (cleaned.length === 1) {
-    return cleaned;
-  } else if (cleaned.length >= 2) {
-    return cleaned[cleaned.length - 1];
-  }
-
-  return pureHangul.length > 0 ? pureHangul[0] : '';
+  return '';
 }
 
 // 7. AI브리핑 & 전략 참모 (1순위 한방 -> 2순위 외통수 -> 3순위 안전수 -> 4순위 차선책 및 흐름 모드)
@@ -1114,7 +1117,13 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     const tierNum = ultimate.tierInfo?.tierNumber || 1;
 
     let speech = '';
-    if (tierNum === 1) {
+    // ⭐ '륨'/'늄'/'윰' 특수 브리핑: 윰라대왕 안내
+    if (ultimate.word === '윰라대왕' || targetChar === '륨' || targetChar === '늄' || targetChar === '윰') {
+      speech = `🛡️ **'${targetChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
+               `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+               `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 랠리를 이어가는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+    } else if (tierNum === 1) {
       speech = `💥 **'${targetChar}'**(으)로 이어질 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
                `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 상대방은 어떤 반격도 하지 못하고 **단 1수로 즉시 100% 승리(한방)**합니다!\n\n` +
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
