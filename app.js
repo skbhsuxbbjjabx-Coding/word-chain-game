@@ -857,6 +857,94 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------------------
   // 8. [단어 사전] 로직 (국어사전 실시간 검색 & 일치 단어 리스트)
   // ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // 8. [단어 사전] 로직 (국어사전 실시간 검색 & 파트별 분할 일치 어휘)
+  // ------------------------------------------------------------------------
+  function escapeHtml(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function highlightPrefix(word, query) {
+    if (word.startsWith(query)) {
+      return `<strong class="match-part prefix-hl">${escapeHtml(query)}</strong><span class="rest-part">${escapeHtml(word.slice(query.length))}</span>`;
+    }
+    return escapeHtml(word);
+  }
+
+  function highlightSuffix(word, query) {
+    if (word.endsWith(query)) {
+      return `<span class="rest-part">${escapeHtml(word.slice(0, -query.length))}</span><strong class="match-part suffix-hl">${escapeHtml(query)}</strong>`;
+    }
+    return escapeHtml(word);
+  }
+
+  function highlightContains(word, query) {
+    const idx = word.indexOf(query);
+    if (idx !== -1) {
+      const before = word.slice(0, idx);
+      const after = word.slice(idx + query.length);
+      return `<span class="rest-part">${escapeHtml(before)}</span><strong class="match-part contains-hl">${escapeHtml(query)}</strong><span class="rest-part">${escapeHtml(after)}</span>`;
+    }
+    return escapeHtml(word);
+  }
+
+  function highlightCharMatch(word, query) {
+    const queryChars = new Set(query.split(''));
+    let res = '';
+    for (const ch of word) {
+      if (queryChars.has(ch)) {
+        res += `<strong class="match-part char-hl">${escapeHtml(ch)}</strong>`;
+      } else {
+        res += `<span class="rest-part">${escapeHtml(ch)}</span>`;
+      }
+    }
+    return res;
+  }
+
+  function getStratBadge(wordObj) {
+    if (!wordObj) return '';
+    if (wordObj.isKilling || wordObj.outCount === 0) {
+      return `<span class="pill-strat killing">한방</span>`;
+    }
+    if (wordObj.outCount <= 3) {
+      return `<span class="pill-strat trap">외통수</span>`;
+    }
+    return '';
+  }
+
+  function renderPartitionSection(title, icon, type, items, totalCount, highlightFn, query) {
+    if (!items || items.length === 0) return '';
+    const isTruncated = totalCount > items.length;
+    return `
+      <section class="dict-partition-section part-${type}" data-part="${type}">
+        <div class="partition-header">
+          <div class="partition-title-group">
+            <span class="partition-icon">${icon}</span>
+            <h5 class="partition-title">${title}</h5>
+            <span class="partition-count-badge">
+              ${isTruncated ? `${items.length}개 표시 (총 ${totalCount.toLocaleString()}개)` : `총 ${totalCount.toLocaleString()}개`}
+            </span>
+          </div>
+          <span class="partition-subtip">클릭 시 해당 단어로 즉시 사전 검색</span>
+        </div>
+        <div class="partition-words-grid">
+          ${items.map(item => `
+            <button type="button" class="partition-word-pill ${item.isKilling ? 'is-kill' : ''}" data-word="${escapeHtml(item.word)}" title="「${escapeHtml(item.word)}」 국어사전 검색 [${escapeHtml(item.part || '명사')}, 끝글자: '${escapeHtml(item.endChar)}']">
+              <span class="pill-text-wrap">${highlightFn(item.word, query)}</span>
+              ${getStratBadge(item)}
+            </button>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
   async function searchDictionary(word) {
     const clean = word.trim().replace(/[^\uAC00-\uD7A3]/g, '');
     if (!clean) return;
@@ -865,102 +953,269 @@ document.addEventListener('DOMContentLoaded', () => {
     dictClearBtn.style.display = 'block';
     dictEmptyState.style.display = 'none';
     dictContentArea.style.display = 'block';
-    dictContentArea.innerHTML = '<div style="text-align:center; padding: 30px; color: var(--text-muted);">국어사전 실시간 탐색 중...</div>';
+    dictContentArea.innerHTML = `
+      <div class="dict-loading-box">
+        <div class="dict-loading-spinner"></div>
+        <div class="dict-loading-text"><strong>「${escapeHtml(clean)}」</strong> 국어사전 실시간 정밀 탐색 중...</div>
+      </div>
+    `;
 
     try {
       const res = await fetch(`/api/dict/search?word=${encodeURIComponent(clean)}`);
       const data = await res.json();
 
+      const cats = data.categories || {
+        exact: null,
+        prefix: [],
+        prefixTotal: 0,
+        suffix: [],
+        suffixTotal: 0,
+        contains: [],
+        containsTotal: 0,
+        charMatch: [],
+        charMatchTotal: 0,
+        flat: [],
+        totalMatches: 0
+      };
+
+      const totalAll = (cats.exact ? 1 : 0) + (cats.prefixTotal || 0) + (cats.suffixTotal || 0) + (cats.containsTotal || 0) + (cats.charMatchTotal || 0);
+
+      // 1. 헤드워드 끝말잇기 반격 분석 카드
       let rebuttalHtml = '';
       if (data.rebuttal) {
         const r = data.rebuttal;
         let statusClass = 'safe';
-        if (r.totalCount === 0) statusClass = 'killing';
-        else if (r.totalCount <= 3) statusClass = 'trap';
+        let statusIcon = '🛡️';
+        let statusMain = `안전 글자 (상대 선택지 ${r.totalCount}개)`;
+
+        if (r.totalCount === 0) {
+          statusClass = 'killing';
+          statusIcon = '💥';
+          statusMain = `반격 불가 (상대 단어 0개 / 100% 필승 한방!)`;
+        } else if (r.totalCount <= 3) {
+          statusClass = 'trap';
+          statusIcon = '⚔️';
+          statusMain = `외통수 포위 (상대 선택지 단 ${r.totalCount}개뿐)`;
+        }
 
         rebuttalHtml = `
           <div class="dict-rebuttal-box ${statusClass}">
-            <div class="dict-rebuttal-title">⚔️ 끝글자 '${r.endChar}' 반격 분석</div>
-            <div class="dict-rebuttal-status ${statusClass}">
-              ${r.totalCount === 0 ? '💥 반격 불가 (상대 단어 0개 / 100% 필승 한방)' : (r.totalCount <= 3 ? `⚔️ 외통수 포위 (상대 선택지 ${r.totalCount}개뿐)` : `안전 글자 (상대 선택지 ${r.totalCount}개)`)}
+            <div class="dict-rebuttal-top">
+              <div class="dict-rebuttal-title">
+                <span>${statusIcon}</span>
+                <span>끝말잇기 끝소리 <strong>'${escapeHtml(r.endChar)}'</strong> 반격 분석</span>
+              </div>
+              <span class="dict-rebuttal-status-badge ${statusClass}">${statusMain}</span>
             </div>
-            ${r.samples && r.samples.length > 0 ? `<div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">상대 가능 단어 예시: ${r.samples.slice(0, 5).join(', ')}</div>` : ''}
+            ${r.samples && r.samples.length > 0 ? `
+              <div class="dict-rebuttal-samples">
+                <span class="sample-label">상대방 가능 반격 어휘:</span>
+                <span class="sample-words">${r.samples.slice(0, 6).map(s => `<code>${escapeHtml(s)}</code>`).join(' ')}</span>
+              </div>
+            ` : `
+              <div class="dict-rebuttal-samples">
+                <span class="sample-words killing-note">상대방이 낼 수 있는 공인 단어가 국어사전에 전무하여 즉시 승리합니다!</span>
+              </div>
+            `}
           </div>
         `;
       }
 
-      let matchedHtml = '';
-      if (data.matchedWords && data.matchedWords.length > 0) {
-        matchedHtml = `
-          <div class="dict-matched-section">
-            <h5>📚 연관 공인 단어 (${data.matchedCount}개)</h5>
-            <div class="dict-word-chips-grid">
-              ${data.matchedWords.slice(0, 36).map(item => `
-                <button type="button" class="matched-word-pill" data-word="${item.word}" title="이 단어로 검색">
-                  ${item.word}
-                </button>
-              `).join('')}
-            </div>
-          </div>
-        `;
+      // 2. 표제어 뜻풀이 포맷팅
+      let meaningsHtml = '';
+      if (data.meanings && data.meanings.length > 0) {
+        if (data.meanings.length === 1) {
+          meaningsHtml = `<div class="dict-single-meaning">${escapeHtml(data.meanings[0])}</div>`;
+        } else {
+          meaningsHtml = `
+            <ol class="dict-meaning-list">
+              ${data.meanings.slice(0, 4).map(m => `<li>${escapeHtml(m)}</li>`).join('')}
+            </ol>
+          `;
+        }
+      } else {
+        meaningsHtml = `<div class="dict-single-meaning unverified-msg">네이버 국어사전에 구체적인 뜻풀이가 등재되지 않은 단어입니다.</div>`;
       }
 
-      dictContentArea.innerHTML = `
-        <div class="dict-card">
-          <div class="dict-card-head">
-            <div class="dict-head-word-wrap">
-              <span class="dict-card-word">${data.word || clean}</span>
-              <span class="dict-verified-pill">✅ 국어사전 공인 등재</span>
+      // 3. 초대형 표제어 히어로 카드 (처음에 일치하는거 크게 뜨고!)
+      const isVerified = !!data.isVerified;
+      const heroWord = data.word || clean;
+      const heroCardHtml = `
+        <div class="dict-hero-card ${isVerified ? 'verified' : 'unverified'}">
+          <div class="dict-hero-badge-bar">
+            <span class="dict-hero-seal ${isVerified ? 'verified' : 'unverified'}">
+              ${isVerified ? '🏛️ 국립국어원 / 네이버 공인 표제어' : '⚠️ 사전 미등재'}
+            </span>
+            <span class="dict-hero-pos">[${escapeHtml(data.partOfSpeech || '명사')}]</span>
+            <span class="dict-hero-source">${escapeHtml(data.source || '공인 국어사전')}</span>
+          </div>
+
+          <div class="dict-hero-main-row">
+            <h2 class="dict-hero-word-title" title="표제어: ${escapeHtml(heroWord)}">
+              ${escapeHtml(heroWord)}
+            </h2>
+            <div class="dict-hero-tag-wrap">
+              <span class="dict-hero-len">${heroWord.length}글자 어휘</span>
+              ${data.rebuttal && data.rebuttal.totalCount === 0 ? '<span class="dict-hero-kill-tag">💥 한방 단어</span>' : ''}
+              ${data.rebuttal && data.rebuttal.totalCount > 0 && data.rebuttal.totalCount <= 3 ? '<span class="dict-hero-trap-tag">⚔️ 외통수 단어</span>' : ''}
             </div>
-            <span class="dict-card-source">${data.source || '공인 국어사전'}</span>
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">
-            품사: [${data.partOfSpeech || '명사'}] · ${data.isVerified ? '✅ 공인 등재 확인' : '❌ 사전 미등재'}
+
+          <div class="dict-hero-meanings-panel">
+            <div class="meanings-header">
+              <span class="meanings-icon">📖</span>
+              <span class="meanings-caption">표준 국어사전 정의</span>
+            </div>
+            ${meaningsHtml}
           </div>
-          <div class="dict-card-meaning">
-            ${(data.meanings && data.meanings.length > 0) ? data.meanings[0] : '사전에 등록된 상세 뜻이 없습니다.'}
-          </div>
+
           ${rebuttalHtml}
-          <div class="dict-card-actions">
-            <button type="button" class="dict-action-btn dict-battle-btn" data-word="${data.word || clean}">
+
+          <div class="dict-hero-actions-bar">
+            <button type="button" class="dict-action-btn dict-battle-btn" data-word="${escapeHtml(heroWord)}">
               ⚔️ 배틀에 바로 쓰기
             </button>
-            <button type="button" class="dict-action-btn dict-copy-btn" data-word="${data.word || clean}">
-              📋 복사
+            <button type="button" class="dict-action-btn dict-copy-btn" data-word="${escapeHtml(heroWord)}">
+              📋 단어 복사
             </button>
-            <a href="${data.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`}" target="_blank" rel="noopener noreferrer" class="dict-link-btn">
+            <a href="${data.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`}" target="_blank" rel="noopener noreferrer" class="dict-action-btn dict-link-btn">
               네이버 국어사전 원문 보기 ↗
             </a>
           </div>
         </div>
-        ${matchedHtml}
       `;
+
+      // 4. 요약 바 및 파트별 필터 탭
+      const summaryBarHtml = `
+        <div class="dict-summary-bar">
+          <div class="summary-meta-line">
+            <div class="summary-left">
+              <span class="summary-pulse-icon">📚</span>
+              <span class="summary-query-text"><strong>「${escapeHtml(clean)}」</strong> 검색 결과</span>
+              <span class="summary-total-pill">총 ${totalAll.toLocaleString()}개 어휘 탐색</span>
+            </div>
+          </div>
+          <div class="dict-partition-tabs">
+            <button type="button" class="part-tab-chip active" data-filter="all">전체 (${totalAll.toLocaleString()})</button>
+            ${cats.prefixTotal > 0 ? `<button type="button" class="part-tab-chip part-prefix" data-filter="prefix">📌 앞에 들어감 (${cats.prefixTotal.toLocaleString()})</button>` : ''}
+            ${cats.suffixTotal > 0 ? `<button type="button" class="part-tab-chip part-suffix" data-filter="suffix">📎 끝에 들어감 (${cats.suffixTotal.toLocaleString()})</button>` : ''}
+            ${cats.containsTotal > 0 ? `<button type="button" class="part-tab-chip part-contains" data-filter="contains">🔍 중간에 포함 (${cats.containsTotal.toLocaleString()})</button>` : ''}
+            ${cats.charMatchTotal > 0 ? `<button type="button" class="part-tab-chip part-char" data-filter="char">💡 한 글자 일치 (${cats.charMatchTotal.toLocaleString()})</button>` : ''}
+          </div>
+        </div>
+      `;
+
+      // 5. 파트별 분할 섹션 렌더링
+      const prefixSectionHtml = renderPartitionSection(
+        `앞에 들어가는 단어 (「${escapeHtml(clean)}」 시작)`,
+        '📌',
+        'prefix',
+        cats.prefix,
+        cats.prefixTotal,
+        highlightPrefix,
+        clean
+      );
+
+      const suffixSectionHtml = renderPartitionSection(
+        `끝에 들어가는 단어 (「${escapeHtml(clean)}」(으)로 끝남)`,
+        '📎',
+        'suffix',
+        cats.suffix,
+        cats.suffixTotal,
+        highlightSuffix,
+        clean
+      );
+
+      const containsSectionHtml = renderPartitionSection(
+        `중간에 들어가는 단어 (「${escapeHtml(clean)}」 포함)`,
+        '🔍',
+        'contains',
+        cats.contains,
+        cats.containsTotal,
+        highlightContains,
+        clean
+      );
+
+      const charMatchSectionHtml = renderPartitionSection(
+        `한 글자라도 일치하는 단어 (음절 일치)`,
+        '💡',
+        'char',
+        cats.charMatch,
+        cats.charMatchTotal,
+        highlightCharMatch,
+        clean
+      );
+
+      // 전체 조합
+      dictContentArea.innerHTML = `
+        ${heroCardHtml}
+        ${summaryBarHtml}
+        <div class="dict-partitions-wrapper" id="dictPartitionsWrapper">
+          ${prefixSectionHtml}
+          ${suffixSectionHtml}
+          ${containsSectionHtml}
+          ${charMatchSectionHtml}
+          ${(!prefixSectionHtml && !suffixSectionHtml && !containsSectionHtml && !charMatchSectionHtml) ? `
+            <div class="dict-no-partitions">
+              「${escapeHtml(clean)}」과(와) 연관된 추가 어휘를 찾을 수 없습니다.
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      // 필터 탭 클릭 이벤트
+      const partitionTabs = dictContentArea.querySelectorAll('.part-tab-chip');
+      const partitionSections = dictContentArea.querySelectorAll('.dict-partition-section');
+
+      partitionTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const filter = tab.getAttribute('data-filter');
+          partitionTabs.forEach(t => t.classList.toggle('active', t === tab));
+
+          partitionSections.forEach(sec => {
+            const partType = sec.getAttribute('data-part');
+            if (filter === 'all' || filter === partType) {
+              sec.style.display = 'block';
+            } else {
+              sec.style.display = 'none';
+            }
+          });
+          if (window.soundEngine) window.soundEngine.playCopy();
+        });
+      });
 
       // 단어 사전 내 액션 버튼 연결
       const dBattleBtn = dictContentArea.querySelector('.dict-battle-btn');
       if (dBattleBtn) {
         dBattleBtn.addEventListener('click', () => {
-          applyWordToBattle(data.word || clean, true);
+          applyWordToBattle(heroWord, true);
         });
       }
 
       const dCopyBtn = dictContentArea.querySelector('.dict-copy-btn');
       if (dCopyBtn) {
         dCopyBtn.addEventListener('click', () => {
-          copyToClipboard(data.word || clean);
+          copyToClipboard(heroWord);
         });
       }
 
-      // 연관 단어 클릭 시 즉시 검색
-      dictContentArea.querySelectorAll('.matched-word-pill').forEach(pill => {
+      // 연관 단어 칩 클릭 시 즉시 검색
+      dictContentArea.querySelectorAll('.partition-word-pill').forEach(pill => {
         pill.addEventListener('click', () => {
-          searchDictionary(pill.getAttribute('data-word'));
+          const targetWord = pill.getAttribute('data-word');
+          searchDictionary(targetWord);
         });
       });
 
       if (window.soundEngine) window.soundEngine.playCopy();
     } catch (err) {
-      dictContentArea.innerHTML = '<div style="color: var(--diff-hell); text-align:center; padding: 20px;">사전 조회 중 오류가 발생했습니다.</div>';
+      dictContentArea.innerHTML = `
+        <div class="dict-error-card">
+          <div style="font-size: 2rem; margin-bottom: 8px;">⚠️</div>
+          <div style="font-weight: 700; color: var(--diff-hell); margin-bottom: 4px;">사전 조회 중 오류가 발생했습니다.</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(err.message || '네트워크 상태를 확인해주세요.')}</div>
+        </div>
+      `;
     }
   }
 

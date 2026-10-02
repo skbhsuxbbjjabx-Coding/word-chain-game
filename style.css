@@ -1661,114 +1661,326 @@ html, body {
   margin: 0 auto;
 }
 
-/* 사전 결과 카드 */
-.dict-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: 16px;
+/* ==========================================================================
+   4-3. 정통 국어사전식 검색 뷰 (초대형 표제어 카드 & 파트별 분할 일치 어휘)
+   ========================================================================== */
+.dict-loading-box {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  gap: 14px;
 }
 
-.dict-card-head {
+.dict-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(56, 189, 248, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.dict-loading-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.dict-loading-text strong {
+  color: var(--primary);
+}
+
+/* 1. 초대형 표제어 히어로 카드 (처음에 일치하는 거 크게 표시) */
+.dict-hero-card {
+  position: relative;
+  background: linear-gradient(145deg, #10192a, #0b1220 70%, #070c16);
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(56, 189, 248, 0.12);
+  animation: cardSlideIn 0.25s ease forwards;
+}
+
+.dict-hero-card.verified {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.dict-hero-card.unverified {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.1);
+}
+
+.dict-hero-badge-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
-.dict-head-word-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.dict-card-word {
-  font-size: 1.85rem;
-  font-weight: 900;
-  color: #fff;
-  letter-spacing: -0.02em;
-  text-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
-}
-
-.dict-verified-pill {
+.dict-hero-seal {
   font-size: 0.72rem;
-  font-weight: 700;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  padding: 2px 8px;
+  font-weight: 800;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
+  letter-spacing: -0.01em;
 }
 
-.dict-card-source {
-  font-size: 0.75rem;
+.dict-hero-seal.verified {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+.dict-hero-seal.unverified {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.dict-hero-pos {
+  font-size: 0.74rem;
   font-weight: 700;
   color: var(--primary);
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.1);
   padding: 2px 8px;
   border-radius: 4px;
 }
 
-.dict-card-meaning {
-  font-size: 0.86rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  background: rgba(0, 0, 0, 0.25);
-  padding: 10px 14px;
-  border-radius: 6px;
-  border-left: 3px solid var(--primary);
+.dict-hero-source {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-left: auto;
 }
 
+.dict-hero-main-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ⭐ 유저 요구: "처음에 일치하는거 크게 뜨고" -> 초대형 타이포그래피 */
+.dict-hero-word-title {
+  font-size: 2.35rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-shadow: 0 0 16px rgba(56, 189, 248, 0.6), 0 0 32px rgba(56, 189, 248, 0.3);
+  margin: 0;
+}
+
+.dict-hero-card.unverified .dict-hero-word-title {
+  color: #fef3c7;
+  text-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+}
+
+.dict-hero-tag-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dict-hero-len {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dict-hero-kill-tag {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #fecdd3;
+  background: rgba(244, 63, 94, 0.25);
+  border: 1px solid rgba(244, 63, 94, 0.6);
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+}
+
+.dict-hero-trap-tag {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #fef08a;
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+/* 표제어 뜻풀이 패널 */
+.dict-hero-meanings-panel {
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  border-left: 3.5px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dict-hero-card.unverified .dict-hero-meanings-panel {
+  border-left-color: #f59e0b;
+}
+
+.meanings-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meanings-icon {
+  font-size: 0.82rem;
+}
+
+.meanings-caption {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dict-single-meaning {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  word-break: keep-all;
+}
+
+.dict-single-meaning.unverified-msg {
+  color: #fbbf24;
+}
+
+.dict-meaning-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dict-meaning-list li::marker {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* 끝말잇기 반격 분석 카드 */
 .dict-rebuttal-box {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.65);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   transition: all 0.2s ease;
 }
 
 .dict-rebuttal-box.killing {
-  border-color: rgba(244, 63, 94, 0.5);
+  border-color: rgba(244, 63, 94, 0.55);
+  background: rgba(244, 63, 94, 0.1);
   box-shadow: 0 0 16px rgba(244, 63, 94, 0.2);
-  background: rgba(244, 63, 94, 0.08);
 }
 
 .dict-rebuttal-box.trap {
-  border-color: rgba(245, 158, 11, 0.5);
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.1);
   box-shadow: 0 0 16px rgba(245, 158, 11, 0.2);
-  background: rgba(245, 158, 11, 0.08);
 }
 
 .dict-rebuttal-box.safe {
-  border-color: rgba(16, 185, 129, 0.5);
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.45);
   background: rgba(16, 185, 129, 0.08);
 }
 
+.dict-rebuttal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .dict-rebuttal-title {
-  font-size: 0.74rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  color: #fff;
 }
 
-.dict-rebuttal-status {
-  font-size: 0.82rem;
+.dict-rebuttal-title strong {
+  color: var(--primary);
+}
+
+.dict-rebuttal-status-badge {
+  font-size: 0.74rem;
   font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
-.dict-rebuttal-status.killing { color: #f43f5e; }
-.dict-rebuttal-status.trap { color: #f59e0b; }
-.dict-rebuttal-status.safe { color: #10b981; }
+.dict-rebuttal-status-badge.killing {
+  color: #fecdd3;
+  background: rgba(244, 63, 94, 0.3);
+}
 
-.dict-card-actions {
+.dict-rebuttal-status-badge.trap {
+  color: #fef08a;
+  background: rgba(245, 158, 11, 0.3);
+}
+
+.dict-rebuttal-status-badge.safe {
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.dict-rebuttal-samples {
+  font-size: 0.76rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.dict-rebuttal-samples code {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sample-words.killing-note {
+  color: #fda4af;
+  font-weight: 700;
+}
+
+/* 표제어 액션 버튼 바 */
+.dict-hero-actions-bar {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1779,20 +1991,21 @@ html, body {
 .dict-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
   border: none;
+  text-decoration: none;
 }
 
 .dict-action-btn.dict-battle-btn {
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
 }
 
 .dict-action-btn.dict-battle-btn:hover {
@@ -1812,34 +2025,329 @@ html, body {
   transform: translateY(-1px);
 }
 
-.dict-matched-section h5 {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+.dict-action-btn.dict-link-btn {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--primary);
+  margin-left: auto;
 }
 
-.dict-word-chips-grid {
+.dict-action-btn.dict-link-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #fff;
+}
+
+/* 2. 국어사전 요약 바 및 카테고리 필터 탭 */
+.dict-summary-bar {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 16px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.matched-word-pill {
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+.summary-meta-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.summary-pulse-icon {
+  font-size: 1rem;
+}
+
+.summary-query-text {
+  font-size: 0.84rem;
+  color: var(--text-primary);
+}
+
+.summary-query-text strong {
+  color: var(--primary);
+}
+
+.summary-total-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.dict-partition-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dict-partition-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.part-tab-chip {
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-light);
-  color: var(--text-primary);
-  font-size: 0.76rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.matched-word-pill:hover {
+.part-tab-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.part-tab-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #0b0f19;
+  font-weight: 800;
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+/* 3. 파트별 분할 섹션 (앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치) */
+.dict-partitions-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dict-partition-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+/* 파트별 테두리 및 액센트 컬러 구분 */
+.dict-partition-section.part-prefix {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.04), transparent 40%), var(--bg-card);
+}
+
+.dict-partition-section.part-suffix {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.04), transparent 40%), var(--bg-card);
+}
+
+.dict-partition-section.part-contains {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.04), transparent 40%), var(--bg-card);
+}
+
+.dict-partition-section.part-char {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.04), transparent 40%), var(--bg-card);
+}
+
+.partition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.partition-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.partition-icon {
+  font-size: 1rem;
+}
+
+.partition-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.partition-count-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.part-prefix .partition-count-badge {
   background: rgba(56, 189, 248, 0.15);
-  color: var(--primary);
-  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.part-suffix .partition-count-badge {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+}
+
+.part-contains .partition-count-badge {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.part-char .partition-count-badge {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.partition-subtip {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* 파트별 단어 그리드 */
+.partition-words-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partition-word-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.partition-word-pill:hover {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.partition-word-pill.is-kill {
+  border-color: rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.partition-word-pill.is-kill:hover {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.6);
+}
+
+/* ⭐ 단어 내 일치 음절 하이라이트 (match-part vs rest-part) */
+.pill-text-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.match-part {
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.match-part.prefix-hl {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+}
+
+.match-part.suffix-hl {
+  color: #c4b5fd;
+  text-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
+}
+
+.match-part.contains-hl {
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+}
+
+.match-part.char-hl {
+  color: #34d399;
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+}
+
+.rest-part {
+  color: var(--text-secondary);
+  opacity: 0.9;
+}
+
+.partition-word-pill:hover .rest-part {
+  color: #fff;
+}
+
+/* 필 안의 한방 / 외통수 태그 */
+.pill-strat {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: -0.02em;
+}
+
+.pill-strat.killing {
+  background: rgba(244, 63, 94, 0.28);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.5);
+}
+
+.pill-strat.trap {
+  background: rgba(245, 158, 11, 0.28);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.dict-no-partitions {
+  text-align: center;
+  padding: 30px 16px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+}
+
+.dict-error-card {
+  text-align: center;
+  padding: 40px 16px;
+  background: rgba(244, 63, 94, 0.08);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: var(--radius-md);
 }
 
 /* ==========================================================================

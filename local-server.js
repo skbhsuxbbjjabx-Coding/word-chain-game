@@ -383,96 +383,113 @@ function getUnverifiedResult(word) {
   };
 }
 
-// 3-2. ⭐ 가장 일치하는 것부터 쫘르르륵 한 글자라도 일치하는 단어 검색 엔진
-function searchMatchingWords(query, limit = 100) {
-  if (!query || typeof query !== 'string') return [];
+// 3-2. ⭐ 국어사전식 파트 분할 검색 엔진 (앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치)
+function searchMatchingWords(query, limitPerCategory = 45) {
+  if (!query || typeof query !== 'string') {
+    return { exact: null, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
+  }
   const clean = query.trim().replace(/[^\uAC00-\uD7A3]/g, '');
-  if (!clean) return [];
+  if (!clean) {
+    return { exact: null, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
+  }
 
   const queryChars = new Set(clean.split(''));
-  const results = [];
+  let exact = null;
+  const prefix = [];
+  const suffix = [];
+  const contains = [];
+  const charMatch = [];
+  const flat = [];
   const seen = new Set();
 
   for (const item of wordInfoMap.values()) {
     const word = item.word;
     if (seen.has(word)) continue;
 
-    let matchTier = 0;
-    let matchType = '';
-    let matchBadge = '';
-    let matchScore = 0;
-    let matchedCharsCount = 0;
+    const endChar = word[word.length - 1];
+    const outCount = getOutDegree(endChar);
+    const wordObj = {
+      word,
+      part: item.part || '명사',
+      isPure: item.isPure,
+      length: word.length,
+      endChar,
+      outCount,
+      isKilling: outCount === 0,
+      statusText: outCount === 0 ? '한방' : (outCount <= 3 ? '외통수' : (outCount <= 20 ? '압박' : '안전'))
+    };
 
     // 1) 완전 일치 (100% 동일)
     if (word === clean) {
-      matchTier = 1;
-      matchType = 'EXACT';
-      matchBadge = '🎯 100% 완전 일치';
-      matchScore = 100000;
-    }
-    // 2) 접두사 일치 (검색어로 시작)
-    else if (word.startsWith(clean)) {
-      matchTier = 2;
-      matchType = 'PREFIX';
-      matchBadge = '📌 시작 일치';
-      matchScore = 80000 - (word.length * 1000);
-    }
-    // 3) 접미사 일치 (검색어로 끝남)
-    else if (word.endsWith(clean)) {
-      matchTier = 3;
-      matchType = 'SUFFIX';
-      matchBadge = '📎 끝 일치';
-      matchScore = 60000 - (word.length * 1000);
-    }
-    // 4) 포함 일치 (검색어 단어 전체가 중간에 포함됨)
-    else if (word.includes(clean)) {
-      matchTier = 4;
-      matchType = 'CONTAINS';
-      matchBadge = '🔍 포함 일치';
-      matchScore = 40000 - (word.length * 1000);
-    }
-    // 5) 한 글자라도 일치 (검색어의 음절이 하나 이상 포함됨)
-    else {
-      for (const ch of queryChars) {
-        if (word.includes(ch)) {
-          matchedCharsCount++;
-        }
-      }
-      if (matchedCharsCount > 0) {
-        matchTier = 5;
-        matchType = 'CHAR_MATCH';
-        matchBadge = `💡 ${matchedCharsCount}글자 일치`;
-        matchScore = (matchedCharsCount * 6000) - (word.length * 600);
-      }
-    }
-
-    if (matchScore > 0) {
       seen.add(word);
-      const endChar = word[word.length - 1];
-      const outCount = getOutDegree(endChar);
-
-      results.push({
-        word,
-        part: item.part || '명사',
-        isPure: item.isPure,
-        length: word.length,
-        matchTier,
-        matchType,
-        matchBadge,
-        matchScore: matchScore + (item.isPure ? 1500 : 0) + (outCount === 0 ? 3000 : 0),
-        matchedCharsCount,
-        endChar,
-        outCount,
-        isKilling: outCount === 0,
-        statusText: outCount === 0 ? '💥 한방' : (outCount <= 3 ? '⚔️ 외통수' : (outCount <= 20 ? '압박' : '안전'))
-      });
+      wordObj.matchType = 'EXACT';
+      wordObj.matchBadge = '🎯 100% 완전 일치';
+      exact = wordObj;
+      flat.push(wordObj);
+    }
+    // 2) 앞에 들어가는 단어 (접두사 일치)
+    else if (word.startsWith(clean)) {
+      seen.add(word);
+      wordObj.matchType = 'PREFIX';
+      wordObj.matchBadge = '📌 시작 일치';
+      prefix.push(wordObj);
+      flat.push(wordObj);
+    }
+    // 3) 끝에 들어가는 단어 (접미사 일치)
+    else if (word.endsWith(clean)) {
+      seen.add(word);
+      wordObj.matchType = 'SUFFIX';
+      wordObj.matchBadge = '📎 끝 일치';
+      suffix.push(wordObj);
+      flat.push(wordObj);
+    }
+    // 4) 중간에 들어가는 단어 (포함 일치)
+    else if (word.includes(clean)) {
+      seen.add(word);
+      wordObj.matchType = 'CONTAINS';
+      wordObj.matchBadge = '🔍 중간 포함';
+      contains.push(wordObj);
+      flat.push(wordObj);
+    }
+    // 5) 한 글자라도 일치 (음절 일치)
+    else {
+      let matchedCount = 0;
+      for (const ch of queryChars) {
+        if (word.includes(ch)) matchedCount++;
+      }
+      if (matchedCount > 0) {
+        seen.add(word);
+        wordObj.matchType = 'CHAR_MATCH';
+        wordObj.matchBadge = `💡 ${matchedCount}글자 일치`;
+        wordObj.matchedCount = matchedCount;
+        charMatch.push(wordObj);
+        flat.push(wordObj);
+      }
     }
   }
 
-  // 일치도 점수 높은 순(내림차순), 점수 같으면 단어 길이 짧은 순(오름차순)
-  results.sort((a, b) => b.matchScore - a.matchScore || a.length - b.length);
+  // 짧은 단어 및 순수 어휘 우선 정렬
+  const sorter = (a, b) => (b.isPure ? 1 : 0) - (a.isPure ? 1 : 0) || a.length - b.length;
+  prefix.sort(sorter);
+  suffix.sort(sorter);
+  contains.sort(sorter);
+  charMatch.sort((a, b) => (b.matchedCount || 0) - (a.matchedCount || 0) || sorter(a, b));
 
-  return results.slice(0, limit);
+  const totalMatches = (exact ? 1 : 0) + prefix.length + suffix.length + contains.length + charMatch.length;
+
+  return {
+    exact,
+    prefix: prefix.slice(0, limitPerCategory),
+    prefixTotal: prefix.length,
+    suffix: suffix.slice(0, limitPerCategory),
+    suffixTotal: suffix.length,
+    contains: contains.slice(0, limitPerCategory),
+    containsTotal: contains.length,
+    charMatch: charMatch.slice(0, limitPerCategory),
+    charMatchTotal: charMatch.length,
+    flat: flat.slice(0, 100),
+    totalMatches
+  };
 }
 
 // 상대방 되받아칠 단어 정밀 분석 헬퍼
@@ -1386,16 +1403,29 @@ async function handleRequest(req, res) {
       rebuttal = getRebuttalAnalysis(lastChar);
     }
 
-    // ⭐ 가장 일치하는 것부터 쫘르르륵 한 글자라도 일치하는 단어 최대 100개 추출
-    const matchedWords = clean ? searchMatchingWords(clean, 100) : [];
+    // ⭐ 가장 일치하는 것부터 쫘르르륵 한 글자라도 일치하는 단어 파트별 분류 추출
+    const searchResult = clean ? searchMatchingWords(clean, 48) : {
+      exact: null,
+      prefix: [],
+      prefixTotal: 0,
+      suffix: [],
+      suffixTotal: 0,
+      contains: [],
+      containsTotal: 0,
+      charMatch: [],
+      charMatchTotal: 0,
+      flat: [],
+      totalMatches: 0
+    };
 
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({
       ...(info || getUnverifiedResult(clean)),
       rebuttal,
       queryWord: clean,
-      matchedCount: matchedWords.length,
-      matchedWords
+      matchedCount: searchResult.totalMatches,
+      matchedWords: searchResult.flat,
+      categories: searchResult
     }));
     return;
   }
