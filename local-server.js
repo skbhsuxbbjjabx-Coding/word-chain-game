@@ -830,15 +830,53 @@ async function findUltimateBestWord(inputChar, options = {}) {
   }
 
   // --------------------------------------------------------------------------
-  // 🎯 계층적 우선순위 결정: 1순위 -> 2순위 -> 3순위 -> 4순위 -> 차선책
+  // 🎯 계층적 우선순위 결정: 난이도별 가중치 (쉬움, 중간, 어려움, 헬)
   // --------------------------------------------------------------------------
-  const tierBuckets = [
-    { list: tier1_instantKill, num: 1 },
-    { list: tier2_forcedWin, num: 2 },
-    { list: tier3_nearKill, num: 3 },
-    { list: tier4_safePlay, num: 4 },
-    { list: tier5_desperate, num: 5 }
-  ];
+  const diffRaw = String(options.difficulty || 'hell').toLowerCase();
+  let diff = 'hell';
+  if (diffRaw === 'easy' || diffRaw === '쉬움') diff = 'easy';
+  else if (diffRaw === 'normal' || diffRaw === '중간') diff = 'normal';
+  else if (diffRaw === 'hard' || diffRaw === '어려움') diff = 'hard';
+
+  let tierBuckets;
+  if (diff === 'easy') {
+    // [쉬움]: 플레이어가 편하게 이어갈 수 있도록 안전 수(반격 선택지 많은 단어) 우선 추천! 한방 단어 회피
+    tier4_safePlay.sort((a, b) => b.outCount - a.outCount || b.score - a.score);
+    tierBuckets = [
+      { list: tier4_safePlay, num: 4 },
+      { list: tier3_nearKill, num: 3 },
+      { list: tier5_desperate, num: 5 },
+      { list: tier2_forcedWin, num: 2 },
+      { list: tier1_instantKill, num: 1 }
+    ];
+  } else if (diff === 'normal') {
+    // [중간]: 안전 수 우선 및 균형 있는 랠리
+    tierBuckets = [
+      { list: tier4_safePlay, num: 4 },
+      { list: tier3_nearKill, num: 3 },
+      { list: tier2_forcedWin, num: 2 },
+      { list: tier1_instantKill, num: 1 },
+      { list: tier5_desperate, num: 5 }
+    ];
+  } else if (diff === 'hard') {
+    // [어려움]: 2수 앞 외통수 및 치명타 우선
+    tierBuckets = [
+      { list: tier2_forcedWin, num: 2 },
+      { list: tier3_nearKill, num: 3 },
+      { list: tier1_instantKill, num: 1 },
+      { list: tier4_safePlay, num: 4 },
+      { list: tier5_desperate, num: 5 }
+    ];
+  } else {
+    // [헬]: 100% 무자비한 4단계 지능 (1순위 한방 -> 2순위 외통수 -> 3순위 치명타 -> 4순위 안전수)
+    tierBuckets = [
+      { list: tier1_instantKill, num: 1 },
+      { list: tier2_forcedWin, num: 2 },
+      { list: tier3_nearKill, num: 3 },
+      { list: tier4_safePlay, num: 4 },
+      { list: tier5_desperate, num: 5 }
+    ];
+  }
 
   let best = null;
   let bestDict = null;
@@ -846,8 +884,6 @@ async function findUltimateBestWord(inputChar, options = {}) {
   let chosenTierList = [];
 
   // ⭐ [네이버 국어사전 100% 실시간 실존 검증 루프]
-  // 1순위 -> 2순위 -> 3순위 -> 4순위 순으로 탐색하되,
-  // 반드시 네이버 국어사전에 실제로 등재되어 뜻풀이가 확인된(isVerified === true) 단어만 채택!
   for (const bucket of tierBuckets) {
     if (bucket.list.length === 0) continue;
     bucket.list.sort((a, b) => b.score - a.score || a.length - b.length);
@@ -1009,15 +1045,26 @@ function parseUserTargetChar(message) {
   return pureHangul.length > 0 ? pureHangul[0] : '';
 }
 
-// 7. 자연스러운 AI 대화 & 전략 브리핑 (4단계 지능 사고 과정 완벽 안내)
-async function generateAiChatResponse(message, history = []) {
+// 7. AI브리핑 & 전략 참모 (1순위 한방 -> 2순위 외통수 -> 3순위 안전수 -> 4순위 차선책 및 흐름 모드)
+async function generateAiChatResponse(message, history = [], options = {}) {
   const trimmed = message.trim();
   const targetChar = parseUserTargetChar(trimmed);
 
+  const flowMode = !!options.flowMode;
+  const briefedWords = Array.isArray(options.briefedWords) ? options.briefedWords : [];
+  const usedWords = flowMode && briefedWords.length > 0 ? new Set(briefedWords) : new Set();
+
   if (targetChar) {
-    const analysis = await findUltimateBestWord(targetChar);
+    const analysis = await findUltimateBestWord(targetChar, { usedWords, difficulty: 'hell' });
 
     if (!analysis || !analysis.ultimateWord) {
+      if (flowMode && usedWords.size > 0) {
+        return {
+          text: `🔄 **[흐름 모드 안내]**\n\n'${targetChar}'(으)로 시작하는 공인 단어 중 사전에 등록된 모든 유효 추천 어휘를 이미 알려드렸습니다! (${usedWords.size}개 완료)\n\n새로운 추천을 받으시려면 상단의 **[채팅 초기화]**를 누르시거나 **[흐름 모드]**를 잠시 꺼주세요.`,
+          flowExhausted: true
+        };
+      }
+
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
       if (pureWord.length >= 2) {
         const selfDict = await queryNaverDictionary(pureWord);
@@ -1025,7 +1072,7 @@ async function generateAiChatResponse(message, history = []) {
           return {
             text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **절대 승리 한방 단어**입니다!\n\n` +
                   `끝글자 **'${targetChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 실전 끝말잇기 배틀에서 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 즉시 패배합니다!\n\n` +
-                  `📚 **네이버 국어사전 공식 뜻**: ${selfDict.meanings[0]}`
+                  `📚 **공인 사전 공식 뜻**: ${selfDict.meanings[0]} (${selfDict.source})`
           };
         }
       }
@@ -1041,52 +1088,67 @@ async function generateAiChatResponse(message, history = []) {
     let speech = '';
     if (tierNum === 1) {
       speech = `💥 **'${targetChar}'**(으)로 이어질 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
-               `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 상대방은 어떤 반격도 하지 못하고 **단 1수로 즉시 100% 승리(한방)**합니다!`;
-    } else if (tierNum === 2) {
-      speech = `⚔️ **'${targetChar}'**(으)로 이어질 **[2순위: 반격해도 한방인 외통수 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
-               `1순위 즉시 한방 단어가 없어 2순위 외통수 단어를 선택했습니다. 상대방의 다음 선택지가 단 **${ultimate.outCount}개**로 제한되며, 상대가 어떤 단어로 반격하든 내 다음 턴에 100% 한방 단어로 즉시 격파하는 **필승 2수 앞 덫**입니다!`;
-    } else if (tierNum === 3) {
-      speech = `🔥 **'${targetChar}'**(으)로 이어질 **[3순위: 거의 한방급 치명타 단어]**는 **「${ultimate.word}」**입니다!\n\n` +
-               `1·2순위 한방 어휘가 없어 3순위 치명타 단어를 선택했습니다. 상대방의 다음 선택지가 국어사전 전체에서 단 **${ultimate.outCount}개**뿐이며, 상대에게 나를 한방으로 보내는 역공 수가 전혀 없어 상대방을 완벽히 질식시킵니다!`;
+               `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 상대방은 어떤 반격도 하지 못하고 **단 1수로 즉시 100% 승리(한방)**합니다!\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+    } else if (tierNum === 2 || tierNum === 3) {
+      speech = `⚔️ **'${targetChar}'**(으)로 이어질 **[2순위: 되받아칠 단어가 거의 없는 외통수 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+               `1순위 즉시 한방 단어가 없어 선택했습니다. 상대방의 다음 선택지가 국어사전 전체에서 단 **${ultimate.outCount}개**(${ultimate.minimax.samples.slice(0, 3).join(', ')})뿐이며, 다음 턴 100% 한방으로 격파하는 **필승 2수 앞 덫**입니다!\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else if (tierNum === 4) {
-      speech = `🛡️ **'${targetChar}'**(으)로 이어질 **[4순위: 안전하게 쓸 수 있는 방어 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
-               `상대의 한방 역공(자살수)을 원천 차단하면서 안전하게 주도권을 유지하고 랠리를 이어가는 최선의 단어입니다.`;
+      speech = `🛡️ **'${targetChar}'**(으)로 이어질 **[3순위: 한방단어에 당하지 않는 안전 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+               `상대의 한방 역공(자살수)을 원천 차단하면서 안정적으로 주도권을 쥐고 랠리를 이어가는 최선의 안전 수입니다.\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else {
-      speech = `⚠️ **'${targetChar}'**(으)로 이어갈 차선책 단어로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
-               `상대의 역공 위험을 최소화하면서 침착하게 전세를 만회해 나가는 수 싸움입니다.`;
+      speech = `⚠️ **'${targetChar}'**(으)로 이어갈 **[4순위: 할 수라도 있는 차선책 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+               `상대의 역공 위험이 다소 있으나 현재 상황에서 유효하게 전세를 만회해 나가는 유일한 수입니다.\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+    }
+
+    if (flowMode) {
+      speech += `\n\n🌊 *[흐름 모드 ON: 이전에 추천한 단어는 다시 나오지 않습니다 (누적 ${briefedWords.length + 1}개)]*`;
     }
 
     return {
       text: speech,
       analysis,
-      hasUltimateCard: true
+      hasUltimateCard: true,
+      briefedWord: ultimate.word,
+      briefedWords: [...briefedWords, ultimate.word],
+      tierNumber: tierNum,
+      flowMode
     };
   }
 
   if (trimmed.includes('안녕') || trimmed.includes('반가워')) {
     return {
-      text: `안녕하세요! ⚡ **끝말잇기 마스터 AI**입니다.\n\n약 52만 개에 달하는 **네이버 국어사전 & 표준국어대사전 전수 어휘**와 **4단계 계층적 지능 의사결정 엔진**을 탑재하였습니다:\n\n1. 💥 **1순위 (즉시 한방)**: 상대 반격 0개로 즉시 끝나는 필승 단어\n2. ⚔️ **2순위 (반격해도 한방)**: 상대의 어떤 반격도 100% 한방으로 되받아치는 2수 앞 외통수\n3. 🔥 **3순위 (거의 한방급)**: 상대 선택지가 1~4개뿐인 치명적 포위 단어\n4. 🛡️ **4순위 (안전 방어)**: 상대 한방을 완벽히 피하고(자살수 원천 차단) 안전하게 쓸 수 있는 단어\n\n지금 바로 채팅창에 **앞글자**(예: *'기'*, *'하'*, *'산기슭'*)를 입력해보세요!`
+      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n🌊 **흐름 모드**를 켜시면 한 번 알려준 단어는 중복 추천되지 않습니다!\n지금 바로 앞글자(예: *'기'*, *'산기슭'*)를 입력해보세요!`
     };
   }
 
   if (trimmed.includes('두음') || trimmed.includes('두음법칙')) {
     return {
-      text: `📖 **국립국어원 표준 두음법칙 안내**:\n\n1. **ㄴ 두음법칙**: '녀, 뇨, 뉴, 니' → **'여, 요, 유, 이'** (예: 남녀 → **녀/여** → 여자)\n2. **ㄹ 두음법칙**:\n   - '랴, 려, 례, 료, 류, 리' → **'야, 여, 예, 요, 유, 이'** (예: 기류 → **류/유** → 유리)\n   - '라, 로, 루, 르, 래, 레, 뢰' → **'나, 노, 누, 느, 내, 네, 뇌'** (예: 미래 → **래/내** → 내일)\n\n제 알고리즘은 두음법칙 분기를 실시간으로 교차 계산하여 숨겨진 승리 단어까지 놓치지 않습니다!`
+      text: `📖 **국립국어원 표준 두음법칙 안내 (제10항·제11항 정방향만 적용)**:\n\n1. **ㄴ 두음법칙 (제10항)**: '냐, 녀, 녜, 뇨, 뉴, 니' → **'야, 여, 예, 요, 유, 이'** (초성 ㄴ → ㅇ)\n   * 역방향(니 → 리: '리튬' 등)은 엄격히 차단됩니다!\n2. **ㄹ 두음법칙 (제11항)**:\n   - '랴, 려, 례, 료, 류, 리' → **'야, 여, 예, 요, 유, 이'** (초성 ㄹ → ㅇ)\n   - '라, 로, 루, 르, 래, 뢰...' → **'나, 노, 누, 느, 내, 뇌...'** (초성 ㄹ → ㄴ)\n\n알고리즘이 정방향 두음법칙을 완벽 계산하여 최적의 단어를 찾아냅니다!`
     };
   }
 
   return {
-    text: `어떤 글자로 이어갈지 고민되시나요? 🤔\n\n원하시는 **앞글자**(예: *'기'*, *'나'*, *'스'*)나 **상대방이 낸 단어**를 입력해주시면,\n\n**[1순위 즉시 한방 ➔ 2순위 반격해도 한방 ➔ 3순위 거의 한방급 ➔ 4순위 안전 방어]** 순서로 완벽하게 계산된 최선의 단어를 즉시 알려드리겠습니다!`
+    text: `어떤 글자로 이어갈지 고민되시나요? 🤔\n\n원하시는 **앞글자**(예: *'기'*, *'나'*, *'스'*)나 **상대방이 낸 단어**를 입력해주시면,\n\n**[1순위 한방 단어 ➔ 2순위 되받아칠 단어 거의 없는 단어 ➔ 3순위 한방 피하는 단어 ➔ 4순위 할수라도 있는 단어]** 순서로 계산된 최적의 수를 브리핑해 드립니다!`
   };
 }
 
-// 7. 실시간 끝말잇기 게임 엔진 (PvE 대결) - 4단계 지능 탑재 & 네이버 사전 전수 연동
-async function processGameMove(userWord, gameHistory = [], difficulty = 'master') {
+// 8. 실시간 끝말잇기 게임 엔진 (PvE 대결) - 4단계 난이도 (쉬움, 중간, 어려움, 헬)
+async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') {
   const cleanWord = userWord.trim().replace(/[^\uAC00-\uD7A3]/g, '');
 
   if (cleanWord.length < 2) {
     return { success: false, message: '단어는 최소 2글자 이상이어야 합니다.' };
   }
+
+  const diffRaw = String(difficulty || 'hell').toLowerCase();
+  let diff = 'hell';
+  if (diffRaw === 'easy' || diffRaw === '쉬움') diff = 'easy';
+  else if (diffRaw === 'normal' || diffRaw === '중간') diff = 'normal';
+  else if (diffRaw === 'hard' || diffRaw === '어려움') diff = 'hard';
 
   const usedSet = new Set(gameHistory.map(h => h.word));
   if (usedSet.has(cleanWord)) {
@@ -1120,11 +1182,14 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'master'
   const userSource = dictCheck.source || '국립국어원 우리말샘 / 표준국어대사전';
   const userLink = dictCheck.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
 
-  // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵(AI 수읽기, 반격 계산)에도 영구 동기화!
+  // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵에도 영구 동기화!
   registerDynamicWord(cleanWord, userPartOfSpeech);
 
   const nextTargetChar = cleanWord[cleanWord.length - 1];
-  const analysis = await findUltimateBestWord(nextTargetChar, { usedWords: new Set([...usedSet, cleanWord]) });
+  const analysis = await findUltimateBestWord(nextTargetChar, { 
+    usedWords: new Set([...usedSet, cleanWord]),
+    difficulty: diff
+  });
 
   if (!analysis || !analysis.ultimateWord) {
     return {
@@ -1255,11 +1320,14 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // API 2: 챗봇
+  // API 2: AI브리핑
   if (pathname === '/api/chat' && req.method === 'POST') {
     try {
       const data = await parseRequestBody(req);
-      const reply = await generateAiChatResponse(data.message || '', data.history || []);
+      const reply = await generateAiChatResponse(data.message || '', data.history || [], {
+        flowMode: !!data.flowMode,
+        briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : []
+      });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(reply));
     } catch (err) {
@@ -1299,7 +1367,7 @@ async function handleRequest(req, res) {
   if (pathname === '/api/game/move' && req.method === 'POST') {
     try {
       const data = await parseRequestBody(req);
-      const result = await processGameMove(data.userWord || '', data.history || [], data.difficulty || 'master');
+      const result = await processGameMove(data.userWord || '', data.history || [], data.difficulty || 'hell');
 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));

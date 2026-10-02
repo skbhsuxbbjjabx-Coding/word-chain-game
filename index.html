@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>끝말잇기 AI - 우리말샘 & 네이버 사전 연동</title>
-  <meta name="description" content="국립국어원 우리말샘 및 네이버 국어사전 공인 표제어 100% 연동, 정방향 두음법칙 준수 미니멀 끝말잇기 배틀">
+  <meta name="description" content="국립국어원 우리말샘 및 네이버 국어사전 공인 표제어 기반의 정통 끝말잇기 배틀, AI브리핑(흐름 모드), 단어 사전 및 4단계 난이도">
   
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
@@ -13,101 +13,261 @@
 
   <div class="app-layout">
     
-    <!-- 1. 미니멀 헤더 -->
+    <!-- 글로벌 상단 헤더 (PC & 모바일 공통) -->
     <header class="app-header">
-      <div class="brand-group">
-        <span class="brand-symbol">⚡</span>
-        <div class="brand-titles">
-          <h1>끝말잇기 AI</h1>
-          <span class="brand-subtitle">우리말샘 · 네이버 사전 연동</span>
+      <div class="header-left">
+        <div class="brand-group">
+          <span class="brand-symbol">⚡</span>
+          <div class="brand-titles">
+            <h1>끝말잇기 AI <span class="version-tag">PRO</span></h1>
+            <span class="brand-subtitle">우리말샘 · 네이버 사전 연동</span>
+          </div>
         </div>
+
+        <!-- 모바일 & PC 탭 네비게이션 -->
+        <nav class="app-nav" id="appNav">
+          <button class="nav-tab active" data-tab="battle">
+            <span class="nav-icon">⚔️</span>
+            <span class="nav-text">끝말잇기 배틀</span>
+          </button>
+          <button class="nav-tab" data-tab="briefing">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-text">AI브리핑</span>
+          </button>
+          <button class="nav-tab" data-tab="dict">
+            <span class="nav-icon">📚</span>
+            <span class="nav-text">단어 사전</span>
+          </button>
+        </nav>
       </div>
+
       <div class="header-actions">
         <button id="soundToggleBtn" class="header-btn" title="사운드 토글" aria-label="사운드 토글">
           <span id="soundIcon">🔊</span>
+          <span class="btn-text">사운드</span>
         </button>
-        <button id="resetGameBtn" class="header-btn reset" title="새 게임 시작">
+        <button id="resetGameBtn" class="header-btn reset" title="배틀 새 게임">
           <span>🔄</span>
           <span class="btn-text">새 게임</span>
         </button>
       </div>
     </header>
 
-    <!-- 2. [제시어] 영역 -->
-    <section class="target-section" id="targetSection">
-      <div class="target-top-bar">
-        <div id="turnBadge" class="turn-badge user">
-          <span class="pulse-dot"></span>
-          <span id="turnStatusText">플레이어 차례</span>
-        </div>
-        <div id="comboBadge" class="combo-pill">
-          <span>🔥</span>
-          <span id="comboText">0 COMBO</span>
-        </div>
-      </div>
+    <!-- 메인 대시보드 뷰 (PC: 좌우 듀얼 패널 / 모바일: 선택된 탭 패널) -->
+    <div class="dashboard-container">
+      
+      <!-- 패널 1: 끝말잇기 배틀 (Battle Panel) -->
+      <section class="panel-section battle-panel active" id="panelBattle">
+        
+        <!-- [제시어] 영역 -->
+        <div class="target-section" id="targetSection">
+          <div class="target-top-bar">
+            <div id="turnBadge" class="turn-badge user">
+              <span class="pulse-dot"></span>
+              <span id="turnStatusText">플레이어 차례</span>
+            </div>
+            
+            <!-- 난이도 선택 바 (쉬움, 중간, 어려움, 헬) -->
+            <div class="difficulty-selector" id="difficultySelector">
+              <span class="diff-label">난이도:</span>
+              <div class="diff-btn-group">
+                <button class="diff-btn" data-diff="easy" title="플레이어가 편안하게 이어갈 수 있는 안전한 수">쉬움</button>
+                <button class="diff-btn" data-diff="normal" title="안전 수 우선, 균형 잡힌 랠리">중간</button>
+                <button class="diff-btn" data-diff="hard" title="2수 앞 외통수 & 치명타 공격">어려움</button>
+                <button class="diff-btn active" data-diff="hell" title="절대 한방 우선 100% 무자비한 인공지능">헬</button>
+              </div>
+            </div>
 
-      <div class="target-main-card">
-        <div class="target-char-wrap">
-          <span class="target-caption">이어받을 글자</span>
-          <div id="targetCharDisplay" class="target-char">시작</div>
-        </div>
-        <div class="target-meta-wrap">
-          <div id="dueumBadge" class="dueum-badge">원하는 단어로 시작하세요 (2자 이상)</div>
-          <div id="lastWordSummary" class="last-word-summary">
-            <span id="lastWordText" class="last-word-name">배틀 준비 완료</span>
-            <span id="lastWordMeaning" class="last-word-desc">사전에 등재된 표준 표제어만 유효합니다.</span>
+            <div id="comboBadge" class="combo-pill">
+              <span>🔥</span>
+              <span id="comboText">0 COMBO</span>
+            </div>
+          </div>
+
+          <div class="target-main-card">
+            <div class="target-char-wrap">
+              <span class="target-caption">이어받을 글자</span>
+              <div id="targetCharDisplay" class="target-char">시작</div>
+            </div>
+            <div class="target-meta-wrap">
+              <div id="dueumBadge" class="dueum-badge">원하는 단어로 시작하세요 (2자 이상)</div>
+              <div id="lastWordSummary" class="last-word-summary">
+                <span id="lastWordText" class="last-word-name">배틀 준비 완료</span>
+                <span id="lastWordMeaning" class="last-word-desc">사전에 등재된 표준 표제어만 유효합니다.</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- 3. [턴 로그] 영역 -->
-    <main class="turn-log-section" id="turnLog" aria-live="polite">
-      <div class="empty-log-state" id="emptyLogState">
-        <div class="empty-icon">🎮</div>
-        <h3>끝말잇기 배틀을 시작하세요!</h3>
-        <p>
-          국립국어원 우리말샘(약 118만 개) 및 네이버 어학사전에 정식 등재된<br>
-          유효 표제어만 인정되며, <strong>한글 맞춤법 제10항·제11항 정방향 두음법칙</strong>만 적용됩니다.
-        </p>
-        <div class="rules-chips">
-          <span class="rule-chip">✓ 비표준어/억지단어 원천 차단</span>
-          <span class="rule-chip">✓ 역방향 두음법칙(니→리 등) 금지</span>
-          <span class="rule-chip">✓ AI 환각(없는 단어) 생성 불가</span>
+        <!-- [턴 로그] 영역 -->
+        <div class="turn-log-section" id="turnLog" aria-live="polite">
+          <div class="empty-log-state" id="emptyLogState">
+            <div class="empty-icon">🎮</div>
+            <h3>끝말잇기 배틀을 시작하세요!</h3>
+            <p>
+              국립국어원 우리말샘(약 118만 개) 및 네이버 어학사전에 정식 등재된<br>
+              유효 표제어만 인정되며, <strong>한글 맞춤법 제10항·제11항 정방향 두음법칙</strong>만 적용됩니다.
+            </p>
+            <div class="rules-chips">
+              <span class="rule-chip">✓ 비표준어/억지단어 원천 차단</span>
+              <span class="rule-chip">✓ 역방향 두음법칙(니→리 등) 금지</span>
+              <span class="rule-chip">✓ AI 환각(없는 단어) 생성 불가</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
 
-    <!-- 4. [입력창] 영역 (모바일 가상 키보드 고정 레이아웃) -->
-    <footer class="input-section">
-      <form id="gameForm" class="input-form" autocomplete="off">
-        <div id="inputPrefixBadge" class="prefix-badge" title="이어받을 글자">
-          <span id="prefixChar">시작</span>
+        <!-- [입력창] 영역 (모바일 가상 키보드 고정 레이아웃) -->
+        <div class="input-section">
+          <form id="gameForm" class="input-form" autocomplete="off">
+            <div id="inputPrefixBadge" class="prefix-badge" title="이어받을 글자">
+              <span id="prefixChar">시작</span>
+            </div>
+            <input 
+              type="text" 
+              id="wordInput" 
+              class="word-input" 
+              placeholder="단어를 입력하세요 (예: 비행기)" 
+              maxlength="15"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="go"
+              required
+            >
+            <button type="submit" id="submitBtn" class="submit-btn" aria-label="단어 전송">
+              <span>입력</span>
+              <svg class="send-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+          <div id="inputFeedback" class="input-feedback" style="display: none;"></div>
         </div>
-        <input 
-          type="text" 
-          id="wordInput" 
-          class="word-input" 
-          placeholder="단어를 입력하세요 (예: 비행기)" 
-          maxlength="15"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          enterkeyhint="go"
-          required
-        >
-        <button type="submit" id="submitBtn" class="submit-btn" aria-label="단어 전송">
-          <span>입력</span>
-          <svg class="send-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
-      </form>
-      <!-- 실시간 안내 및 반려 사유 메시지 바 -->
-      <div id="inputFeedback" class="input-feedback" style="display: none;"></div>
-    </footer>
+
+      </section>
+
+      <!-- 패널 2: 보조 패널 (PC에서는 우측에 상시 표시, 모바일에서는 탭으로 전환) -->
+      <section class="panel-section auxiliary-panel" id="panelAux">
+        
+        <!-- 보조 패널 탭 헤더 (PC 전용 탭 전환) -->
+        <div class="aux-tabs-bar">
+          <button class="aux-tab-btn active" data-aux="briefing">
+            <span>⚡ AI브리핑</span>
+          </button>
+          <button class="aux-tab-btn" data-aux="dict">
+            <span>📚 단어 사전</span>
+          </button>
+        </div>
+
+        <!-- 보조 탭 1: AI브리핑 -->
+        <div class="aux-content active" id="auxBriefing">
+          <div class="briefing-control-bar">
+            <div class="flow-mode-group">
+              <label class="flow-toggle-label" title="한 번 알려준 단어는 다시 나오지 않도록 중복 차단">
+                <input type="checkbox" id="flowModeCheckbox" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-text">🌊 흐름 모드 <span id="flowCountBadge" class="flow-count">(0)</span></span>
+              </label>
+            </div>
+            <button id="clearChatBtn" class="action-mini-btn" title="채팅 및 흐름 모드 누적 초기화">
+              <span>🔄</span>
+              <span>채팅 초기화</span>
+            </button>
+          </div>
+
+          <div class="briefing-chat-messages" id="briefingMessages">
+            <div class="briefing-msg ai">
+              <div class="msg-avatar">⚡</div>
+              <div class="msg-bubble">
+                <p>안녕하세요! <strong>AI브리핑</strong>입니다.</p>
+                <p>아래 순서로 최적의 수를 계산하여 브리핑해 드립니다:</p>
+                <ol class="briefing-priority-list">
+                  <li>💥 <strong>1순위</strong>: 일단 <strong>한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
+                  <li>⚔️ <strong>2순위</strong>: 없으면 <strong>되받아칠 단어가 거의 없는 단어</strong> (외통수/치명타)</li>
+                  <li>🛡️ <strong>3순위</strong>: 없으면 <strong>한방단어에 당하지 않는 단어</strong> (안전 수)</li>
+                  <li>⚠️ <strong>4순위</strong>: 없으면 <strong>할 수라도 있는 단어</strong> (차선책)</li>
+                </ol>
+                <p class="flow-mode-note">🌊 <strong>흐름 모드</strong>가 켜져 있으면 한 번 알려드렸던 단어는 다시 알려주지 않습니다.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 빠른 질문 칩 바 -->
+          <div class="quick-chips-row" id="quickBriefingChips">
+            <button type="button" class="briefing-chip" data-char="auto">🎯 현재 제시어 최적수 브리핑</button>
+            <button type="button" class="briefing-chip" data-char="기">'기' 최적수</button>
+            <button type="button" class="briefing-chip" data-char="하">'하' 최적수</button>
+            <button type="button" class="briefing-chip" data-char="마">'마' 최적수</button>
+            <button type="button" class="briefing-chip" data-char="나">'나' 최적수</button>
+          </div>
+
+          <!-- AI브리핑 입력 폼 -->
+          <div class="briefing-input-area">
+            <form id="briefingForm" class="briefing-form" autocomplete="off">
+              <input 
+                type="text" 
+                id="briefingInput" 
+                class="briefing-input" 
+                placeholder="앞글자나 단어를 입력하세요 (예: 기, 하늘)..." 
+                autocomplete="off"
+                required
+              >
+              <button type="submit" id="briefingSendBtn" class="briefing-submit-btn" title="질문 전송">
+                <span>브리핑</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 보조 탭 2: 단어 사전 (Word Dictionary) -->
+        <div class="aux-content" id="auxDict">
+          <div class="dict-search-hero">
+            <form id="dictSearchForm" class="dict-search-form" autocomplete="off">
+              <div class="dict-input-wrap">
+                <span class="search-glass">🔍</span>
+                <input 
+                  type="text" 
+                  id="dictSearchInput" 
+                  class="dict-search-input" 
+                  placeholder="단어 또는 음절을 입력하세요 (예: 비행기, 하늘, 기)..." 
+                  autocomplete="off"
+                  required
+                >
+                <button type="button" id="dictClearBtn" class="dict-clear-btn" style="display: none;" title="지우기">✕</button>
+                <button type="submit" id="dictSearchBtn" class="dict-submit-btn">검색</button>
+              </div>
+            </form>
+
+            <div class="dict-quick-chips">
+              <span class="quick-chip-label">추천 검색:</span>
+              <button type="button" class="dict-chip" data-word="비행기">비행기</button>
+              <button type="button" class="dict-chip" data-word="알루미늄">알루미늄</button>
+              <button type="button" class="dict-chip" data-word="산기슭">산기슭</button>
+              <button type="button" class="dict-chip" data-word="해질녘">해질녘</button>
+              <button type="button" class="dict-chip" data-word="기쁨">기쁨</button>
+            </div>
+          </div>
+
+          <!-- 단어 사전 결과 뷰 -->
+          <div class="dict-results-container" id="dictResults">
+            <div class="dict-empty-state" id="dictEmptyState">
+              <div class="dict-empty-icon">📖</div>
+              <h4>국어사전 실시간 검색</h4>
+              <p>국립국어원 우리말샘(약 118만 개) 및 네이버 국어사전의 공인 표제어, 품사, 정통 뜻풀이와 끝말잇기 반격 단어 수를 실시간으로 조회합니다.</p>
+            </div>
+            <div id="dictContentArea" style="display: none;"></div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
 
   </div>
 

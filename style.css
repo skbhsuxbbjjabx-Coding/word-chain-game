@@ -1,10 +1,11 @@
 /* ==========================================================================
-   끝말잇기 AI - 정통 미니멀 디자인 시스템 (모바일 최적화 & 가상 키보드 고정)
+   끝말잇기 AI - 반응형 듀얼 시스템 (PC & 모바일 동시 완벽 최적화)
    ========================================================================== */
 
 :root {
   --bg-main: #0b0f19;
-  --bg-card: #151d2f;
+  --bg-panel: #111827;
+  --bg-card: #162032;
   --bg-card-sub: #1e293b;
   --bg-input: #0f172a;
   
@@ -16,8 +17,11 @@
   --accent-user-glow: rgba(16, 185, 129, 0.2);
   --accent-ai: #818cf8;
   --accent-ai-glow: rgba(129, 140, 248, 0.2);
-  --accent-danger: #f43f5e;
-  --accent-warning: #f59e0b;
+  
+  --diff-easy: #10b981;
+  --diff-normal: #38bdf8;
+  --diff-hard: #f59e0b;
+  --diff-hell: #f43f5e;
   
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
@@ -53,63 +57,84 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 메인 모바일 컨테이너 */
+/* 메인 프레임워크 */
 .app-layout {
   display: flex;
   flex-direction: column;
   height: 100%;
   height: 100dvh;
   width: 100%;
-  max-width: 640px;
+  max-width: 1480px;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 0%, #1e1e38 0%, #0b0f19 80%);
-  border-left: 1px solid var(--border-light);
-  border-right: 1px solid var(--border-light);
+  background: radial-gradient(circle at 50% 0%, #171d33 0%, #0b0f19 80%);
 }
 
 /* ==========================================================================
-   1. 헤더 (Header)
+   1. 헤더 (PC & 모바일 반응형 헤더)
    ========================================================================== */
 .app-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
-  background: rgba(15, 23, 42, 0.75);
+  padding: 10px 20px;
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-light);
-  z-index: 20;
+  z-index: 50;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
 }
 
 .brand-group {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-symbol {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.2));
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(129, 140, 248, 0.25));
   border: 1px solid var(--border-active);
   border-radius: 10px;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
 }
 
 .brand-titles h1 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: linear-gradient(90deg, #ffffff, #93c5fd);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.version-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  -webkit-text-fill-color: var(--primary);
 }
 
 .brand-subtitle {
@@ -118,10 +143,49 @@ html, body {
   font-weight: 500;
 }
 
+/* 탭 네비게이션 */
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tab.active {
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--primary);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+}
+
 .header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .header-btn {
@@ -146,31 +210,61 @@ html, body {
 }
 
 .header-btn.reset {
-  background: rgba(56, 189, 248, 0.1);
-  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
   color: var(--primary);
 }
 
 .header-btn.reset:hover {
-  background: rgba(56, 189, 248, 0.2);
+  background: rgba(56, 189, 248, 0.22);
 }
 
 /* ==========================================================================
-   2. [제시어] 영역 (Target Word Section)
+   2. 대시보드 레이아웃 (PC 듀얼 패널 / 모바일 탭 패널)
    ========================================================================== */
+.dashboard-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-section {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-section.active {
+  display: flex;
+}
+
+/* ==========================================================================
+   3. [끝말잇기 배틀] 패널
+   ========================================================================== */
+.battle-panel {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+/* [제시어] 영역 */
 .target-section {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: 12px 18px;
   background: rgba(15, 23, 42, 0.5);
   border-bottom: 1px solid var(--border-light);
-  z-index: 15;
 }
 
 .target-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .turn-badge {
@@ -179,7 +273,7 @@ html, body {
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
@@ -197,7 +291,7 @@ html, body {
 
 .turn-badge.gameover {
   background: rgba(244, 63, 94, 0.15);
-  color: var(--accent-danger);
+  color: #f43f5e;
   border: 1px solid rgba(244, 63, 94, 0.4);
 }
 
@@ -215,12 +309,71 @@ html, body {
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 
-.combo-pill {
-  font-size: 0.75rem;
+/* 난이도 4단계 선택 바 (쉬움, 중간, 어려움, 헬) */
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diff-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
   font-weight: 700;
+}
+
+.diff-btn-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.diff-btn {
+  padding: 3px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.diff-btn:hover {
+  color: #fff;
+}
+
+.diff-btn.active[data-diff="easy"] {
+  background: var(--diff-easy);
+  color: #0b0f19;
+}
+
+.diff-btn.active[data-diff="normal"] {
+  background: var(--diff-normal);
+  color: #0b0f19;
+}
+
+.diff-btn.active[data-diff="hard"] {
+  background: var(--diff-hard);
+  color: #0b0f19;
+}
+
+.diff-btn.active[data-diff="hell"] {
+  background: var(--diff-hell);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.4);
+}
+
+.combo-pill {
+  font-size: 0.74rem;
+  font-weight: 800;
   color: #fb923c;
   background: rgba(251, 146, 60, 0.12);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(251, 146, 60, 0.3);
 }
@@ -233,7 +386,7 @@ html, body {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 10px 14px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .target-char-wrap {
@@ -310,27 +463,24 @@ html, body {
   text-overflow: ellipsis;
 }
 
-/* ==========================================================================
-   3. [턴 로그] 영역 (Turn Log Section)
-   ========================================================================== */
+/* [턴 로그] 영역 */
 .turn-log-section {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 16px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* 빈 상태 */
 .empty-log-state {
   margin: auto;
   text-align: center;
   padding: 24px 16px;
-  max-width: 380px;
+  max-width: 400px;
 }
 
 .empty-icon {
@@ -366,7 +516,7 @@ html, body {
 }
 
 .rule-chip {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--primary);
   background: rgba(56, 189, 248, 0.08);
@@ -375,7 +525,6 @@ html, body {
   border-radius: var(--radius-full);
 }
 
-/* 턴 카드 */
 .turn-card {
   display: flex;
   flex-direction: column;
@@ -389,14 +538,8 @@ html, body {
 }
 
 @keyframes cardSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .turn-card.user {
@@ -410,7 +553,7 @@ html, body {
 }
 
 .turn-card.gameover {
-  border: 2px solid var(--accent-danger);
+  border: 2px solid var(--diff-hell);
   background: rgba(244, 63, 94, 0.1);
   text-align: center;
   align-items: center;
@@ -431,13 +574,8 @@ html, body {
   gap: 4px;
 }
 
-.turn-card.user .card-speaker {
-  color: var(--accent-user);
-}
-
-.turn-card.ai .card-speaker {
-  color: var(--accent-ai);
-}
+.turn-card.user .card-speaker { color: var(--accent-user); }
+.turn-card.ai .card-speaker { color: var(--accent-ai); }
 
 .card-turn-number {
   font-size: 0.7rem;
@@ -482,7 +620,7 @@ html, body {
   font-size: 0.8rem;
   color: var(--text-secondary);
   line-height: 1.45;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.2);
   padding: 6px 10px;
   border-radius: 6px;
   border-left: 2px solid rgba(255, 255, 255, 0.1);
@@ -517,14 +655,12 @@ html, body {
   color: var(--primary);
 }
 
-/* ==========================================================================
-   4. [입력창] 영역 (Sticky Bottom Input Bar)
-   ========================================================================== */
+/* [입력창] 영역 */
 .input-section {
   flex-shrink: 0;
   background: #0b0f19;
   border-top: 1px solid var(--border-light);
-  padding: 10px 14px max(14px, env(safe-area-inset-bottom)) 14px;
+  padding: 10px 18px max(14px, env(safe-area-inset-bottom)) 18px;
   position: relative;
   z-index: 30;
 }
@@ -568,7 +704,7 @@ html, body {
   border: none;
   outline: none;
   color: #fff;
-  font-size: 16px; /* 16px 방지: 모바일 Safari 포커스 시 뷰포트 자동 확대 차단 */
+  font-size: 16px;
   font-family: inherit;
   font-weight: 600;
 }
@@ -596,18 +732,9 @@ html, body {
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
-.submit-btn:hover {
-  opacity: 0.95;
-}
-
-.submit-btn:active {
-  transform: scale(0.97);
-}
-
-.submit-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.submit-btn:hover { opacity: 0.95; }
+.submit-btn:active { transform: scale(0.97); }
+.submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .input-feedback {
   margin-top: 6px;
@@ -632,7 +759,520 @@ html, body {
 }
 
 /* ==========================================================================
-   5. 토스트 알림 (Toast Notifications)
+   4. 보조 패널 (AI브리핑 & 단어 사전)
+   ========================================================================= */
+.auxiliary-panel {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.aux-tabs-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.8);
+  border-bottom: 1px solid var(--border-light);
+  padding: 8px 16px;
+  gap: 8px;
+}
+
+.aux-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aux-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.aux-tab-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.aux-content {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.aux-content.active {
+  display: flex;
+}
+
+/* 4-1. AI브리핑 */
+.briefing-control-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.5);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.flow-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.flow-toggle-label input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 34px;
+  height: 20px;
+  background: #334155;
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s ease;
+}
+
+.flow-toggle-label input:checked + .toggle-slider {
+  background: var(--primary);
+}
+
+.flow-toggle-label input:checked + .toggle-slider::after {
+  transform: translateX(14px);
+}
+
+.toggle-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.flow-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.action-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-mini-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.briefing-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.briefing-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 90%;
+  animation: cardSlideIn 0.2s ease forwards;
+}
+
+.briefing-msg.ai {
+  align-self: flex-start;
+}
+
+.briefing-msg.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.msg-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid var(--border-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.msg-bubble {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.briefing-msg.user .msg-bubble {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.briefing-priority-list {
+  margin: 8px 0;
+  padding-left: 20px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.flow-mode-note {
+  font-size: 0.74rem;
+  color: var(--primary);
+  margin-top: 6px;
+}
+
+.quick-chips-row {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: rgba(15, 23, 42, 0.4);
+  border-top: 1px solid var(--border-light);
+}
+
+.briefing-chip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--primary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.briefing-chip:hover {
+  background: rgba(56, 189, 248, 0.2);
+}
+
+.briefing-input-area {
+  flex-shrink: 0;
+  padding: 10px 16px max(12px, env(safe-area-inset-bottom)) 16px;
+  background: #0b0f19;
+  border-top: 1px solid var(--border-light);
+}
+
+.briefing-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.briefing-form:focus-within {
+  border-color: var(--primary);
+}
+
+.briefing-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 15px;
+  padding: 0 10px;
+  font-family: inherit;
+}
+
+.briefing-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 4-2. 단어 사전 */
+.dict-search-hero {
+  flex-shrink: 0;
+  padding: 14px 18px;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dict-search-form {
+  margin-bottom: 10px;
+}
+
+.dict-input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 4px 8px;
+  gap: 6px;
+}
+
+.dict-input-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.search-glass {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.dict-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.dict-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px;
+}
+
+.dict-submit-btn {
+  height: 36px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #0b0f19;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dict-quick-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-chip-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.dict-chip {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dict-chip:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.dict-results-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.dict-empty-state {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.dict-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+}
+
+.dict-empty-state h4 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.dict-empty-state p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+/* 사전 결과 카드 */
+.dict-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dict-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dict-card-word {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.dict-card-source {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dict-card-meaning {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+}
+
+.dict-rebuttal-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.dict-rebuttal-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.dict-rebuttal-status {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dict-rebuttal-status.killing { color: #f43f5e; }
+.dict-rebuttal-status.trap { color: #f59e0b; }
+.dict-rebuttal-status.safe { color: #10b981; }
+
+.dict-matched-section h5 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.dict-word-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.matched-word-pill {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.matched-word-pill:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* ==========================================================================
+   5. 토스트 알림
    ========================================================================== */
 .toast-container {
   position: fixed;
@@ -651,12 +1291,12 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.94);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-active);
   color: #fff;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: var(--radius-full);
   font-size: 0.82rem;
   font-weight: 600;
@@ -671,36 +1311,101 @@ html, body {
 }
 
 /* ==========================================================================
-   6. 모바일 반응형 세부 미세 조정
+   6. PC 와이드스크린 (>= 992px) 최적화: 좌우 듀얼 패널 동시 표출!
    ========================================================================== */
-@media (max-width: 480px) {
+@media (min-width: 992px) {
+  .dashboard-container {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 16px;
+    padding: 14px 20px;
+  }
+
+  .panel-section {
+    display: flex !important; /* PC에서는 배틀과 보조 패널 모두 상시 노출 */
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-nav {
+    display: none; /* PC에서는 상시 2분할이므로 상단 전체 화면 탭 숨김 */
+  }
+
+  .aux-tabs-bar {
+    display: flex; /* PC 보조 패널 내부에서 AI브리핑 / 단어 사전 전환 */
+  }
+}
+
+/* ==========================================================================
+   7. 모바일 (< 992px) 최적화: 탭 전환 & 가상 키보드 고정
+   ========================================================================== */
+@media (max-width: 991px) {
   .app-layout {
     border: none;
   }
-  
+
+  .dashboard-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-section {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .panel-section.active {
+    display: flex;
+  }
+
+  .app-nav {
+    display: flex;
+  }
+
+  .aux-tabs-bar {
+    display: none; /* 모바일에서는 상단 헤더 nav-tab으로 직접 진입 */
+  }
+
   .target-section {
-    padding: 10px 12px;
+    padding: 10px 14px;
   }
 
   .target-char-wrap {
-    min-width: 60px;
-    height: 60px;
+    min-width: 58px;
+    height: 58px;
   }
 
   .target-char {
-    font-size: 1.6rem;
+    font-size: 1.55rem;
   }
 
   .turn-log-section {
-    padding: 10px 12px;
+    padding: 10px 14px;
     gap: 10px;
   }
 
   .input-section {
-    padding: 8px 10px max(10px, env(safe-area-inset-bottom)) 10px;
+    padding: 8px 12px max(10px, env(safe-area-inset-bottom)) 12px;
   }
 
   .btn-text {
     display: none;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .difficulty-selector {
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .diff-btn-group {
+    flex: 1;
+    justify-content: space-around;
   }
 }
