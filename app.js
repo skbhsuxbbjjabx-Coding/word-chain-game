@@ -138,6 +138,190 @@ document.addEventListener('DOMContentLoaded', () => {
     inputFeedback.style.display = 'none';
   }
 
+  function copyToClipboard(text, label = '단어') {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`「${text}」 ${label}가 복사되었습니다. 📋`);
+        if (window.soundEngine) window.soundEngine.playCopy();
+      }).catch(() => {
+        fallbackCopy(text, label);
+      });
+    } else {
+      fallbackCopy(text, label);
+    }
+  }
+
+  function fallbackCopy(text, label) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(`「${text}」 ${label}가 복사되었습니다. 📋`);
+      if (window.soundEngine) window.soundEngine.playCopy();
+    } catch (e) {
+      showToast('복사에 실패했습니다.');
+    }
+  }
+
+  function applyWordToBattle(word, autoSubmit = false) {
+    if (!word) return;
+    switchTab('battle');
+    wordInput.value = word;
+    wordInput.focus();
+
+    // 입력창 시각 강조 애니메이션
+    wordInput.classList.remove('input-highlight-pulse');
+    void wordInput.offsetWidth;
+    wordInput.classList.add('input-highlight-pulse');
+
+    if (autoSubmit && !isGameOver && !isSubmitting) {
+      showToast(`「${word}」(으)로 배틀에 바로 출격합니다! ⚔️`);
+      submitWord(word);
+    } else {
+      showToast(`「${word}」 단어가 배틀 입력창에 준비되었습니다.`);
+      if (window.soundEngine) window.soundEngine.playCopy();
+    }
+  }
+
+  function inspectWordInDictionary(word) {
+    if (!word) return;
+    switchTab('dict');
+    switchAuxTab('dict');
+    searchDictionary(word);
+  }
+
+  function formatBriefingText(rawText) {
+    if (!rawText) return '';
+    let html = rawText;
+
+    // 1. 단어 강조: 「...」
+    html = html.replace(/「([^」]+)」/g, '<strong class="highlight-word-pill">「$1」</strong>');
+
+    // 2. 글자 강조: '...'
+    html = html.replace(/'([^']+)'/g, '<span class="highlight-char-pill">\'$1\'</span>');
+
+    // 3. 티어 순위 강조
+    html = html.replace(/\[1순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-1">💥 $&</span>');
+    html = html.replace(/\[2순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-2">⚔️ $&</span>');
+    html = html.replace(/\[3순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-3">🛡️ $&</span>');
+    html = html.replace(/\[4순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-4">⚠️ $&</span>');
+
+    // 4. 볼드 및 이탤릭
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // 5. 개행 처리
+    html = html.replace(/\n\n/g, '<div style="margin: 8px 0;"></div>');
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+  }
+
+  function createBriefingHeroCard(data) {
+    const analysis = data.analysis || {};
+    const ultimate = analysis.ultimateWord;
+    if (!ultimate || !ultimate.word) return null;
+
+    const word = ultimate.word;
+    const targetChar = analysis.targetChar || word[0];
+    const endChar = ultimate.endChar || word[word.length - 1];
+    const tierNum = data.tierNumber || ultimate.tierInfo?.tierNumber || 1;
+
+    let tierClass = 'tier-1';
+    let tierTitle = '💥 [1순위: 즉시 승리 한방 단어]';
+    if (tierNum === 2 || tierNum === 3) {
+      tierClass = 'tier-2';
+      tierTitle = '⚔️ [2순위: 반격 불가 외통수 단어]';
+    } else if (tierNum === 4) {
+      tierClass = 'tier-3';
+      tierTitle = '🛡️ [3순위: 한방 회피 안전 단어]';
+    } else if (tierNum >= 5) {
+      tierClass = 'tier-4';
+      tierTitle = '⚠️ [4순위: 위기 탈출 차선책]';
+    }
+
+    let killBadgeHtml = '';
+    const outCount = typeof ultimate.outCount === 'number' ? ultimate.outCount : 0;
+    if (outCount === 0) {
+      killBadgeHtml = `<div class="hero-kill-badge killing">💥 끝글자 '${endChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
+    } else if (outCount <= 3) {
+      killBadgeHtml = `<div class="hero-kill-badge trap">⚔️ 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (외통수 포위)</div>`;
+    } else {
+      killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = `briefing-hero-card ${tierClass}`;
+    card.innerHTML = `
+      <div class="hero-top-badge-row">
+        <span class="hero-tier-badge ${tierClass}">${tierTitle}</span>
+        <span class="hero-start-char-tag">시작: <strong>'${targetChar}'</strong></span>
+      </div>
+
+      <div class="hero-center-box">
+        <div class="hero-word-header">
+          <div class="hero-sub-label">🌟 AI 추천 최적수 단어</div>
+          <div class="hero-word-row">
+            <span class="hero-word-display">${word}</span>
+            <span class="hero-pos-tag">[${ultimate.partOfSpeech || '명사'}]</span>
+          </div>
+        </div>
+        ${killBadgeHtml}
+      </div>
+
+      <div class="hero-meaning-card">
+        <div class="hero-source-label">📖 ${ultimate.source || '공인 국어사전'} 공식 뜻</div>
+        <div class="hero-meaning-body">${ultimate.naverMeaning || '국어사전에 등재된 유효 표준 표제어입니다.'}</div>
+      </div>
+
+      <div class="hero-action-buttons">
+        <button type="button" class="hero-action-btn hero-battle-btn" data-word="${word}" title="이 단어로 배틀 즉시 플레이">
+          <span class="btn-icon">⚔️</span>
+          <span class="btn-text-content">
+            <strong>배틀에 바로 출격</strong>
+            <small>1-클릭 즉시 사용</small>
+          </span>
+        </button>
+        <button type="button" class="hero-action-btn hero-copy-btn" data-word="${word}" title="단어 복사">
+          <span class="btn-icon">📋</span>
+          <span>단어 복사</span>
+        </button>
+        <button type="button" class="hero-action-btn hero-dict-btn" data-word="${word}" title="국어사전에서 상세 조회">
+          <span class="btn-icon">🔍</span>
+          <span>사전 조회</span>
+        </button>
+      </div>
+    `;
+
+    // 이벤트 리스너 연결
+    const battleBtn = card.querySelector('.hero-battle-btn');
+    if (battleBtn) {
+      battleBtn.addEventListener('click', () => {
+        applyWordToBattle(word, true);
+      });
+    }
+
+    const copyBtn = card.querySelector('.hero-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        copyToClipboard(word);
+      });
+    }
+
+    const dictBtn = card.querySelector('.hero-dict-btn');
+    if (dictBtn) {
+      dictBtn.addEventListener('click', () => {
+        inspectWordInDictionary(word);
+      });
+    }
+
+    return card;
+  }
+
   soundToggleBtn.addEventListener('click', () => {
     if (window.soundEngine) {
       const isMuted = window.soundEngine.toggleMute();
@@ -217,9 +401,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTargetChar = char || '';
 
     if (!char) {
-      targetCharDisplay.textContent = '시작';
+      targetCharDisplay.innerHTML = '<span class="target-pulse-char empty">시작</span>';
       prefixChar.textContent = '시작';
-      dueumBadge.textContent = '원하는 단어로 시작하세요 (2자 이상)';
+      dueumBadge.innerHTML = '<span class="dueum-char-chip primary">자유 시작</span> 원하는 단어로 시작하세요 (2자 이상)';
       lastWordText.textContent = '배틀 준비 완료';
       lastWordMeaning.textContent = '사전에 등재된 표준 표제어만 유효합니다.';
       turnBadge.className = 'turn-badge user';
@@ -227,15 +411,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    targetCharDisplay.textContent = char;
+    targetCharDisplay.innerHTML = `<span class="target-pulse-char active">${char}</span>`;
     prefixChar.textContent = char;
 
     const variants = getDueumVariantsClient(char);
     if (variants.length > 1) {
-      const altChar = variants.find(v => v !== char);
-      dueumBadge.textContent = `두음법칙 적용: '${altChar}' 가능 ('${variants.join("', '")}')`;
+      dueumBadge.innerHTML = `두음법칙 허용: <span class="dueum-pill-group">${variants.map(v => `<span class="dueum-char-chip ${v === char ? 'primary' : 'alt'}">${v}</span>`).join(' ')}</span>`;
     } else {
-      dueumBadge.textContent = `'${char}'(으)로 시작하는 단어를 입력하세요`;
+      dueumBadge.innerHTML = `<span class="dueum-char-chip primary">'${char}'</span>(으)로 시작하는 단어를 입력하세요`;
     }
 
     if (lastWord) {
@@ -282,9 +465,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const dictUrl = link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}`;
 
     let strategyHtml = '';
-    if (!isUser && strategyBrief) {
-      strategyHtml = `<div class="card-strategy-brief">${strategyBrief}</div>`;
+    if (!isUser) {
+      let tierBadge = '';
+      if (tierNumber === 1) tierBadge = '<span class="ai-strat-pill tier-1">💥 1순위 한방</span>';
+      else if (tierNumber === 2 || tierNumber === 3) tierBadge = '<span class="ai-strat-pill tier-2">⚔️ 2순위 외통수</span>';
+      else if (tierNumber === 4) tierBadge = '<span class="ai-strat-pill tier-3">🛡️ 3순위 안전수</span>';
+      else if (tierNumber === 5) tierBadge = '<span class="ai-strat-pill tier-4">⚠️ 4순위 차선책</span>';
+      if (tierBadge || strategyBrief) {
+        strategyHtml = `<div class="card-strategy-brief">${tierBadge} ${strategyBrief || ''}</div>`;
+      }
     }
+
+    const baseWord = word.length > 1 ? word.slice(0, -1) : '';
+    const tailChar = word.slice(-1);
 
     card.innerHTML = `
       <div class="card-header-row">
@@ -292,18 +485,28 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="card-turn-number">#${turnCount}</span>
       </div>
       <div class="card-word-row">
-        <span class="card-word-text">${word}</span>
+        <span class="card-word-text">
+          <span class="word-stem">${baseWord}</span><span class="word-tail" title="다음 턴 연결 글자: '${tailChar}'">${tailChar}</span>
+        </span>
         <span class="card-pos-badge">[${posBadge}]</span>
         <span class="card-dict-source">${dictBadge}</span>
       </div>
       <div class="card-meaning">${meaning || '공인 국어사전에 등재된 유효 표준 표제어입니다.'}</div>
       ${strategyHtml}
       <div class="card-footer-row">
+        <button type="button" class="card-copy-btn" data-word="${word}" title="단어 복사">📋 복사</button>
         <a href="${dictUrl}" target="_blank" rel="noopener noreferrer" class="dict-link-btn" title="네이버 사전에서 뜻 확인">
           사전 보기 ↗
         </a>
       </div>
     `;
+
+    const copyBtn = card.querySelector('.card-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        copyToClipboard(word);
+      });
+    }
 
     turnLog.appendChild(card);
     card.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -588,10 +791,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const aiMsg = document.createElement('div');
       aiMsg.className = 'briefing-msg ai';
-      aiMsg.innerHTML = `
-        <div class="msg-avatar">⚡</div>
-        <div class="msg-bubble">${data.text || '추천 단어를 찾을 수 없습니다.'}</div>
-      `;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.innerHTML = formatBriefingText(data.text || '추천 단어를 찾을 수 없습니다.');
+
+      // 추천 단어 시각적 강조 히어로 카드 추가 (한방, 외통수, 안전수, 차선책)
+      if (data.hasUltimateCard && data.analysis && data.analysis.ultimateWord) {
+        const heroCard = createBriefingHeroCard(data);
+        if (heroCard) {
+          bubble.appendChild(heroCard);
+        }
+      }
+
+      aiMsg.innerHTML = `<div class="msg-avatar">⚡</div>`;
+      aiMsg.appendChild(bubble);
       briefingMessages.appendChild(aiMsg);
       aiMsg.scrollIntoView({ behavior: 'smooth' });
 
@@ -665,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (r.totalCount <= 3) statusClass = 'trap';
 
         rebuttalHtml = `
-          <div class="dict-rebuttal-box">
+          <div class="dict-rebuttal-box ${statusClass}">
             <div class="dict-rebuttal-title">⚔️ 끝글자 '${r.endChar}' 반격 분석</div>
             <div class="dict-rebuttal-status ${statusClass}">
               ${r.totalCount === 0 ? '💥 반격 불가 (상대 단어 0개 / 100% 필승 한방)' : (r.totalCount <= 3 ? `⚔️ 외통수 포위 (상대 선택지 ${r.totalCount}개뿐)` : `안전 글자 (상대 선택지 ${r.totalCount}개)`)}
@@ -682,7 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <h5>📚 연관 공인 단어 (${data.matchedCount}개)</h5>
             <div class="dict-word-chips-grid">
               ${data.matchedWords.slice(0, 36).map(item => `
-                <button type="button" class="matched-word-pill" data-word="${item.word}" title="이 단어 검색">
+                <button type="button" class="matched-word-pill" data-word="${item.word}" title="이 단어로 검색">
                   ${item.word}
                 </button>
               `).join('')}
@@ -694,7 +908,10 @@ document.addEventListener('DOMContentLoaded', () => {
       dictContentArea.innerHTML = `
         <div class="dict-card">
           <div class="dict-card-head">
-            <span class="dict-card-word">${data.word || clean}</span>
+            <div class="dict-head-word-wrap">
+              <span class="dict-card-word">${data.word || clean}</span>
+              <span class="dict-verified-pill">✅ 국어사전 공인 등재</span>
+            </div>
             <span class="dict-card-source">${data.source || '공인 국어사전'}</span>
           </div>
           <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">
@@ -704,7 +921,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ${(data.meanings && data.meanings.length > 0) ? data.meanings[0] : '사전에 등록된 상세 뜻이 없습니다.'}
           </div>
           ${rebuttalHtml}
-          <div style="text-align: right;">
+          <div class="dict-card-actions">
+            <button type="button" class="dict-action-btn dict-battle-btn" data-word="${data.word || clean}">
+              ⚔️ 배틀에 바로 쓰기
+            </button>
+            <button type="button" class="dict-action-btn dict-copy-btn" data-word="${data.word || clean}">
+              📋 복사
+            </button>
             <a href="${data.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`}" target="_blank" rel="noopener noreferrer" class="dict-link-btn">
               네이버 국어사전 원문 보기 ↗
             </a>
@@ -712,6 +935,21 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${matchedHtml}
       `;
+
+      // 단어 사전 내 액션 버튼 연결
+      const dBattleBtn = dictContentArea.querySelector('.dict-battle-btn');
+      if (dBattleBtn) {
+        dBattleBtn.addEventListener('click', () => {
+          applyWordToBattle(data.word || clean, true);
+        });
+      }
+
+      const dCopyBtn = dictContentArea.querySelector('.dict-copy-btn');
+      if (dCopyBtn) {
+        dCopyBtn.addEventListener('click', () => {
+          copyToClipboard(data.word || clean);
+        });
+      }
 
       // 연관 단어 클릭 시 즉시 검색
       dictContentArea.querySelectorAll('.matched-word-pill').forEach(pill => {

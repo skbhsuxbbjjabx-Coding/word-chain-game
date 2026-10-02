@@ -1069,10 +1069,38 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       if (pureWord.length >= 2) {
         const selfDict = await queryNaverDictionary(pureWord);
         if (selfDict && selfDict.isVerified && selfDict.meanings && selfDict.meanings.length > 0) {
+          const directEndChar = pureWord[pureWord.length - 1];
+          const directRebuttal = getRebuttalAnalysis(directEndChar);
+          const isDirectKilling = directRebuttal.totalCount === 0;
+
           return {
-            text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **절대 승리 한방 단어**입니다!\n\n` +
-                  `끝글자 **'${targetChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 실전 끝말잇기 배틀에서 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 즉시 패배합니다!\n\n` +
-                  `📚 **공인 사전 공식 뜻**: ${selfDict.meanings[0]} (${selfDict.source})`
+            text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **${isDirectKilling ? '절대 승리 한방 단어' : '공인 유효 표제어'}**입니다!\n\n` +
+                  (isDirectKilling
+                    ? `끝글자 **'${directEndChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 실전 끝말잇기 배틀에서 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 즉시 패배합니다!\n\n`
+                    : `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개 존재합니다.\n\n`) +
+                  `📚 **공인 사전 공식 뜻**: ${selfDict.meanings[0]} (${selfDict.source})`,
+            hasUltimateCard: true,
+            briefedWord: pureWord,
+            briefedWords: [...briefedWords, pureWord],
+            tierNumber: isDirectKilling ? 1 : 3,
+            analysis: {
+              targetChar: pureWord[0],
+              ultimateWord: {
+                word: pureWord,
+                endChar: directEndChar,
+                naverMeaning: selfDict.meanings[0],
+                source: selfDict.source,
+                outCount: directRebuttal.totalCount,
+                tierInfo: {
+                  tierNumber: isDirectKilling ? 1 : 3,
+                  name: isDirectKilling ? '1순위 한방 단어' : '공인 등재 단어',
+                  desc: isDirectKilling ? '상대 반격 0개 절대 필승' : '공인 국어사전 등재 어휘'
+                },
+                minimax: {
+                  samples: directRebuttal.samples || []
+                }
+              }
+            }
           };
         }
       }
