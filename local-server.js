@@ -26,7 +26,7 @@ const DATA_DIR = findDataDir();
 
 console.log('⚡ [WordChain AI v4.0] 서버 초기화 시작 (Minimax 2수앞 지능 엔진 & 끄투 배틀 시스템)...');
 
-// 1. 두음법칙 엔진 (국립국어원 표준 한글 맞춤법 제10~12항 규정 및 끄투 상호 교차 규칙)
+// 1. 두음법칙 엔진 (국립국어원 한글 맞춤법 제10항 및 제11항 정방향 규정만 적용, 역방향 원천 차단)
 function getDueumVariants(char) {
   if (!char || typeof char !== 'string') return [char];
   const code = char.charCodeAt(0) - 0xAC00;
@@ -37,34 +37,29 @@ function getDueumVariants(char) {
   const final = code % 28;
   const variants = [char];
 
-  // 1) ㄴ -> ㅇ 또는 ㄹ (예: 냐/녀/뇨/뉴/니 -> 야/여/요/유/이, 늄 -> 윰/륨)
+  // [한글 맞춤법 제10항] ㄴ 두음법칙
+  // 단어 첫머리의 '냐, 녀, 녜, 뇨, 뉴, 니' -> '야, 여, 예, 요, 유, 이' 변환만 허용 (초성 ㄴ -> ㅇ)
+  // * 역방향(ㄴ -> ㄹ: 예: '니' -> '리'('리튬'))은 일체 금지!
   if (initial === 2) {
-    if ([2, 6, 12, 17, 20, 7].includes(medial)) {
+    if ([2, 3, 6, 7, 12, 17, 20].includes(medial)) {
       variants.push(String.fromCharCode(0xAC00 + (11 * 588) + (medial * 28) + final));
     }
-    const rChar = String.fromCharCode(0xAC00 + (5 * 588) + (medial * 28) + final);
-    variants.push(rChar);
   }
-  // 2) ㄹ -> ㄴ 또는 ㅇ (예: 륨 -> 늄 / 윰, 랴/려/례/료/류/리 -> 야/여/예/요/유/이)
+  // [한글 맞춤법 제11항] ㄹ 두음법칙
+  // 1) '랴, 려, 례, 료, 류, 리' -> '야, 여, 예, 요, 유, 이' 변환 허용 (초성 ㄹ -> ㅇ)
+  // 2) '라, 로, 루, 르, 래, 뢰...' -> '나, 노, 누, 느, 내, 뇌...' 변환 허용 (초성 ㄹ -> ㄴ)
   else if (initial === 5) {
-    const nChar = String.fromCharCode(0xAC00 + (2 * 588) + (medial * 28) + final);
-    variants.push(nChar);
-    if ([2, 6, 7, 12, 17, 20].includes(medial)) {
+    if ([2, 3, 6, 7, 12, 17, 20].includes(medial)) {
       variants.push(String.fromCharCode(0xAC00 + (11 * 588) + (medial * 28) + final));
+    } else {
+      variants.push(String.fromCharCode(0xAC00 + (2 * 588) + (medial * 28) + final));
     }
   }
-  // 3) ㅇ -> ㄹ 또는 ㄴ (예: 윰 -> 륨 / 늄, 역 -> 력 / 녁 등 상호 연동)
-  else if (initial === 11) {
-    if ([2, 6, 7, 12, 17, 20].includes(medial)) {
-      const rChar = String.fromCharCode(0xAC00 + (5 * 588) + (medial * 28) + final);
-      const nChar = String.fromCharCode(0xAC00 + (2 * 588) + (medial * 28) + final);
-      variants.push(rChar);
-      variants.push(nChar);
-    }
-  }
+  // * ㅇ -> ㄹ/ㄴ 역방향 변환은 절대 불허 (한글 맞춤법 위배 차단)
 
   return [...new Set(variants)];
 }
+
 
 // 2. 고품질 사전 데이터 인덱싱
 const wordInfoMap = new Map();
@@ -179,141 +174,16 @@ function registerDynamicWord(word, part = '명사') {
   endMap.get(e).push(item);
 }
 
-// 2-1. 핵심 공인 필수 어휘 상시 등록 보장 (해질녘, 발가울녘, 슨몽, 화학원소, 한방 및 두음 탈출 어휘)
-const CORE_ESSENTIAL_WORDS = [
-  // [녘 계열 - 네이버 국어사전 100% 공인 한방]
-  { word: '해질녘', part: '명사' },
-  { word: '발가울넠', part: '명사' },
-  { word: '새벽녘', part: '명사' },
-  { word: '저녁녘', part: '명사' },
-  { word: '아침녘', part: '명사' },
-  { word: '황혼녘', part: '명사' },
-  { word: '동녘', part: '명사' },
-  { word: '서녘', part: '명사' },
-  { word: '남녘', part: '명사' },
-  { word: '북녘', part: '명사' },
-  { word: '들녘', part: '명사' },
-
-  // [쁨/픔 계열 - 네이버 국어사전 100% 공인 한방]
-  { word: '기쁨', part: '명사' },
-  { word: '슬픔', part: '명사' },
-  { word: '예쁨', part: '명사' },
-  { word: '바쁨', part: '명사' },
-  { word: '아픔', part: '명사' },
-
-  // [화학 원소 및 금속 한방 계열 - 네이버 국어사전 100% 공인 표제어]
-  { word: '알루미늄', part: '명사' },
-  { word: '마그네슘', part: '명사' },
-  { word: '나트륨', part: '명사' },
-  { word: '칼륨', part: '명사' },
-  { word: '헬륨', part: '명사' },
-  { word: '우라늄', part: '명사' },
-  { word: '라듐', part: '명사' },
-  { word: '바나듐', part: '명사' },
-  { word: '팔라듐', part: '명사' },
-  { word: '카드뮴', part: '명사' },
-  { word: '세슘', part: '명사' },
-  { word: '칼슘', part: '명사' },
-  { word: '베릴륨', part: '명사' },
-  { word: '스트론튬', part: '명사' },
-  { word: '루비듐', part: '명사' },
-  { word: '탈륨', part: '명사' },
-  { word: '로듐', part: '명사' },
-  { word: '인듐', part: '명사' },
-  { word: '바륨', part: '명사' },
-  { word: '오스뮴', part: '명사' },
-  { word: '이리듐', part: '명사' },
-  { word: '플루토늄', part: '명사' },
-  { word: '티타늄', part: '명사' },
-  { word: '지르코늄', part: '명사' },
-  { word: '하프늄', part: '명사' },
-  { word: '탄탈럼', part: '명사' },
-  { word: '백금', part: '명사' },
-
-  // [윰, 륨 계열 - 네이버 국어사전 100% 공인 실존 표제어]
-  { word: '윰라대왕', part: '명사' },
-  { word: '륨본드', part: '명사' },
-
-  // [릇, 릎, 탉, 슭 - 네이버 국어사전 100% 공인 한방 계열]
-  { word: '산기슭', part: '명사' },
-  { word: '밥그릇', part: '명사' },
-  { word: '국그릇', part: '명사' },
-  { word: '물그릇', part: '명사' },
-  { word: '사기그릇', part: '명사' },
-  { word: '놋그릇', part: '명사' },
-  { word: '질그릇', part: '명사' },
-  { word: '은그릇', part: '명사' },
-  { word: '무릎', part: '명사' },
-  { word: '암탉', part: '명사' },
-  { word: '수탉', part: '명사' },
-  { word: '씨암탉', part: '명사' },
-  { word: '햇닭', part: '명사' },
-  { word: '흙', part: '명사' },
-  { word: '값', part: '명사' }
-];
-
-// 상시 공인 단어 공식 뜻풀이 사전 (네이버 사전 100% 실존 표제어)
-const KNOWN_DEFINITIONS = new Map([
-  ['윰라대왕', { part: '명사', meanings: ['‘염라대왕(저승에서 지옥을 다스리는 임금)’의 방언 (강원).'], source: '네이버 국어사전 (우리말샘)' }],
-  ['륨본드', { part: '명사', meanings: ['바닥 장판용 본드. 리놀륨 본드.'], source: '네이버 국어사전 (오픈사전)' }],
-  ['발가울넠', { part: '명사', meanings: ['‘새벽’의 방언(평안). 날이 밝아 올 무렵.'], source: '네이버 국어사전 (고려대 한국어대사전)' }],
-  ['해질녘', { part: '명사', meanings: ['해가 질 무렵. (=석양녘)'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['새벽녘', { part: '명사', meanings: ['새벽이 될 무렵.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['저녁녘', { part: '명사', meanings: ['저녁이 될 무렵.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['아침녘', { part: '명사', meanings: ['아침이 될 무렵.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['황혼녘', { part: '명사', meanings: ['황혼이 질 무렵.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['동녘', { part: '명사', meanings: ['동쪽이나 동쪽이 있는 방향.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['서녘', { part: '명사', meanings: ['서쪽이나 서쪽이 있는 방향.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['남녘', { part: '명사', meanings: ['남쪽이나 남쪽이 있는 방향.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['북녘', { part: '명사', meanings: ['북쪽이나 북쪽이 있는 방향.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['들녘', { part: '명사', meanings: ['들이 있는 넓은 지역.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['기쁨', { part: '명사', meanings: ['욕구가 충족되었을 때의 흐뭇하고 흡족한 마음이나 느낌.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['슬픔', { part: '명사', meanings: ['슬픈 마음이나 느낌.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['예쁨', { part: '명사', meanings: ['예쁜 상태나 태도, 모양.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['바쁨', { part: '명사', meanings: ['일에 쫓겨 여유가 없음.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['아픔', { part: '명사', meanings: ['몸이나 마음의 통증이나 괴로움.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['알루미늄', { part: '명사', meanings: ['가볍고 은백색을 띠는 금속 원소 (원자기호 Al, 원자번호 13).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['마그네슘', { part: '명사', meanings: ['은백색의 가벼운 금속 원소 (원자기호 Mg, 원자번호 12).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['나트륨', { part: '명사', meanings: ['알칼리 금속 원소의 하나 (원자기호 Na, 원자번호 11).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['칼륨', { part: '명사', meanings: ['알칼리 금속 원소의 하나 (원자기호 K, 원자번호 19).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['헬륨', { part: '명사', meanings: ['비활성 기체 원소의 하나 (원자기호 He, 원자번호 2).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['우라늄', { part: '명사', meanings: ['방사성 악티늄족 원소 (원자기호 U, 원자번호 92).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['라듐', { part: '명사', meanings: ['알칼리 토금속에 속하는 방사성 원소 (원자기호 Ra, 원자번호 88).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['바나듐', { part: '명사', meanings: ['전이 금속 원소의 하나 (원자기호 V, 원자번호 23).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['팔라듐', { part: '명사', meanings: ['백금족 원소의 하나 (원자기호 Pd, 원자번호 46).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['카드뮴', { part: '명사', meanings: ['아연족 원소의 하나 (원자기호 Cd, 원자번호 48).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['세슘', { part: '명사', meanings: ['알칼리 금속 원소의 하나 (원자기호 Cs, 원자번호 55).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['칼슘', { part: '명사', meanings: ['알칼리 토금속 원소의 하나 (원자기호 Ca, 원자번호 20).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['베릴륨', { part: '명사', meanings: ['알칼리 토금속 원소의 하나 (원자기호 Be, 원자번호 4).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['스트론튬', { part: '명사', meanings: ['알칼리 토금속 원소의 하나 (원자기호 Sr, 원자번호 38).'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['산기슭', { part: '명사', meanings: ['산비탈이 끝나는 아랫부분.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['밥그릇', { part: '명사', meanings: ['밥을 담는 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['국그릇', { part: '명사', meanings: ['국을 담는 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['물그릇', { part: '명사', meanings: ['물을 담는 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['사기그릇', { part: '명사', meanings: ['사기로 만든 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['놋그릇', { part: '명사', meanings: ['놋쇠로 만든 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['질그릇', { part: '명사', meanings: ['진흙으로 구워 만든 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['은그릇', { part: '명사', meanings: ['은으로 만든 그릇.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['무릎', { part: '명사', meanings: ['넓적다리와 정강이의 사이에 있는 관절의 앞부분.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['암탉', { part: '명사', meanings: ['암컷인 닭.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['수탉', { part: '명사', meanings: ['수컷인 닭.'], source: '네이버 국어사전 (표준국어대사전)' }],
-  ['씨암탉', { part: '명사', meanings: ['알을 낳게 하려고 기르는 암탉.'], source: '네이버 국어사전 (표준국어대사전)' }]
-]);
-
-for (const entry of CORE_ESSENTIAL_WORDS) {
-  registerDynamicWord(entry.word, entry.part);
-}
-
 function getOutDegree(char) {
   const v = getDueumVariants(char);
   return v.reduce((acc, c) => acc + (startMap.get(c)?.length || 0), 0);
 }
 
-// 3. 네이버 국어사전 실시간 검색 엔진 (WORD + OPEN + 우리말샘 전수 연동 & 100% 공인 검증)
+// 3. 공인 국어사전 실시간 검색 엔진 (국립국어원 우리말샘 & 네이버 국어사전 WORD 공인 표제어 전수 연동)
 const naverCache = new Map();
 const MAX_CACHE_SIZE = 5000;
 
-// 네이버 국어사전 실시간 쿼리 함수 (실제 네이버 사전에 등재된 단어만 100% 공인 검증)
+// 네이버 국어사전 실시간 쿼리 함수 (실제 공인 사전에 등재된 유효 표제어만 100% 검증)
 async function queryNaverDictionary(queryWord) {
   if (!queryWord) return null;
   const clean = queryWord.trim().replace(/[^\uAC00-\uD7A3]/g, '');
@@ -325,24 +195,7 @@ async function queryNaverDictionary(queryWord) {
 
   const encoded = encodeURIComponent(clean);
 
-  // 1) 상시 등록된 필수 단어 사전 즉시 매칭
-  if (KNOWN_DEFINITIONS.has(clean)) {
-    const known = KNOWN_DEFINITIONS.get(clean);
-    const res = {
-      word: clean,
-      isVerified: true,
-      source: known.source || '네이버 국어사전 (표준국어대사전 & 우리말샘)',
-      totalMatches: 1,
-      partOfSpeech: known.part || '명사',
-      meanings: known.meanings || ['네이버 국어사전에 공인 등재된 표준 표제어입니다.'],
-      isDialectOrArchaic: known.meanings?.[0]?.includes('방언') || known.meanings?.[0]?.includes('옛말'),
-      link: `https://ko.dict.naver.com/#/search?query=${encoded}`
-    };
-    naverCache.set(clean, res);
-    return res;
-  }
-
-  // 2) 네이버 국어사전 공식 API3 실시간 조회
+  // 1) 네이버 국어사전 공식 API3 실시간 조회 (공인 사전 표제어 WORD만 조회, 비표준/오픈사전 제외)
   let apiResult = null;
   let apiResponded = false; // 네이버 API와 정상 통신 여부
 
@@ -361,16 +214,13 @@ async function queryNaverDictionary(queryWord) {
       apiResponded = true;
       const data = await res.json();
       const listMap = data?.searchResultMap?.searchResultListMap || {};
-      const allItems = [
-        ...(listMap.WORD?.items || []),
-        ...(listMap.OPEN?.items || []),
-        ...(listMap.MEANING?.items || [])
-      ];
+      // 국립국어원 표준국어대사전, 우리말샘, 고려대 한국어대사전 등 공인 표제어만 탐색 (오픈사전 제외)
+      const officialItems = listMap.WORD?.items || [];
 
       let matchedItem = null;
-      let matchedSource = '네이버 국어사전 (표준국어대사전 & 우리말샘)';
+      let matchedSource = '국립국어원 우리말샘 / 표준국어대사전';
 
-      for (const item of allItems) {
+      for (const item of officialItems) {
         // 표제어에서 HTML 태그, 첨자 숫자, 기호, 괄호, 공백 등 완전 제거 후 순수 한글만 비교
         const raw = (item.expEntry || item.handleEntry || item.expEntryRaw || '')
           .replace(/<[^>]+>/g, '')
@@ -379,14 +229,11 @@ async function queryNaverDictionary(queryWord) {
           .replace(/[^\uAC00-\uD7A3]/g, '')
           .trim();
 
+
         // ⭐ 절대 규칙: 검색어와 100% 일치할 때만 표제어로 인정! (유사/부분 일치 절대 금지)
         if (raw === clean) {
           matchedItem = item;
-          if (item.sourceDictnameKO) {
-            matchedSource = `네이버 국어사전 (${item.sourceDictnameKO})`;
-          } else if (item.isOpenDict) {
-            matchedSource = '네이버 국어사전 (오픈사전)';
-          }
+          matchedSource = item.sourceDictnameKO ? `공인 국어사전 (${item.sourceDictnameKO})` : '국립국어원 우리말샘 / 표준국어대사전';
           break;
         }
       }
@@ -419,7 +266,7 @@ async function queryNaverDictionary(queryWord) {
             word: clean,
             isVerified: true,
             source: matchedSource,
-            totalMatches: allItems.length,
+            totalMatches: officialItems.length,
             partOfSpeech,
             meanings: meanings.slice(0, 5),
             isDialectOrArchaic: meanings[0]?.includes('방언') || meanings[0]?.includes('옛말') || meanings[0]?.includes('북한어'),
@@ -693,12 +540,9 @@ async function ensureCharWordsFromNaver(char) {
       if (res.ok) {
         const data = await res.json();
         const listMap = data?.searchResultMap?.searchResultListMap || {};
-        const allItems = [
-          ...(listMap.WORD?.items || []),
-          ...(listMap.OPEN?.items || [])
-        ];
+        const officialItems = listMap.WORD?.items || [];
 
-        for (const item of allItems) {
+        for (const item of officialItems) {
           const raw = (item.expEntry || item.handleEntry || '')
             .replace(/<[^>]+>/g, '')
             .replace(/[0-9]/g, '')
@@ -782,8 +626,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
     else if (word.length === 4) qualityScore += 15000;
     else if (word.length >= 5) qualityScore -= (word.length * 60000); // 5자 이상 대폭 감점
 
-    // 대표 공인 어휘 가산점 (해질녘, 기쁨, 알루미늄, 나트륨, 칼륨, 마그네슘, 산기슭, 윰라대왕, 륨본드 등 100% 공인 필수어)
-    if (word === '해질녘' || word === '기쁨' || word === '알루미늄' || word === '나트륨' || word === '칼륨' || word === '마그네슘' || word === '산기슭' || word === '윰라대왕' || word === '륨본드') {
+    // 대표 공인 어휘 가산점 (해질녘, 기쁨, 알루미늄, 나트륨, 칼륨, 마그네슘, 산기슭 등 100% 공인 필수어)
+    if (word === '해질녘' || word === '기쁨' || word === '알루미늄' || word === '나트륨' || word === '칼륨' || word === '마그네슘' || word === '산기슭') {
       qualityScore += 200000;
     }
 
@@ -1103,6 +947,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
       supremeReason,
       naverMeaning: bestDict?.meanings?.[0] || '네이버 국어사전 공인 표제어입니다.',
       naverMeanings: bestDict?.meanings || [],
+      source: bestDict?.source || '공인 국어사전 (우리말샘 / 표준국어대사전)',
       naverLink: bestDict?.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`
     },
     alternatives: uniqueAlternatives.map((alt, idx) => ({
@@ -1266,12 +1111,14 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'master'
   if (!dictCheck || !dictCheck.isVerified) {
     return {
       success: false,
-      message: `「${cleanWord}」은(는) 네이버 국어사전에 표제어나 구체적인 뜻풀이가 등재되지 않은 단어입니다.`
+      message: `「${cleanWord}」은(는) 공인 국어사전(우리말샘 / 네이버 사전)에 등재되지 않은 단어입니다.`
     };
   }
 
-  const userMeaning = dictCheck.meanings?.[0] || '국립국어원 표준국어대사전 및 네이버 국어사전 공인 표제어입니다.';
+  const userMeaning = dictCheck.meanings?.[0] || '국립국어원 우리말샘 및 표준국어대사전 공인 표제어입니다.';
   const userPartOfSpeech = dictCheck.partOfSpeech || wordInfoMap.get(cleanWord)?.part || '명사';
+  const userSource = dictCheck.source || '국립국어원 우리말샘 / 표준국어대사전';
+  const userLink = dictCheck.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
 
   // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵(AI 수읽기, 반격 계산)에도 영구 동기화!
   registerDynamicWord(cleanWord, userPartOfSpeech);
@@ -1285,6 +1132,8 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'master'
       userWord: cleanWord,
       userMeaning,
       userPartOfSpeech,
+      userSource,
+      userLink,
       gameOver: true,
       winner: 'user',
       message: `🎉 대단합니다! '${nextTargetChar}'(으)로 시작하는 단어가 더 이상 사전에 없습니다. 플레이어의 승리입니다!`
@@ -1311,11 +1160,15 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'master'
     userWord: cleanWord,
     userMeaning,
     userPartOfSpeech,
+    userSource,
+    userLink,
     aiWord: aiChosen.word,
     aiEndChar: aiChosen.endChar,
     aiOutCount: aiChosen.outCount,
     aiMeaning: aiChosen.naverMeaning,
     aiPartOfSpeech: aiChosen.partOfSpeech,
+    aiSource: aiChosen.source,
+    aiLink: aiChosen.naverLink,
     tierNumber: tierNum,
     strategyBrief,
     gameOver: isWinningMove,
