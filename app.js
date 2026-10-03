@@ -759,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="empty-icon">🎮</div>
         <h3>끝말잇기 배틀을 시작하세요!</h3>
         <p>
-          국립국어원 우리말샘(약 118만 개) 및 네이버 어학사전에 정식 등재된<br>
+          네이버 국어사전(어학사전)에 정식 등재된<br>
           유효 표제어만 인정되며, <strong>한글 맞춤법 제10항·제11항 정방향 두음법칙</strong>만 적용됩니다.
         </p>
         <div class="rules-chips">
@@ -1162,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="dict-rebuttal-samples">
               <span class="sample-words" style="color: #fca5a5;">
-                국립국어원 표준 사전에 ‘${escapeHtml(data.spacedEntry || data.word || rawTrimmed)}’(으)로 띄어쓰기(공백)가 포함되어 등재된 어휘/구입니다.<br>
+                네이버 국어사전에 ‘${escapeHtml(data.spacedEntry || data.word || rawTrimmed)}’(으)로 띄어쓰기(공백)가 포함되어 등재된 어휘/구입니다.<br>
                 끝말잇기 공식 대원칙상 <strong>띄어쓰기가 없는 한 단어(단일어 또는 합성명사)</strong>만 유효하므로 게임에서 인정되지 않습니다.
               </span>
             </div>
@@ -1229,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const heroWord = data.word || clean || rawTrimmed;
       const sealClass = isVerified ? 'verified' : (isSpaced ? 'spaced' : 'unverified');
       const sealText = isVerified 
-        ? '🏛️ 국립국어원 / 네이버 공인 표제어' 
+        ? '🏛️ 네이버 국어사전 공인 표제어' 
         : (isSpaced ? '🚫 끝말잇기 불가 (띄어쓰기 포함 어휘/구)' : '⚠️ 사전 미등재');
       const heroCardHtml = `
         <div class="dict-hero-card ${sealClass}">

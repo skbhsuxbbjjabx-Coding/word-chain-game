@@ -253,12 +253,12 @@ function registerDynamicWord(word, part = '명사') {
   endMap.get(e).push(item);
 }
 
-// ⭐ [우리말샘 공인 방언 및 핵심 어휘 영구 탑재]
+// ⭐ [네이버 국어사전 공인 방언 및 핵심 어휘 영구 탑재]
 registerDynamicWord('윰라대왕', '명사');
 if (wordInfoMap.has('윰라대왕')) {
   const item = wordInfoMap.get('윰라대왕');
   item.naverMeaning = '‘염라대왕’의 방언 (강원)';
-  item.source = '공인 국어사전 (우리말샘)';
+  item.source = '네이버 국어사전';
   item.naverLink = 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba';
 }
 registerDynamicWord('스케치북', '명사');
@@ -315,14 +315,14 @@ function getTerminalCharSet(usedWords = null) {
   return set;
 }
 
-// 3. 공인 국어사전 실시간 검색 엔진 (국립국어원 우리말샘 & 네이버 국어사전 WORD 공인 표제어 전수 연동)
+// 3. 공인 국어사전 실시간 검색 엔진 (네이버 국어사전 공식 API3 실시간 전수 연동)
 const naverCache = new Map();
 const MAX_CACHE_SIZE = 10000;
 
 naverCache.set('윰라대왕', {
   isVerified: true,
   word: '윰라대왕',
-  source: '공인 국어사전 (우리말샘)',
+  source: '네이버 국어사전',
   partOfSpeech: '명사',
   meanings: ['‘염라대왕’의 방언 (강원)'],
   link: 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba'
@@ -364,7 +364,7 @@ for (const [pw, ppos, pmean, psource] of PRELOAD_WORDS) {
   naverCache.set(pw, {
     isVerified: true,
     word: pw,
-    source: `공인 국어사전 (${psource})`,
+    source: `네이버 국어사전 (${psource})`,
     partOfSpeech: ppos,
     meanings: [pmean],
     link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(pw)}`
@@ -438,11 +438,11 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
       apiResponded = true;
       const data = await res.json();
       const listMap = data?.searchResultMap?.searchResultListMap || {};
-      // 국립국어원 표준국어대사전, 우리말샘, 고려대 한국어대사전 등 공인 표제어만 탐색 (오픈사전 제외)
+      // 국립국어원 표준국어대사전, 네이버 국어사전, 고려대 한국어대사전 등 공인 표제어만 탐색 (오픈사전 제외)
       const officialItems = listMap.WORD?.items || [];
 
       let matchedItem = null;
-      let matchedSource = '국립국어원 우리말샘 / 표준국어대사전';
+      let matchedSource = '네이버 국어사전';
 
       for (const item of officialItems) {
         // 표제어 원문 (HTML 태그, 첨자 숫자 등 제거)
@@ -464,7 +464,7 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
             if (!spacedSampleEntry) spacedSampleEntry = entryRaw;
           } else {
             matchedItem = item;
-            matchedSource = item.sourceDictnameKO ? `공인 국어사전 (${item.sourceDictnameKO})` : '국립국어원 우리말샘 / 표준국어대사전';
+            matchedSource = item.sourceDictnameKO ? `네이버 국어사전 (${item.sourceDictnameKO})` : '네이버 국어사전';
             break; // 띄어쓰기 없는 온전한 한 단어(단일어/합성명사) 우선 채택!
           }
         }
@@ -604,10 +604,10 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
     const verifiedResult = {
       word: clean,
       isVerified: true,
-      source: '국립국어원 표준국어대사전 및 우리말샘',
+      source: '네이버 국어사전',
       totalMatches: 1,
       partOfSpeech,
-      meanings: [`국립국어원 표준국어대사전 및 우리말샘에 공식 등재된 표준 [${partOfSpeech}] 표제어입니다.`],
+      meanings: [`네이버 국어사전에 공식 등재된 표준 [${partOfSpeech}] 표제어입니다.`],
       isDialectOrArchaic: false,
       link: `https://ko.dict.naver.com/#/search?query=${encoded}`
     };
@@ -627,7 +627,7 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
     source: '공인 국어사전 미등재 단어',
     totalMatches: 0,
     partOfSpeech: '미상',
-    meanings: ['국립국어원 표준국어대사전 및 네이버 국어사전에 구체적인 표제어가 등재되지 않은 단어입니다.'],
+    meanings: ['네이버 국어사전에 구체적인 표제어가 등재되지 않은 단어입니다.'],
     link: `https://ko.dict.naver.com/#/search?query=${encoded}`
   };
   naverCache.set(clean, unverified);
@@ -1329,8 +1329,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
       word: best.word,
       isVerified: true,
       partOfSpeech: best.part || '명사',
-      source: '공인 국어사전 (우리말샘 / 표준국어대사전)',
-      meanings: [`국립국어원 표준국어대사전 및 우리말샘에 공식 등재된 표준 [${best.part || '명사'}] 표제어입니다.`],
+      source: '네이버 국어사전',
+      meanings: [`네이버 국어사전에 공식 등재된 표준 [${best.part || '명사'}] 표제어입니다.`],
       link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`
     };
   }
@@ -1355,8 +1355,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
         word: alt.word,
         isVerified: true,
         partOfSpeech: alt.part || '명사',
-        source: '공인 국어사전 (우리말샘 / 표준국어대사전)',
-        meanings: [`국립국어원 표준국어대사전 공인 [${alt.part || '명사'}] 표제어입니다.`],
+        source: '네이버 국어사전',
+        meanings: [`네이버 국어사전 공인 [${alt.part || '명사'}] 표제어입니다.`],
         link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(alt.word)}`
       };
       uniqueAlternatives.push(alt);
@@ -1376,7 +1376,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
   if (chosenTierNumber === 1) {
     strongestReason = `끝글자 '${best.endChar}'(으)로 시작하는 한국어 단어가 국어사전에 정확히 0개로 상대방을 즉시 100% 격파합니다.`;
     optimalReason = `불필요한 장기전 없이 단 1수로 승리를 완벽히 확정짓는 최우선 [1순위 즉시 한방]입니다.`;
-    bestReason = `네이버 국어사전 및 국립국어원 표준국어대사전에 공식 등재된 표준 표제어입니다.`;
+    bestReason = `네이버 국어사전에 공식 등재된 표준 표제어입니다.`;
     supremeReason = `${best.length}글자의 완성도 높은 어휘로, 실전에서 즉시 인정받는 최고의 한방 단어입니다.`;
   } else if (chosenTierNumber === 2) {
     const oppSampleStr = best.counterPlan?.slice(0, 3).map(cp => `「${cp.oppWord}」➔「${cp.myCounter}」`).join(', ') || '';
@@ -1392,12 +1392,12 @@ async function findUltimateBestWord(inputChar, options = {}) {
   } else if (chosenTierNumber === 4) {
     strongestReason = `상대의 한방 역공(자살수)을 원천 차단하고 안정적으로 전세를 이어가는 [4순위 안전 방어]입니다.`;
     optimalReason = `위험한 수를 철저히 회피하면서 다음 기회를 도모하는 가장 현명하고 단단한 수입니다.`;
-    bestReason = `네이버 국어사전 및 국립국어원 표준국어대사전 공인 표준 표제어입니다.`;
+    bestReason = `네이버 국어사전 공인 표준 표제어입니다.`;
     supremeReason = `${best.length}글자의 직관적이고 품격 있는 어휘로 안전하게 랠리를 장악합니다.`;
   } else {
     strongestReason = `상대의 공격 기회를 최소화하고 위기를 벗어나는 [5순위 차선책 방어]입니다.`;
     optimalReason = `불리한 상황 속에서도 최선의 방어를 펼치며 상대의 실수를 유도합니다.`;
-    bestReason = `공인 국어사전에 등재된 유효 어휘입니다.`;
+    bestReason = '네이버 국어사전에 등재된 유효 어휘입니다.';
     supremeReason = `위기를 넘기고 반격의 기회를 노리는 전략적 수입니다.`;
   }
 
@@ -1424,7 +1424,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
       supremeReason,
       naverMeaning: bestDict?.meanings?.[0] || '네이버 국어사전 공인 표제어입니다.',
       naverMeanings: bestDict?.meanings || [],
-      source: bestDict?.source || '공인 국어사전 (우리말샘 / 표준국어대사전)',
+      source: bestDict?.source || '네이버 국어사전',
       naverLink: bestDict?.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`
     },
     alternatives: uniqueAlternatives.map((alt, idx) => ({
@@ -1482,7 +1482,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
   if (trimmed.includes('안녕') || trimmed.includes('반가워')) {
     return {
-      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n📝 **상대방 단어 적기 모드 안내**:\n• **앞글자만(1자) 입력** (예: *'기'*): **[내 턴]** 최적의 필승 수 즉시 추천!\n• **풀네임(2자 이상) 입력** (예: *'비행기'*): **[상대 턴]**으로 자동 인식하여 상대 단어 검증 및 카운터 반격 수 브리핑!\n\n지금 바로 앞글자나 단어를 입력해보세요!`
+      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n📝 **상대방 단어 적기 모드 안내**:\n• **앞글자만(1자) 입력** (예: *'기'*): **[내 턴]** 최적의 필승 수 즉시 추천!\n• **풀네임(2자 이상) 입력** (예: *'비행기'*): **[상대 턴]**으로 자동 인식하여 상대 단어 검증 및 카운터 반격 수 브리핑!\n\n지금 바로 앞글자나 단어를 입력해보세요!`
     };
   }
 
@@ -1545,7 +1545,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       let speech = '';
       if (ultimate.word === '윰라대왕' || myStartChar === '륨' || myStartChar === '늄' || myStartChar === '윰') {
         speech = `🛡️ **'${myStartChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
-                 `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+                 `국어사전 전체에서 '윰'으로 시작하는 단어는 네이버 국어사전 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
                  `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 주도권을 가져오는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                  `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
       } else if (isFirstTurnIntent && ultimate.outCount > 0) {
@@ -1639,7 +1639,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
           };
         }
         return {
-          text: `🤔 **「${opponentWord}」**은(는) 공인 국어사전(우리말샘 / 표준국어대사전)에 등재되지 않은 단어입니다.\n\n상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
+          text: `🤔 **「${opponentWord}」**은(는) 네이버 국어사전에 등재되지 않은 단어입니다.\n\n상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
           flowMode,
           opponentWordMode: true,
           isAwaitingOpponentWord: true,
@@ -1708,7 +1708,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       let speech = '';
       if (ultimate.word === '윰라대왕' || oppEndChar === '륨' || oppEndChar === '늄' || oppEndChar === '윰') {
         speech = `🛡️ **'${oppEndChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
-                 `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+                 `국어사전 전체에서 '윰'으로 시작하는 단어는 네이버 국어사전 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
                  `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 주도권을 가져오는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                  `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
       } else if (tierNum === 1) {
@@ -1808,7 +1808,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       return {
         text: `📚 **[단어 사전 정보: 「${lookupWord}」]**\n\n` +
               `• **품사**: ${dict.partOfSpeech || '명사'}\n` +
-              `• **출처**: ${dict.source || '공인 국어사전'}\n` +
+              `• **출처**: ${dict.source || '네이버 국어사전'}\n` +
               `• **사전 뜻**: ${dict.meanings?.[0] || '공인 표제어입니다.'}\n` +
               `• **끝말잇기 판정**: ${isKill ? '💥 **즉시 승리 한방 단어** (상대 반격 0개)' : `🛡️ **유효 단어** (상대 반격 어휘 ${reb.totalCount}개)`}\n\n` +
               `🔗 [네이버 국어사전 원문 보기](${dict.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(lookupWord)}`})`,
@@ -1869,7 +1869,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                 tierInfo: {
                   tierNumber: isDirectKilling ? 1 : 3,
                   name: isDirectKilling ? '1순위 한방 단어' : '공인 등재 단어',
-                  desc: isDirectKilling ? '상대 반격 0개 절대 필승' : '공인 국어사전 등재 어휘'
+                  desc: isDirectKilling ? '상대 반격 0개 절대 필승' : '네이버 국어사전 등재 어휘'
                 },
                 minimax: {
                   samples: directRebuttal.samples || []
@@ -1893,7 +1893,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     // ⭐ '륨'/'늄'/'윰' 특수 브리핑: 윰라대왕 안내
     if (ultimate.word === '윰라대왕' || targetChar === '륨' || targetChar === '늄' || targetChar === '윰') {
       speech = `🛡️ **'${targetChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
-               `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+               `국어사전 전체에서 '윰'으로 시작하는 단어는 네이버 국어사전 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
                `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 랠리를 이어가는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else if (isFirstTurnIntent && ultimate.outCount > 0) {
@@ -1939,7 +1939,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
   if (trimmed.includes('안녕') || trimmed.includes('반가워')) {
     return {
-      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n🌊 **흐름 모드**를 켜시면 한 번 알려준 단어는 중복 추천되지 않습니다!\n지금 바로 앞글자(예: *'기'*, *'산기슭'*)를 입력해보세요!`
+      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n🌊 **흐름 모드**를 켜시면 한 번 알려준 단어는 중복 추천되지 않습니다!\n지금 바로 앞글자(예: *'기'*, *'산기슭'*)를 입력해보세요!`
     };
   }
 
@@ -2021,7 +2021,7 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     }
     return {
       success: false,
-      message: `「${cleanWord}」은(는) 공인 국어사전(우리말샘 / 네이버 사전)에 등재되지 않은 단어입니다.`
+      message: `「${cleanWord}」은(는) 네이버 국어사전에 등재되지 않은 단어입니다.`
     };
   }
 
@@ -2039,9 +2039,9 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     }
   }
 
-  const userMeaning = dictCheck.meanings?.[0] || '국립국어원 우리말샘 및 표준국어대사전 공인 표제어입니다.';
+  const userMeaning = dictCheck.meanings?.[0] || '네이버 국어사전 공인 표제어입니다.';
   const userPartOfSpeech = dictCheck.partOfSpeech || wordInfoMap.get(cleanWord)?.part || '명사';
-  const userSource = dictCheck.source || '국립국어원 우리말샘 / 표준국어대사전';
+  const userSource = dictCheck.source || '네이버 국어사전';
   const userLink = dictCheck.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
 
   // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵에도 영구 동기화!
