@@ -728,19 +728,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------------------
   // 7. [AI브리핑] 로직 (흐름 모드 & 4단계 우선순위 브리핑)
   // ------------------------------------------------------------------------
+  let flowOpponentStartChar = null; // 흐름 모드에서 대기 중인 상대방 시작 글자
+
   function updateFlowCount() {
     flowCountBadge.textContent = `(${briefedWords.length})`;
   }
 
   flowModeCheckbox.addEventListener('change', () => {
     const isFlow = flowModeCheckbox.checked;
-    showToast(isFlow ? '흐름 모드가 켜졌습니다. (중복 추천 차단)' : '흐름 모드가 꺼졌습니다.');
+    flowOpponentStartChar = null;
+    briefingInput.placeholder = isFlow
+      ? '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...'
+      : '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
+    showToast(isFlow ? '흐름 모드가 켜졌습니다. (상대 앞글자 ➔ 상대 단어 연쇄 입력 지원)' : '흐름 모드가 꺼졌습니다.');
     if (window.soundEngine) window.soundEngine.playCopy();
   });
 
   clearChatBtn.addEventListener('click', () => {
     briefedWords = [];
+    flowOpponentStartChar = null;
     updateFlowCount();
+    briefingInput.placeholder = flowModeCheckbox.checked
+      ? '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...'
+      : '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
     briefingMessages.innerHTML = `
       <div class="briefing-msg ai">
         <div class="msg-avatar">⚡</div>
@@ -768,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 사용자 메시지 표시
     const userMsg = document.createElement('div');
     userMsg.className = 'briefing-msg user';
-    userMsg.innerHTML = `<div class="msg-bubble">${cleanQuery}</div>`;
+    userMsg.innerHTML = `<div class="msg-bubble">${escapeHtml(cleanQuery)}</div>`;
     briefingMessages.appendChild(userMsg);
     userMsg.scrollIntoView({ behavior: 'smooth' });
 
@@ -786,13 +796,15 @@ document.addEventListener('DOMContentLoaded', () => {
     briefingSendBtn.disabled = true;
 
     try {
+      const isFlow = flowModeCheckbox.checked;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: cleanQuery,
-          flowMode: flowModeCheckbox.checked,
-          briefedWords: briefedWords
+          flowMode: isFlow,
+          briefedWords: briefedWords,
+          opponentStartChar: flowOpponentStartChar
         })
       });
 
@@ -819,11 +831,30 @@ document.addEventListener('DOMContentLoaded', () => {
       briefingMessages.appendChild(aiMsg);
       aiMsg.scrollIntoView({ behavior: 'smooth' });
 
-      if (data.briefedWord && flowModeCheckbox.checked) {
-        if (!briefedWords.includes(data.briefedWord)) {
+      // 흐름 모드 상태 및 단어 업데이트
+      if (isFlow) {
+        if (data.opponentWord && !briefedWords.includes(data.opponentWord)) {
+          briefedWords.push(data.opponentWord);
+        }
+        if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
+          briefedWords.push(data.briefedWord);
+        }
+        updateFlowCount();
+
+        if (data.isAwaitingOpponentWord && data.opponentStartChar) {
+          flowOpponentStartChar = data.opponentStartChar;
+          briefingInput.placeholder = `상대방이 '${flowOpponentStartChar}'(으)로 낸 단어를 입력하세요...`;
+        } else {
+          flowOpponentStartChar = null;
+          briefingInput.placeholder = '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...';
+        }
+      } else {
+        flowOpponentStartChar = null;
+        if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
           briefedWords.push(data.briefedWord);
           updateFlowCount();
         }
+        briefingInput.placeholder = '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
       }
 
       if (window.soundEngine) window.soundEngine.playCopy();
@@ -856,10 +887,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target === '시작') {
           requestBriefing('끝말잇기 첫 턴 추천 단어 알려줘');
         } else {
-          requestBriefing(`'${target}' 최적수 브리핑`);
+          requestBriefing(target);
         }
       } else {
-        requestBriefing(`'${char}' 최적수 브리핑`);
+        requestBriefing(char);
       }
     });
   });

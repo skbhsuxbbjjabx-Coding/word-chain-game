@@ -61,6 +61,11 @@ function getDueumVariants(char) {
 }
 
 
+// ⭐ 현대에 쓰이지 않는 옛말(사어/고어) 영구 블랙리스트 (입거웆, 입거웇, 이웆 등 원천 차단)
+const ARCHAIC_BLACKLIST = new Set([
+  '입거웆', '입거웇', '이웆', '가웆', '가늣', '모믈늣', '버들늣', '늣', '븟', '게웆다', '뉘웇다'
+]);
+
 // 2. 고품질 사전 데이터 인덱싱
 const wordInfoMap = new Map();
 const startMap = new Map();
@@ -74,7 +79,7 @@ try {
   const rawData = require('./data/dictionary.json');
   for (const [s, wordList] of Object.entries(rawData)) {
     for (const w of wordList) {
-      if (!w || /\s/.test(w)) continue;
+      if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w)) continue;
       const item = { word: w, isPure: true, part: '명사', raw: w };
       wordInfoMap.set(w, item);
       if (!startMap.has(s)) startMap.set(s, []);
@@ -92,7 +97,7 @@ try {
       const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
       for (const [s, wordList] of Object.entries(rawData)) {
         for (const w of wordList) {
-          if (!w || /\s/.test(w)) continue;
+          if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w)) continue;
           const item = { word: w, isPure: true, part: '명사', raw: w };
           wordInfoMap.set(w, item);
           if (!startMap.has(s)) startMap.set(s, []);
@@ -132,7 +137,7 @@ if (!loadedFromJson) {
         if (/\s/.test(raw) || raw.includes(' ')) continue;
 
         const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
-        if (!clean || clean.length < 2) continue;
+        if (!clean || clean.length < 2 || ARCHAIC_BLACKLIST.has(clean)) continue;
 
         const isPure = !raw.includes('-') && !raw.includes('^');
 
@@ -165,7 +170,7 @@ console.timeEnd('📖 52만 공인 사전 데이터 로드');
 console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개`);
 
 function registerDynamicWord(word, part = '명사') {
-  if (!word || word.length < 2 || /\s/.test(word)) return;
+  if (!word || word.length < 2 || /\s/.test(word) || ARCHAIC_BLACKLIST.has(word)) return;
   if (wordInfoMap.has(word)) return;
   const item = { word, isPure: true, part, raw: word };
   wordInfoMap.set(word, item);
@@ -229,6 +234,23 @@ async function queryNaverDictionary(queryWord) {
 
   const clean = rawInput.replace(/[^\uAC00-\uD7A3]/g, '');
   if (!clean || clean.length < 2) return getUnverifiedResult(queryWord);
+
+  // ⭐ 현대에 쓰이지 않는 옛말(사어/고어) 즉시 차단
+  if (ARCHAIC_BLACKLIST.has(clean)) {
+    const archaicRes = {
+      word: clean,
+      isVerified: false,
+      isArchaic: true,
+      source: '국어사전 옛말/사어 (끝말잇기 불가)',
+      totalMatches: 1,
+      partOfSpeech: '옛말',
+      meanings: ['현대에 쓰이지 않는 옛말(사어)입니다.'],
+      message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
+      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`
+    };
+    naverCache.set(clean, archaicRes);
+    return archaicRes;
+  }
 
   if (naverCache.has(clean)) {
     return naverCache.get(clean);
@@ -309,6 +331,8 @@ async function queryNaverDictionary(queryWord) {
       if (matchedItem) {
         const meanings = [];
         let partOfSpeech = wordInfoMap.get(clean)?.part || '명사';
+        let hasArchaicMeaning = false;
+        let hasModernMeaning = false;
 
         if (matchedItem.meansCollector && matchedItem.meansCollector.length > 0) {
           for (const mc of matchedItem.meansCollector) {
@@ -317,6 +341,13 @@ async function queryNaverDictionary(queryWord) {
               const val = (m.value || '').replace(/<[^>]+>/g, '').trim();
               if (val && val.length >= 2) {
                 meanings.push(val);
+                const isArchaic = m.subjectGroup === '옛말' || m.subjectGroup === '옛' || val.includes('옛말') || val.includes('고어');
+                const isDialect = m.subjectGroup === '방언' || val.includes('방언') || val.includes('사투리');
+                if (isArchaic) {
+                  hasArchaicMeaning = true;
+                } else if (!isDialect) {
+                  hasModernMeaning = true;
+                }
               }
             }
           }
@@ -325,19 +356,46 @@ async function queryNaverDictionary(queryWord) {
         if (meanings.length === 0) {
           const fallbackText = matchedItem.abstractContent?.value || matchedItem.abstractContent || matchedItem.expAbstract || matchedItem.etcExplain;
           if (fallbackText && typeof fallbackText === 'string') {
-            meanings.push(fallbackText.replace(/<[^>]+>/g, '').trim());
+            const cleanFallback = fallbackText.replace(/<[^>]+>/g, '').trim();
+            meanings.push(cleanFallback);
+            if (cleanFallback.includes('옛말') || cleanFallback.includes('고어')) {
+              hasArchaicMeaning = true;
+            } else {
+              hasModernMeaning = true;
+            }
           }
+        }
+
+        // ⭐ 순수 옛말/사어(현대 표준 의미가 전혀 없음, 예: '입거웆') 배제!
+        const isPureArchaic = (hasArchaicMeaning && !hasModernMeaning) || (meanings.length > 0 && meanings.every(m => m.includes('옛말')));
+        if (isPureArchaic) {
+          const archaicResult = {
+            word: clean,
+            isVerified: false,
+            isArchaic: true,
+            source: '국어사전 옛말/사어 (끝말잇기 불가)',
+            totalMatches: officialItems.length,
+            partOfSpeech: '옛말',
+            meanings: meanings.slice(0, 5),
+            message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
+            link: matchedItem.destinationLink
+              ? (matchedItem.destinationLink.startsWith('http') ? matchedItem.destinationLink : `https://ko.dict.naver.com/${matchedItem.destinationLink}`)
+              : `https://ko.dict.naver.com/#/search?query=${encoded}`
+          };
+          naverCache.set(clean, archaicResult);
+          return archaicResult;
         }
 
         if (meanings.length > 0) {
           apiResult = {
             word: clean,
             isVerified: true,
+            isArchaic: false,
             source: matchedSource,
             totalMatches: officialItems.length,
             partOfSpeech,
             meanings: meanings.slice(0, 5),
-            isDialectOrArchaic: meanings[0]?.includes('방언') || meanings[0]?.includes('옛말') || meanings[0]?.includes('북한어'),
+            isDialectOrArchaic: meanings[0]?.includes('방언') || meanings[0]?.includes('북한어'),
             link: matchedItem.destinationLink
               ? (matchedItem.destinationLink.startsWith('http') ? matchedItem.destinationLink : `https://ko.dict.naver.com/${matchedItem.destinationLink}`)
               : `https://ko.dict.naver.com/#/search?query=${encoded}`
@@ -635,6 +693,12 @@ async function ensureCharWordsFromNaver(char) {
 
           // ⭐ 띄어쓰기(공백)가 있는 표제어는 끝말잇기 룰 위반이므로 엄격히 배제!
           if (/\s/.test(entryRaw)) continue;
+
+          // ⭐ 옛말(사어) 표제어 원천 배제 (예: 입거웆)
+          const isItemArchaic = (item.meansCollector || []).some(mc =>
+            (mc.means || []).some(m => m.subjectGroup === '옛말' || m.subjectGroup === '옛' || (m.value || '').includes('옛말') || (m.value || '').includes('고어'))
+          );
+          if (isItemArchaic) continue;
 
           const raw = entryRaw
             .replace(/[-^ㆍ·\(\)]/g, '')
@@ -981,7 +1045,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
     for (const cand of bucket.list) {
       const dict = await queryNaverDictionary(cand.word);
-      if (dict && dict.isVerified) {
+      if (dict && dict.isVerified && !dict.isArchaic) {
         best = cand;
         bestDict = dict;
         chosenTierNumber = bucket.num;
@@ -1013,7 +1077,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     if (!seenAltWords.has(alt.word)) {
       seenAltWords.add(alt.word);
       const dict = await queryNaverDictionary(alt.word);
-      if (dict && dict.isVerified) {
+      if (dict && dict.isVerified && !dict.isArchaic) {
         uniqueAlternatives.push(alt);
         altDicts.push(dict);
         if (uniqueAlternatives.length >= 3) break;
@@ -1124,32 +1188,219 @@ function parseUserTargetChar(message) {
 // 7. AI브리핑 & 전략 참모 (1순위 한방 -> 2순위 외통수 -> 3순위 안전수 -> 4순위 차선책 및 흐름 모드)
 async function generateAiChatResponse(message, history = [], options = {}) {
   const trimmed = message.trim();
-  const targetChar = parseUserTargetChar(trimmed);
-
   const flowMode = !!options.flowMode;
   const briefedWords = Array.isArray(options.briefedWords) ? options.briefedWords : [];
   const usedWords = flowMode && briefedWords.length > 0 ? new Set(briefedWords) : new Set();
+
+  if (trimmed.includes('안녕') || trimmed.includes('반가워')) {
+    return {
+      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n🌊 **흐름 모드**를 켜시면 상대의 시작 글자(앞글자) 입력 ➔ 상대 단어 입력 ➔ 내 1순위 필승 반격 수로 랠리가 이어집니다!\n지금 바로 앞글자(예: *'기'*, *'산기슭'*)를 입력해보세요!`
+    };
+  }
+
+  if (trimmed.includes('두음') || trimmed.includes('두음법칙')) {
+    return {
+      text: `📖 **국립국어원 표준 두음법칙 안내 (제10항·제11항 정방향만 적용)**:\n\n1. **ㄴ 두음법칙 (제10항)**: '냐, 녀, 녜, 뇨, 뉴, 니' → **'야, 여, 예, 요, 유, 이'** (초성 ㄴ → ㅇ)\n   * 역방향(니 → 리: '리튬' 등)은 엄격히 차단됩니다!\n2. **ㄹ 두음법칙 (제11항)**:\n   - '랴, 려, 례, 료, 류, 리' → **'야, 여, 예, 요, 유, 이'** (초성 ㄹ → ㅇ)\n   - '라, 로, 루, 르, 래, 뢰...' → **'나, 노, 누, 느, 내, 뇌...'** (초성 ㄹ → ㄴ)\n\n알고리즘이 정방향 두음법칙을 완벽 계산하여 최적의 단어를 찾아냅니다!`
+    };
+  }
+
+  // ⭐ 띄어쓰기(공백) 검증 (끝말잇기 대원칙)
+  if (/\s/.test(trimmed)) {
+    return {
+      text: `⚠️ **[끝말잇기 룰 안내]**\n\n입력하신 **「${trimmed}」**에는 띄어쓰기(공백)가 포함되어 있습니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어(단일어 또는 합성명사)**만 유효하므로 게임에서 인정되지 않습니다.`
+    };
+  }
+
+  const pureKorean = trimmed.replace(/[^가-힣]/g, '');
+
+  // --------------------------------------------------------------------------
+  // 🌊 [흐름 모드 전용 로직] "상대 앞에글자 입력하면 상대 단어도 그 다음에 입력하게 해줘"
+  // --------------------------------------------------------------------------
+  if (flowMode) {
+    const oppStartCharParam = options.opponentStartChar ? String(options.opponentStartChar).trim() : null;
+
+    // 1) 1글자 입력이거나 "상대" 단어와 함께 시작 글자를 지정한 경우: 상대 시작 글자 접수 후 상대 단어 입력 대기!
+    const isSingleChar = pureKorean.length === 1;
+    const isOpponentStartCharIntent = isSingleChar || (trimmed.includes('상대') && pureKorean.length <= 2);
+
+    if (isOpponentStartCharIntent) {
+      const oppStartChar = pureKorean.length === 1 ? pureKorean : pureKorean[pureKorean.length - 1];
+      const variants = getDueumVariants(oppStartChar);
+      const candidateSamples = [];
+      for (const v of variants) {
+        if (startMap.has(v)) {
+          for (const item of startMap.get(v)) {
+            if (!usedWords.has(item.word) && item.word.length >= 2 && !ARCHAIC_BLACKLIST.has(item.word)) {
+              candidateSamples.push(item.word);
+              if (candidateSamples.length >= 4) break;
+            }
+          }
+        }
+        if (candidateSamples.length >= 4) break;
+      }
+
+      const sampleText = candidateSamples.length > 0 ? ` (예: **'${candidateSamples.join("', '")}'** 등)` : '';
+
+      return {
+        text: `🎯 **[상대방 턴: 시작 글자 '${oppStartChar}']**\n\n상대방 차례의 시작 글자 **'${oppStartChar}'**(이)가 접수되었습니다!\n\n상대방이 **'${oppStartChar}'**(으)로 어떤 단어를 냈나요? 상대방이 낸 단어를 아래 입력창에 입력해주세요!${sampleText}\n\n입력하시면 상대방의 단어를 완벽하게 격파할 **1순위 필승 수**를 즉시 브리핑해 드립니다!`,
+        flowMode: true,
+        isAwaitingOpponentWord: true,
+        opponentStartChar: oppStartChar,
+        sampleWords: candidateSamples
+      };
+    }
+
+    // 2) 2글자 이상 단어 입력인 경우: 상대방이 낸 단어로 접수 후, 나의 최적 반격 수 브리핑!
+    if (pureKorean.length >= 2) {
+      const opponentWord = pureKorean;
+
+      // 만약 직전 턴에서 상대 시작 글자가 지정되어 있었다면 두음법칙 포함 일치 여부 엄격 검증!
+      if (oppStartCharParam) {
+        const allowedStarts = getDueumVariants(oppStartCharParam);
+        if (!allowedStarts.includes(opponentWord[0])) {
+          const dueumNote = allowedStarts.length > 1 ? ` (두음법칙 허용: '${allowedStarts.join("', '")}')` : '';
+          return {
+            text: `⚠️ **[상대방 시작 글자 불일치]**\n\n현재 상대방 차례의 시작 글자는 **'${oppStartCharParam}'**입니다.${dueumNote}\n\n상대방이 **'${oppStartCharParam}'**(으)로 낸 단어를 입력해주세요! (현재 입력: 「${opponentWord}」)`,
+            flowMode: true,
+            isAwaitingOpponentWord: true,
+            opponentStartChar: oppStartCharParam
+          };
+        }
+      }
+
+      // 상대방 단어 옛말/사어 블랙리스트 검사
+      if (ARCHAIC_BLACKLIST.has(opponentWord)) {
+        return {
+          text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
+          flowMode: true,
+          isAwaitingOpponentWord: true,
+          opponentStartChar: oppStartCharParam || opponentWord[0]
+        };
+      }
+
+      // 상대방 단어 국어사전 정밀 검증
+      const oppDict = await queryNaverDictionary(opponentWord);
+      if (!oppDict || !oppDict.isVerified || oppDict.isArchaic) {
+        if (oppDict && oppDict.isArchaic) {
+          return {
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
+            flowMode: true,
+            isAwaitingOpponentWord: true,
+            opponentStartChar: oppStartCharParam || opponentWord[0]
+          };
+        }
+        if (oppDict && oppDict.isSpacedWord) {
+          return {
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${opponentWord}」**은(는) 국어사전에 **‘${oppDict.spacedEntry || opponentWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어**만 인정되므로 사용하실 수 없습니다.`,
+            flowMode: true,
+            isAwaitingOpponentWord: true,
+            opponentStartChar: oppStartCharParam || opponentWord[0]
+          };
+        }
+        return {
+          text: `🤔 **「${opponentWord}」**은(는) 공인 국어사전(우리말샘 / 표준국어대사전)에 등재되지 않은 단어입니다.\n\n상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
+          flowMode: true,
+          isAwaitingOpponentWord: true,
+          opponentStartChar: oppStartCharParam || opponentWord[0]
+        };
+      }
+
+      // 이미 사용된 단어인지 확인
+      if (usedWords.has(opponentWord)) {
+        return {
+          text: `⚠️ **[중복 단어 경고]**\n\n**「${opponentWord}」**은(는) 이번 대결 흐름에서 이미 사용된 단어입니다.\n\n상대방이 낸 다른 단어를 입력해주세요!`,
+          flowMode: true,
+          isAwaitingOpponentWord: true,
+          opponentStartChar: oppStartCharParam || opponentWord[0]
+        };
+      }
+
+      // 상대방 단어의 끝글자로 내가 반격할 최적의 수 탐색!
+      const oppEndChar = opponentWord[opponentWord.length - 1];
+      const newUsedWords = new Set([...usedWords, opponentWord]);
+      const analysis = await findUltimateBestWord(oppEndChar, { usedWords: newUsedWords, difficulty: 'hell' });
+
+      if (!analysis || !analysis.ultimateWord) {
+        return {
+          text: `🎉 **[플레이어 완승!]**\n\n상대방이 **「${opponentWord}」**(으)로 냈으나, 끝글자 **'${oppEndChar}'**(으)로 시작하는 단어가 국어사전에 더 이상 없습니다!\n\n상대방이 치명적인 자살수를 두었으므로 플레이어의 승리입니다!`,
+          opponentWord,
+          briefedWords: [...briefedWords, opponentWord],
+          flowMode: true,
+          isAwaitingOpponentWord: false,
+          opponentStartChar: null
+        };
+      }
+
+      const ultimate = analysis.ultimateWord;
+      const tierNum = ultimate.tierInfo?.tierNumber || 1;
+
+      let speech = '';
+      if (ultimate.word === '윰라대왕' || oppEndChar === '륨' || oppEndChar === '늄' || oppEndChar === '윰') {
+        speech = `🛡️ **'${oppEndChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
+                 `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+                 `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 주도권을 가져오는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 1) {
+        speech = `💥 **'${oppEndChar}'**(으)로 이어질 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
+                 `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 내가 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 **즉시 100% 승리(한방)**합니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 2 || tierNum === 3) {
+        speech = `⚔️ **'${oppEndChar}'**(으)로 이어질 **[2순위: 되받아칠 단어가 거의 없는 외통수 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+                 `상대방의 다음 선택지가 국어사전 전체에서 단 **${ultimate.outCount}개**(${ultimate.minimax.samples.slice(0, 3).join(', ')})뿐이며, 다음 턴 100% 한방으로 격파하는 **필승 2수 앞 덫**입니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 4) {
+        speech = `🛡️ **'${oppEndChar}'**(으)로 이어질 **[3순위: 한방단어에 당하지 않는 안전 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+                 `상대의 한방 역공(자살수)을 원천 차단하면서 안정적으로 주도권을 쥐고 랠리를 이어가는 최선의 안전 수입니다.\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else {
+        speech = `⚠️ **'${oppEndChar}'**(으)로 이어갈 **[4순위: 할 수라도 있는 차선책 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+                 `상대의 역공 위험이 다소 있으나 현재 상황에서 유효하게 전세를 만회해 나가는 유일한 수입니다.\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      }
+
+      const isDirectWin = ultimate.outCount === 0;
+      const nextPrompt = isDirectWin
+        ? `\n\n👑 **[필승 완승 경고]** 내가 낸 **「${ultimate.word}」**의 끝글자 **'${ultimate.endChar}'**(으)로 상대가 낼 수 있는 단어가 국어사전에 **전무(0개)**하여 상대방은 무조건 패배합니다!`
+        : `\n\n👉 내가 **「${ultimate.word}」**(으)로 반격했습니다!\n상대방이 다음 끝글자 **'${ultimate.endChar}'**(으)로 어떤 단어로 받아쳤나요? 상대방의 다음 단어를 입력해주세요!`;
+
+      const fullText = `⚔️ **[상대방 응수: 「${opponentWord}」 ➔ 반격 제시어: '${oppEndChar}']**\n\n` +
+                       `상대방이 낸 **「${opponentWord}」**을(를) 격파할 **최적의 필승 수**를 브리핑합니다:\n\n` +
+                       speech +
+                       nextPrompt;
+
+      return {
+        text: fullText,
+        analysis,
+        hasUltimateCard: true,
+        briefedWord: ultimate.word,
+        opponentWord: opponentWord,
+        briefedWords: [...briefedWords, opponentWord, ultimate.word],
+        tierNumber: tierNum,
+        flowMode: true,
+        isAwaitingOpponentWord: !isDirectWin,
+        opponentStartChar: ultimate.endChar,
+        nextTargetChar: ultimate.endChar
+      };
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 🎯 일반 모드 (흐름 모드 OFF): 단일 앞글자 또는 단어에 대한 즉시 최적수 추천
+  // --------------------------------------------------------------------------
+  const targetChar = parseUserTargetChar(trimmed);
 
   if (targetChar) {
     const analysis = await findUltimateBestWord(targetChar, { usedWords, difficulty: 'hell' });
 
     if (!analysis || !analysis.ultimateWord) {
-      if (flowMode && usedWords.size > 0) {
-        return {
-          text: `🔄 **[흐름 모드 안내]**\n\n'${targetChar}'(으)로 시작하는 공인 단어 중 사전에 등록된 모든 유효 추천 어휘를 이미 알려드렸습니다! (${usedWords.size}개 완료)\n\n새로운 추천을 받으시려면 상단의 **[채팅 초기화]**를 누르시거나 **[흐름 모드]**를 잠시 꺼주세요.`,
-          flowExhausted: true
-        };
-      }
-
-      if (/\s/.test(trimmed)) {
-        return {
-          text: `⚠️ **[끝말잇기 룰 안내]**\n\n입력하신 **「${trimmed}」**에는 띄어쓰기(공백)가 포함되어 있습니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어(단일어 또는 합성명사)**만 유효하므로 게임에서 인정되지 않습니다.`
-        };
-      }
-
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
       if (pureWord.length >= 2) {
         const selfDict = await queryNaverDictionary(pureWord);
+        if (selfDict && selfDict.isArchaic) {
+          return {
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${pureWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않으므로 사용하실 수 없습니다.`
+          };
+        }
         if (selfDict && selfDict.isSpacedWord) {
           return {
             text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${pureWord}」**은(는) 국어사전에 **‘${selfDict.spacedEntry || pureWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 들어간 말(구, 관용구, 복합표현)은 단어가 아니므로 인정되지 않습니다.** 반드시 붙여 쓰는 한 단어만 사용해 주세요!`
@@ -1226,10 +1477,6 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     }
 
-    if (flowMode) {
-      speech += `\n\n🌊 *[흐름 모드 ON: 이전에 추천한 단어는 다시 나오지 않습니다 (누적 ${briefedWords.length + 1}개)]*`;
-    }
-
     return {
       text: speech,
       analysis,
@@ -1237,7 +1484,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       briefedWord: ultimate.word,
       briefedWords: [...briefedWords, ultimate.word],
       tierNumber: tierNum,
-      flowMode
+      flowMode: false
     };
   }
 
@@ -1306,7 +1553,13 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') 
 
   // 네이버 국어사전 실시간 검색 검증 (네이버 사전에 실제 등재되어 있는 단어만 100% 인정)
   const dictCheck = await queryNaverDictionary(cleanWord);
-  if (!dictCheck || !dictCheck.isVerified) {
+  if (!dictCheck || !dictCheck.isVerified || dictCheck.isArchaic) {
+    if (dictCheck && dictCheck.isArchaic) {
+      return {
+        success: false,
+        message: `「${cleanWord}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로 끝말잇기 규칙상 사용할 수 없습니다.`
+      };
+    }
     if (dictCheck && dictCheck.isSpacedWord) {
       return {
         success: false,
@@ -1468,7 +1721,8 @@ async function handleRequest(req, res) {
       const data = await parseRequestBody(req);
       const reply = await generateAiChatResponse(data.message || '', data.history || [], {
         flowMode: !!data.flowMode,
-        briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : []
+        briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : [],
+        opponentStartChar: data.opponentStartChar || null
       });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(reply));
