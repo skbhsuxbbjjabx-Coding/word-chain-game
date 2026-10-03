@@ -292,8 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <div class="hero-meaning-card">
-        <div class="hero-source-label">📖 ${ultimate.source || '공인 국어사전'} 공식 뜻</div>
-        <div class="hero-meaning-body">${ultimate.naverMeaning || '국어사전에 등재된 유효 표준 표제어입니다.'}</div>
+        <div class="hero-source-label">📖 ${ultimate.source || '네이버 국어사전'} 공식 뜻</div>
+        <div class="hero-meaning-body">${escapeHtml(ultimate.naverMeaning || '네이버 국어사전 실시간 표준 뜻풀이')}</div>
       </div>
 
       <div class="hero-action-buttons">
@@ -571,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="card-pos-badge">[${posBadge}]</span>
         <span class="card-dict-source">${dictBadge}</span>
       </div>
-      <div class="card-meaning">${meaning || '공인 국어사전에 등재된 유효 표준 표제어입니다.'}</div>
+      <div class="card-meaning">${escapeHtml(meaning || '네이버 국어사전 실시간 표준 뜻풀이')}</div>
       ${strategyHtml}
       <div class="card-footer-row">
         <button type="button" class="card-copy-btn" data-word="${word}" title="단어 복사">📋 복사</button>
@@ -1314,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           <span class="nr-text">${escapeHtml(m)}</span>
                         </div>
                       `).join('')
-                      : '<div class="nr-meaning-item empty">네이버 국어사전 공인 표제어입니다.</div>'
+                      : '<div class="nr-meaning-item empty">네이버 국어사전 표제어 뜻풀이</div>'
                     }
                   </div>
                   <div class="nr-bottom-row">
