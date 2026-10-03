@@ -386,18 +386,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // ⭐ [요청사항] 컴퓨터에서 화면을 조그맣게 만들었을 때 AI창만 남게 자동 최적화!
   function handleWindowResize() {
     const width = window.innerWidth;
-    if (width < 900) {
-      if (!autoCompactTriggered && !isAiOnlyMode) {
+    if (width < 992) {
+      if (!autoCompactTriggered) {
         autoCompactTriggered = true;
-        switchTab('briefing');
+        setAiOnlyMode(true, true);
       }
     } else {
-      autoCompactTriggered = false;
+      if (autoCompactTriggered) {
+        autoCompactTriggered = false;
+        setAiOnlyMode(false, true);
+      }
     }
   }
   window.addEventListener('resize', handleWindowResize);
   // 초기 로드 시에도 창 크기 검사
-  setTimeout(handleWindowResize, 100);
+  setTimeout(handleWindowResize, 50);
 
   function switchTab(tabKey) {
     // 모바일 네비게이션 탭 갱신
@@ -436,7 +439,18 @@ document.addEventListener('DOMContentLoaded', () => {
   navTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const targetTab = tab.getAttribute('data-tab');
+      if (targetTab === 'battle') {
+        const layout = document.querySelector('.app-layout');
+        if (layout) layout.classList.remove('ai-only-mode');
+        isAiOnlyMode = false;
+        if (compactAiToggleBtn) {
+          compactAiToggleBtn.classList.remove('active');
+          const textSpan = compactAiToggleBtn.querySelector('.btn-text');
+          if (textSpan) textSpan.textContent = 'AI 창만';
+        }
+      }
       switchTab(targetTab);
+      if (window.soundEngine) window.soundEngine.playCopy();
     });
   });
 

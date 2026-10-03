@@ -1525,10 +1525,12 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     // 1) 앞글자만 입력 (1글자) 또는 명시적 내턴: [내 턴] 자동인식!
     if (pureKorean.length === 1 || forceMyTurn) {
       const myStartChar = pureKorean.length === 1 ? pureKorean : (pureKorean[0] || '기');
-      const isFirstTurnIntent = !!noFirstTurnKill && (briefedWords.length === 0 || trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
+      // ⭐ AI브리핑은 배틀 난이도와 완전 분리되어 무조건 100% 최고 지능(1순위 한방)으로 동작합니다!
+      // 또한 '첫 턴' 관련 텍스트가 명시적으로 포함되었을 때만 첫 턴 한방제외를 적용합니다.
+      const isFirstTurnIntent = !!noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
       const analysis = await findUltimateBestWord(myStartChar, {
         usedWords,
-        difficulty: options.difficulty || 'hell',
+        difficulty: 'hell', // ⭐ AI브리핑은 배틀 난이도(쉬움 등)와 무관하게 언제나 최고 지능(hell) 고정!
         noFirstTurnKill: isFirstTurnIntent
       });
 
@@ -1685,7 +1687,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       const newUsedWords = new Set([...usedWords, opponentWord]);
       const analysis = await findUltimateBestWord(oppEndChar, {
         usedWords: newUsedWords,
-        difficulty: options.difficulty || 'hell',
+        difficulty: 'hell', // ⭐ AI브리핑은 배틀 난이도와 무관하게 언제나 최고 지능(hell) 고정!
         noFirstTurnKill: false
       });
 
@@ -1820,10 +1822,10 @@ async function generateAiChatResponse(message, history = [], options = {}) {
   }
 
   if (targetChar) {
-    const isFirstTurnIntent = !!options.noFirstTurnKill && (briefedWords.length === 0 || trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
+    const isFirstTurnIntent = !!options.noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
     const analysis = await findUltimateBestWord(targetChar, { 
       usedWords, 
-      difficulty: options.difficulty || 'hell',
+      difficulty: 'hell', // ⭐ AI브리핑은 배틀 난이도와 무관하게 언제나 최고 지능(hell) 고정!
       noFirstTurnKill: isFirstTurnIntent
     });
 
@@ -2202,7 +2204,7 @@ async function handleRequest(req, res) {
         briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : [],
         opponentStartChar: data.opponentStartChar || null,
         noFirstTurnKill: data.noFirstTurnKill !== undefined ? !!data.noFirstTurnKill : true,
-        difficulty: data.difficulty || 'hell'
+        difficulty: 'hell' // ⭐ AI브리핑은 배틀 난이도와 무관하게 항상 최고 지능(헬 모드) 영구 고정!
       });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(reply));
