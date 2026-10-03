@@ -993,8 +993,19 @@ async function findUltimateBestWord(inputChar, options = {}) {
   else if (diffRaw === 'normal' || diffRaw === '중간') diff = 'normal';
   else if (diffRaw === 'hard' || diffRaw === '어려움') diff = 'hard';
 
+  const noFirstTurnKill = !!options.noFirstTurnKill;
+
   let tierBuckets;
-  if (diff === 'easy') {
+  if (noFirstTurnKill) {
+    // ⭐ [첫 턴 한방제외 모드]: 첫 턴에는 1순위 즉시 한방 단어를 배제하고 2순위(외통수)/3순위(압박)/4순위(안전수) 우선 채택!
+    tierBuckets = [
+      { list: tier2_forcedWin, num: 2 },
+      { list: tier3_nearKill, num: 3 },
+      { list: tier4_safePlay, num: 4 },
+      { list: tier1_instantKill, num: 1 }, // 2~4순위가 전무할 때만 최후로 허용
+      { list: tier5_desperate, num: 5 }
+    ];
+  } else if (diff === 'easy') {
     // [쉬움]: 플레이어가 편하게 이어갈 수 있도록 안전 수(반격 선택지 많은 단어) 우선 추천! 한방 단어 회피
     tier4_safePlay.sort((a, b) => b.outCount - a.outCount || b.score - a.score);
     tierBuckets = [
@@ -1204,8 +1215,9 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     };
   }
 
-  // ⭐ 띄어쓰기(공백) 검증 (끝말잇기 대원칙)
-  if (/\s/.test(trimmed)) {
+  // ⭐ 띄어쓰기(공백) 검증 (단, "첫 턴 추천해줘", "기 최적수 알려줘" 등 자연어 질문 문장은 허용하고, 단어 자체에 공백이 들어간 경우만 룰 안내)
+  const isQuestionSentence = /(?:알려줘|알려달라|알려|추천|어때|뭐있어|뭐야|가르쳐|해줘|이어|받아|단어|글자|첫\s*턴|첫턴)/.test(trimmed);
+  if (/\s/.test(trimmed) && !isQuestionSentence) {
     return {
       text: `⚠️ **[끝말잇기 룰 안내]**\n\n입력하신 **「${trimmed}」**에는 띄어쓰기(공백)가 포함되어 있습니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어(단일어 또는 합성명사)**만 유효하므로 게임에서 인정되지 않습니다.`
     };
@@ -1390,7 +1402,12 @@ async function generateAiChatResponse(message, history = [], options = {}) {
   const targetChar = parseUserTargetChar(trimmed);
 
   if (targetChar) {
-    const analysis = await findUltimateBestWord(targetChar, { usedWords, difficulty: 'hell' });
+    const isFirstTurnIntent = !!options.noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작') || briefedWords.length === 0);
+    const analysis = await findUltimateBestWord(targetChar, { 
+      usedWords, 
+      difficulty: 'hell',
+      noFirstTurnKill: isFirstTurnIntent
+    });
 
     if (!analysis || !analysis.ultimateWord) {
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
@@ -1459,6 +1476,10 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
                `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 랠리를 이어가는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+    } else if (isFirstTurnIntent && ultimate.outCount > 0) {
+      speech = `🛡️ **'${targetChar}'**(으)로 이어질 **[첫 턴 한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+               `첫 턴 한방 제외 룰에 따라 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
+               `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else if (tierNum === 1) {
       speech = `💥 **'${targetChar}'**(으)로 이어질 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
                `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 상대방은 어떤 반격도 하지 못하고 **단 1수로 즉시 100% 승리(한방)**합니다!\n\n` +
@@ -1506,10 +1527,14 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 }
 
 // 8. 실시간 끝말잇기 게임 엔진 (PvE 대결) - 4단계 난이도 (쉬움, 중간, 어려움, 헬)
-async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') {
+// 8. 실시간 끝말잇기 게임 엔진 (PvE 대결) - 4단계 난이도 (쉬움, 중간, 어려움, 헬) 및 첫 턴 한방제외 모드
+async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', options = {}) {
   if (!userWord || typeof userWord !== 'string') {
     return { success: false, message: '단어를 입력해주세요.' };
   }
+
+  const noFirstTurnKill = options.noFirstTurnKill !== undefined ? !!options.noFirstTurnKill : true;
+  const isFirstTurn = gameHistory.length === 0;
 
   const rawTrimmed = userWord.trim();
 
@@ -1572,6 +1597,20 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') 
     };
   }
 
+  const nextTargetChar = cleanWord[cleanWord.length - 1];
+
+  // ⭐ [첫 턴 한방제외 모드 검증]: 플레이어가 첫 턴에 한방 단어를 낸 경우 차단
+  if (isFirstTurn && noFirstTurnKill) {
+    const userRebuttal = getRebuttalAnalysis(nextTargetChar);
+    if (userRebuttal.totalCount === 0) {
+      return {
+        success: false,
+        isFirstTurnKill: true,
+        message: `🛡️ [첫 턴 한방제외 룰] 「${cleanWord}」은(는) 끝글자 '${nextTargetChar}'(으)로 상대가 시작할 수 있는 단어가 없는 💥한방 단어입니다. 첫 턴 한방제외 모드에서는 첫 번째 턴에 한방 단어를 쓸 수 없습니다! 랠리를 이어갈 수 있는 다른 단어를 입력해주세요.`
+      };
+    }
+  }
+
   const userMeaning = dictCheck.meanings?.[0] || '국립국어원 우리말샘 및 표준국어대사전 공인 표제어입니다.';
   const userPartOfSpeech = dictCheck.partOfSpeech || wordInfoMap.get(cleanWord)?.part || '명사';
   const userSource = dictCheck.source || '국립국어원 우리말샘 / 표준국어대사전';
@@ -1580,10 +1619,12 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') 
   // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵에도 영구 동기화!
   registerDynamicWord(cleanWord, userPartOfSpeech);
 
-  const nextTargetChar = cleanWord[cleanWord.length - 1];
+  // ⭐ AI 또한 첫 턴(플레이어의 첫 수에 대한 응수)에서는 첫 턴 한방제외 룰 준수!
+  const aiNoFirstTurnKill = noFirstTurnKill && (gameHistory.length <= 1);
   const analysis = await findUltimateBestWord(nextTargetChar, { 
     usedWords: new Set([...usedSet, cleanWord]),
-    difficulty: diff
+    difficulty: diff,
+    noFirstTurnKill: aiNoFirstTurnKill
   });
 
   if (!analysis || !analysis.ultimateWord) {
@@ -1605,7 +1646,9 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') 
   const tierNum = aiChosen.tierInfo?.tierNumber || 1;
 
   let strategyBrief = '';
-  if (isWinningMove) {
+  if (aiNoFirstTurnKill && !isWinningMove) {
+    strategyBrief = `🛡️ [첫 턴 한방제외 적용] 「${aiChosen.word}」! 첫 턴이므로 즉시 한방 대신 전략적 랠리 단어로 응수합니다.`;
+  } else if (isWinningMove) {
     strategyBrief = `💀 [1순위: 즉시 한방] 「${aiChosen.word}」! 상대 반격 0개로 즉시 승리합니다.`;
   } else if (tierNum === 2) {
     strategyBrief = `⚔️ [2순위: 반격해도 한방] 「${aiChosen.word}」! 상대의 모든 패를 묶는 2수 앞 외통수입니다.`;
@@ -1708,7 +1751,8 @@ async function handleRequest(req, res) {
     }
 
     const char = clean[clean.length - 1];
-    const analysis = await findUltimateBestWord(char);
+    const noFirstTurnKill = parsedUrl.query.noFirstTurnKill === 'true' || parsedUrl.query.noFirstTurnKill === '1';
+    const analysis = await findUltimateBestWord(char, { noFirstTurnKill });
 
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(analysis || { error: '단어를 찾을 수 없습니다.' }));
@@ -1722,7 +1766,8 @@ async function handleRequest(req, res) {
       const reply = await generateAiChatResponse(data.message || '', data.history || [], {
         flowMode: !!data.flowMode,
         briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : [],
-        opponentStartChar: data.opponentStartChar || null
+        opponentStartChar: data.opponentStartChar || null,
+        noFirstTurnKill: data.noFirstTurnKill !== undefined ? !!data.noFirstTurnKill : true
       });
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(reply));
@@ -1778,7 +1823,12 @@ async function handleRequest(req, res) {
   if (pathname === '/api/game/move' && req.method === 'POST') {
     try {
       const data = await parseRequestBody(req);
-      const result = await processGameMove(data.userWord || '', data.history || [], data.difficulty || 'hell');
+      const result = await processGameMove(
+        data.userWord || '', 
+        data.history || [], 
+        data.difficulty || 'hell',
+        { noFirstTurnKill: data.noFirstTurnKill !== undefined ? !!data.noFirstTurnKill : true }
+      );
 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(result));

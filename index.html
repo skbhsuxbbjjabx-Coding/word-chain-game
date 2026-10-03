@@ -78,6 +78,15 @@
               </div>
             </div>
 
+            <!-- 첫 턴 한방제외 모드 토글 -->
+            <div class="rule-toggle-group">
+              <label class="rule-toggle-label" title="첫 번째 턴에는 플레이어와 AI 모두 즉시 끝나는 한방 단어(상대 반격 0개) 사용을 금지합니다">
+                <input type="checkbox" id="noFirstTurnKillCheckbox" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-text">🛡️ 첫 턴 한방제외</span>
+              </label>
+            </div>
+
             <div id="comboBadge" class="combo-pill">
               <span>🔥</span>
               <span id="comboText">0 COMBO</span>
@@ -109,6 +118,7 @@
               유효 표제어만 인정되며, <strong>한글 맞춤법 제10항·제11항 정방향 두음법칙</strong>만 적용됩니다.
             </p>
             <div class="rules-chips">
+              <span class="rule-chip">✓ 🛡️ 첫 턴 한방제외 모드 지원</span>
               <span class="rule-chip">✓ 띄어쓰기(공백/구) 단어 엄격 배제</span>
               <span class="rule-chip">✓ 비표준어/억지단어 원천 차단</span>
               <span class="rule-chip">✓ 역방향 두음법칙(니→리 등) 금지</span>
@@ -170,6 +180,11 @@
                 <input type="checkbox" id="flowModeCheckbox" checked>
                 <span class="toggle-slider"></span>
                 <span class="toggle-text">🌊 흐름 모드 <span id="flowCountBadge" class="flow-count">(0)</span></span>
+              </label>
+              <label class="rule-toggle-label briefing-rule-label" title="첫 턴 단어 질문 시 즉시 한방 단어를 제외하고 랠리 및 주도권 단어를 추천합니다">
+                <input type="checkbox" id="briefingNoFirstTurnKillCheckbox" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-text">🛡️ 첫 턴 한방제외</span>
               </label>
             </div>
             <button id="clearChatBtn" class="action-mini-btn" title="채팅 및 흐름 모드 누적 초기화">

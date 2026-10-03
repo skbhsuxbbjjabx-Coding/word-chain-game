@@ -48,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const briefingInput = document.getElementById('briefingInput');
   const briefingSendBtn = document.getElementById('briefingSendBtn');
   const quickBriefingChips = document.querySelectorAll('.briefing-chip');
+  const noFirstTurnKillCheckbox = document.getElementById('noFirstTurnKillCheckbox');
+  const briefingNoFirstTurnKillCheckbox = document.getElementById('briefingNoFirstTurnKillCheckbox');
 
   // 단어 사전 DOM
   const dictSearchForm = document.getElementById('dictSearchForm');
@@ -596,7 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           userWord: cleanWord,
           history: gameHistory,
-          difficulty: currentDifficulty
+          difficulty: currentDifficulty,
+          noFirstTurnKill: noFirstTurnKillCheckbox ? noFirstTurnKillCheckbox.checked : true
         })
       });
 
@@ -696,6 +699,8 @@ document.addEventListener('DOMContentLoaded', () => {
           유효 표제어만 인정되며, <strong>한글 맞춤법 제10항·제11항 정방향 두음법칙</strong>만 적용됩니다.
         </p>
         <div class="rules-chips">
+          <span class="rule-chip">✓ 🛡️ 첫 턴 한방제외 모드 지원</span>
+          <span class="rule-chip">✓ 띄어쓰기(공백/구) 단어 엄격 배제</span>
           <span class="rule-chip">✓ 비표준어/억지단어 원천 차단</span>
           <span class="rule-chip">✓ 역방향 두음법칙(니→리 등) 금지</span>
           <span class="rule-chip">✓ AI 환각(없는 단어) 생성 불가</span>
@@ -743,6 +748,24 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(isFlow ? '흐름 모드가 켜졌습니다. (상대 앞글자 ➔ 상대 단어 연쇄 입력 지원)' : '흐름 모드가 꺼졌습니다.');
     if (window.soundEngine) window.soundEngine.playCopy();
   });
+
+  if (noFirstTurnKillCheckbox) {
+    noFirstTurnKillCheckbox.addEventListener('change', () => {
+      const isChecked = noFirstTurnKillCheckbox.checked;
+      if (briefingNoFirstTurnKillCheckbox) briefingNoFirstTurnKillCheckbox.checked = isChecked;
+      showToast(isChecked ? '🛡️ 첫 턴 한방제외 모드가 켜졌습니다.' : '첫 턴 한방제외 모드가 꺼졌습니다.');
+      if (window.soundEngine) window.soundEngine.playCopy();
+    });
+  }
+
+  if (briefingNoFirstTurnKillCheckbox) {
+    briefingNoFirstTurnKillCheckbox.addEventListener('change', () => {
+      const isChecked = briefingNoFirstTurnKillCheckbox.checked;
+      if (noFirstTurnKillCheckbox) noFirstTurnKillCheckbox.checked = isChecked;
+      showToast(isChecked ? '🛡️ 첫 턴 한방제외 모드가 켜졌습니다.' : '첫 턴 한방제외 모드가 꺼졌습니다.');
+      if (window.soundEngine) window.soundEngine.playCopy();
+    });
+  }
 
   clearChatBtn.addEventListener('click', () => {
     briefedWords = [];
@@ -804,7 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
           message: cleanQuery,
           flowMode: isFlow,
           briefedWords: briefedWords,
-          opponentStartChar: flowOpponentStartChar
+          opponentStartChar: flowOpponentStartChar,
+          noFirstTurnKill: briefingNoFirstTurnKillCheckbox ? briefingNoFirstTurnKillCheckbox.checked : (noFirstTurnKillCheckbox ? noFirstTurnKillCheckbox.checked : true)
         })
       });
 
