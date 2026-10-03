@@ -1278,14 +1278,18 @@ async function findUltimateBestWord(inputChar, options = {}) {
     ];
   } else {
     // [헬]: 100% 무자비한 최고 지능 Minimax
-    // 첫 턴 한방제외(noFirstTurnKill) 시: 한방 배제 후 안전 수와 압박 수로 랠리 형성, 2턴부터 전격 필살기!
-    tierBuckets = noFirstTurnKill ? [
+    // 한방제외(noFirstTurnKill) 모드 시: 한방 단어(반격 0개)를 철저히 배제하고 안전 수와 압박 수로 랠리 형성!
+    const nonKillingBuckets = [
       { list: tier4_safePlay, num: 4 },
       { list: tier3_nearKill, num: 3 },
       { list: tier2_forcedWin, num: 2 },
-      { list: tier5_desperate, num: 5 },
-      { list: tier1_instantKill, num: 1 }
-    ] : [
+      { list: tier5_desperate, num: 5 }
+    ];
+    tierBuckets = noFirstTurnKill ? (
+      nonKillingBuckets.some(b => b.list.length > 0)
+        ? nonKillingBuckets
+        : [{ list: tier1_instantKill, num: 1 }]
+    ) : [
       { list: tier1_instantKill, num: 1 },
       { list: tier2_forcedWin, num: 2 },
       { list: tier3_nearKill, num: 3 },
@@ -1336,13 +1340,10 @@ async function findUltimateBestWord(inputChar, options = {}) {
   }
 
   // 대안 후보군 선별 (중복 없이 최대 3개 선별)
-  const allCandidates = [
-    ...chosenTierList,
-    ...tier1_instantKill,
-    ...tier2_forcedWin,
-    ...tier3_nearKill,
-    ...tier4_safePlay
-  ].filter(c => c.word !== best.word && !ARCHAIC_BLACKLIST.has(c.word));
+  const candidateTiers = noFirstTurnKill
+    ? [...chosenTierList, ...tier4_safePlay, ...tier3_nearKill, ...tier2_forcedWin, ...tier5_desperate]
+    : [...chosenTierList, ...tier1_instantKill, ...tier2_forcedWin, ...tier3_nearKill, ...tier4_safePlay];
+  const allCandidates = candidateTiers.filter(c => c.word !== best.word && !ARCHAIC_BLACKLIST.has(c.word) && (!noFirstTurnKill || c.outCount > 0));
 
   const seenAltWords = new Set([best.word]);
   const uniqueAlternatives = [];
@@ -1525,9 +1526,8 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     // 1) 앞글자만 입력 (1글자) 또는 명시적 내턴: [내 턴] 자동인식!
     if (pureKorean.length === 1 || forceMyTurn) {
       const myStartChar = pureKorean.length === 1 ? pureKorean : (pureKorean[0] || '기');
-      // ⭐ AI브리핑은 배틀 난이도와 완전 분리되어 무조건 100% 최고 지능(1순위 한방)으로 동작합니다!
-      // 또한 '첫 턴' 관련 텍스트가 명시적으로 포함되었을 때만 첫 턴 한방제외를 적용합니다.
-      const isFirstTurnIntent = !!noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
+      // ⭐ 한방제외 모드 토글 스위치 설정값 그대로 100% 적용! (텍스트 검사 일체 배제)
+      const isFirstTurnIntent = !!noFirstTurnKill;
       const analysis = await findUltimateBestWord(myStartChar, {
         usedWords,
         difficulty: 'hell', // ⭐ AI브리핑은 배틀 난이도(쉬움 등)와 무관하게 언제나 최고 지능(hell) 고정!
@@ -1551,8 +1551,8 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                  `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 주도권을 가져오는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                  `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
       } else if (isFirstTurnIntent && ultimate.outCount > 0) {
-        speech = `🛡️ **'${myStartChar}'**(으)로 이어질 **[첫 턴 한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
-                 `첫 턴 한방 제외 룰에 따라 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
+        speech = `🛡️ **'${myStartChar}'**(으)로 이어질 **[한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+                 `한방제외 룰에 따라 즉시 끝나는 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
                  `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
       } else if (tierNum === 1) {
         speech = `💥 **'${myStartChar}'**(으)로 시작할 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
@@ -1822,7 +1822,8 @@ async function generateAiChatResponse(message, history = [], options = {}) {
   }
 
   if (targetChar) {
-    const isFirstTurnIntent = !!options.noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || trimmed.includes('시작 단어') || trimmed.includes('시작할 단어') || trimmed === '시작');
+    // ⭐ 한방제외 모드 토글 스위치 설정값 그대로 100% 적용! (텍스트 검사 일체 배제)
+    const isFirstTurnIntent = !!options.noFirstTurnKill;
     const analysis = await findUltimateBestWord(targetChar, { 
       usedWords, 
       difficulty: 'hell', // ⭐ AI브리핑은 배틀 난이도와 무관하게 언제나 최고 지능(hell) 고정!
@@ -1899,8 +1900,8 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 랠리를 이어가는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else if (isFirstTurnIntent && ultimate.outCount > 0) {
-      speech = `🛡️ **'${targetChar}'**(으)로 이어질 **[첫 턴 한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
-               `첫 턴 한방 제외 룰에 따라 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
+      speech = `🛡️ **'${targetChar}'**(으)로 이어질 **[한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+               `한방제외 룰에 따라 즉시 끝나는 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     } else if (tierNum === 1) {
       speech = `💥 **'${targetChar}'**(으)로 이어질 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +

@@ -861,8 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (noFirstTurnKillCheckbox) {
     noFirstTurnKillCheckbox.addEventListener('change', () => {
       const isChecked = noFirstTurnKillCheckbox.checked;
-      if (briefingNoFirstTurnKillCheckbox) briefingNoFirstTurnKillCheckbox.checked = isChecked;
-      showToast(isChecked ? '🛡️ 첫 턴 한방제외 모드가 켜졌습니다.' : '첫 턴 한방제외 모드가 꺼졌습니다.');
+      showToast(isChecked ? '🛡️ 배틀 첫 턴 한방제외가 켜졌습니다.' : '배틀 첫 턴 한방제외가 꺼졌습니다.');
       if (window.soundEngine) window.soundEngine.playCopy();
     });
   }
@@ -870,8 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (briefingNoFirstTurnKillCheckbox) {
     briefingNoFirstTurnKillCheckbox.addEventListener('change', () => {
       const isChecked = briefingNoFirstTurnKillCheckbox.checked;
-      if (noFirstTurnKillCheckbox) noFirstTurnKillCheckbox.checked = isChecked;
-      showToast(isChecked ? '🛡️ 첫 턴 한방제외 모드가 켜졌습니다.' : '첫 턴 한방제외 모드가 꺼졌습니다.');
+      showToast(isChecked ? '🛡️ 한방제외 모드가 켜졌습니다. (한방 단어 추천 제외)' : '한방제외 모드가 꺼졌습니다. (1순위 한방 단어 추천)');
       if (window.soundEngine) window.soundEngine.playCopy();
     });
   }
@@ -940,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
           opponentWordMode: isOpponentMode,
           briefedWords: isFlow ? briefedWords : [],
           opponentStartChar: flowOpponentStartChar,
-          noFirstTurnKill: briefingNoFirstTurnKillCheckbox ? briefingNoFirstTurnKillCheckbox.checked : (noFirstTurnKillCheckbox ? noFirstTurnKillCheckbox.checked : true)
+          noFirstTurnKill: briefingNoFirstTurnKillCheckbox ? briefingNoFirstTurnKillCheckbox.checked : false
         })
       });
 
