@@ -77,22 +77,22 @@ html, body {
 .app-header {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 10px 20px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-light);
   z-index: 50;
-  gap: 12px;
+  gap: 8px;
 }
 
-.header-left {
+.header-main-row {
   display: flex;
   align-items: center;
-  gap: 20px;
-  min-width: 0;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
 }
 
 .brand-group {
@@ -746,15 +746,21 @@ html, body {
 }
 
 .ai-strat-pill.tier-3 {
+  background: rgba(168, 85, 247, 0.22);
+  color: #e9d5ff;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.ai-strat-pill.tier-4 {
   background: rgba(16, 185, 129, 0.22);
   color: #a7f3d0;
   border: 1px solid rgba(16, 185, 129, 0.45);
 }
 
-.ai-strat-pill.tier-4 {
-  background: rgba(56, 189, 248, 0.22);
-  color: #bae6fd;
-  border: 1px solid rgba(56, 189, 248, 0.45);
+.ai-strat-pill.tier-5 {
+  background: rgba(148, 163, 184, 0.22);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.45);
 }
 
 .card-footer-row {
@@ -1013,6 +1019,11 @@ html, body {
 .rule-toggle-label .toggle-text {
   font-size: 0.8rem;
   font-weight: 700;
+  color: #64748b;
+  transition: color 0.2s ease;
+}
+
+.rule-toggle-label input:checked ~ .toggle-text {
   color: #34d399;
 }
 
@@ -1023,13 +1034,14 @@ html, body {
 }
 
 .opponent-mode-label input:checked ~ .toggle-text {
-  color: #fda4af;
+  color: #fb7185;
 }
 
 .opponent-mode-label .toggle-text {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fb7185;
+  color: #64748b;
+  transition: color 0.2s ease;
 }
 
 .flow-toggle-label {
@@ -1074,10 +1086,15 @@ html, body {
   transform: translateX(14px);
 }
 
+.flow-toggle-label input:checked ~ .toggle-text {
+  color: var(--primary);
+}
+
 .toggle-text {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #64748b;
+  transition: color 0.2s ease;
 }
 
 .flow-count {
@@ -1225,15 +1242,21 @@ html, body {
 }
 
 .highlight-tier-pill.tier-3 {
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+.highlight-tier-pill.tier-4 {
   background: rgba(16, 185, 129, 0.2);
   color: #a7f3d0;
   border: 1px solid rgba(16, 185, 129, 0.45);
 }
 
-.highlight-tier-pill.tier-4 {
-  background: rgba(56, 189, 248, 0.2);
-  color: #bae6fd;
-  border: 1px solid rgba(56, 189, 248, 0.45);
+.highlight-tier-pill.tier-5 {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.45);
 }
 
 .highlight-tier-pill.my-turn-pill {
@@ -1282,15 +1305,21 @@ html, body {
 }
 
 .briefing-hero-card.tier-3 {
+  background: linear-gradient(145deg, #24112e, #15091c 60%, #0d0612);
+  border: 1.5px solid rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.22), 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.briefing-hero-card.tier-4 {
   background: linear-gradient(145deg, #11281e, #0a1712 60%, #08110d);
   border: 1.5px solid rgba(16, 185, 129, 0.6);
   box-shadow: 0 0 24px rgba(16, 185, 129, 0.22), 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
-.briefing-hero-card.tier-4 {
-  background: linear-gradient(145deg, #102436, #0a1624 60%, #08111c);
-  border: 1.5px solid rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.22), 0 8px 30px rgba(0, 0, 0, 0.5);
+.briefing-hero-card.tier-5 {
+  background: linear-gradient(145deg, #1e293b, #0f172a 60%, #090d16);
+  border: 1.5px solid rgba(148, 163, 184, 0.5);
+  box-shadow: 0 0 24px rgba(148, 163, 184, 0.2), 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
 .hero-top-badge-row {
@@ -1327,17 +1356,24 @@ html, body {
 }
 
 .hero-tier-badge.tier-3 {
+  background: rgba(168, 85, 247, 0.25);
+  color: #fff;
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.hero-tier-badge.tier-4 {
   background: rgba(16, 185, 129, 0.25);
   color: #fff;
   border: 1px solid rgba(16, 185, 129, 0.6);
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
-.hero-tier-badge.tier-4 {
-  background: rgba(56, 189, 248, 0.25);
+.hero-tier-badge.tier-5 {
+  background: rgba(148, 163, 184, 0.25);
   color: #fff;
-  border: 1px solid rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.3);
 }
 
 .hero-start-char-tag {
@@ -1397,13 +1433,18 @@ html, body {
 }
 
 .briefing-hero-card.tier-3 .hero-word-display {
+  color: #e9d5ff;
+  text-shadow: 0 0 16px rgba(168, 85, 247, 0.8), 0 0 32px rgba(168, 85, 247, 0.5);
+}
+
+.briefing-hero-card.tier-4 .hero-word-display {
   color: #a7f3d0;
   text-shadow: 0 0 16px rgba(16, 185, 129, 0.8), 0 0 32px rgba(16, 185, 129, 0.5);
 }
 
-.briefing-hero-card.tier-4 .hero-word-display {
-  color: #bae6fd;
-  text-shadow: 0 0 16px rgba(56, 189, 248, 0.8), 0 0 32px rgba(56, 189, 248, 0.5);
+.briefing-hero-card.tier-5 .hero-word-display {
+  color: #cbd5e1;
+  text-shadow: 0 0 16px rgba(148, 163, 184, 0.6), 0 0 32px rgba(148, 163, 184, 0.4);
 }
 
 .hero-pos-tag {
@@ -1431,6 +1472,12 @@ html, body {
   border: 1px solid rgba(245, 158, 11, 0.5);
 }
 
+.hero-kill-badge.pressure {
+  background: rgba(168, 85, 247, 0.25);
+  color: #f3e8ff;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+}
+
 .hero-kill-badge.safe {
   background: rgba(16, 185, 129, 0.25);
   color: #a7f3d0;
@@ -1449,7 +1496,9 @@ html, body {
 
 .briefing-hero-card.tier-1 .hero-meaning-card { border-left-color: #f43f5e; }
 .briefing-hero-card.tier-2 .hero-meaning-card { border-left-color: #f59e0b; }
-.briefing-hero-card.tier-3 .hero-meaning-card { border-left-color: #10b981; }
+.briefing-hero-card.tier-3 .hero-meaning-card { border-left-color: #a855f7; }
+.briefing-hero-card.tier-4 .hero-meaning-card { border-left-color: #10b981; }
+.briefing-hero-card.tier-5 .hero-meaning-card { border-left-color: #94a3b8; }
 
 .hero-source-label {
   font-size: 0.72rem;
@@ -2480,7 +2529,55 @@ html, body {
 }
 
 /* ==========================================================================
-   6. PC 와이드스크린 (>= 992px) 최적화: 좌우 듀얼 패널 동시 표출!
+   6. AI 창 전용 모드 (컴퓨터 화면 조그맣게 만들었을 때 & 컴팩트 모드)
+   ========================================================================== */
+.compact-ai-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: var(--primary);
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.compact-ai-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: var(--primary);
+}
+
+.compact-ai-btn.active {
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #0b0f19;
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+/* AI 전용창 활성화 시: 배틀 숨기고 AI 창만 100% 전면 표출! */
+.app-layout.ai-only-mode .battle-panel,
+.app-layout.ai-only-mode #panelBattle {
+  display: none !important;
+}
+
+.app-layout.ai-only-mode .dashboard-container {
+  display: flex !important;
+  grid-template-columns: 1fr !important;
+  padding: 10px 14px !important;
+}
+
+.app-layout.ai-only-mode .auxiliary-panel,
+.app-layout.ai-only-mode #panelAux {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.app-layout.ai-only-mode #auxBriefing {
+  display: flex !important;
+}
+
+/* ==========================================================================
+   7. PC 와이드스크린 (>= 992px) 최적화: 좌우 듀얼 패널 동시 표출!
    ========================================================================== */
 @media (min-width: 992px) {
   .dashboard-container {
@@ -2498,7 +2595,7 @@ html, body {
   }
 
   .app-nav {
-    display: none; /* PC에서는 상시 2분할이므로 상단 전체 화면 탭 숨김 */
+    display: none; /* PC 기본 화면에서는 좌우 분할이므로 상단 전체 화면 탭 숨김 */
   }
 
   .aux-tabs-bar {
@@ -2507,74 +2604,425 @@ html, body {
 }
 
 /* ==========================================================================
-   7. 모바일 (< 992px) 최적화: 탭 전환 & 가상 키보드 고정
+   8. 컴퓨터 화면 작게 줄였을 때 (< 992px) & 모바일 최적화 (겹침 100% 해소)
    ========================================================================== */
 @media (max-width: 991px) {
   .app-layout {
     border: none;
+    max-width: 100%;
   }
 
-  .dashboard-container {
+  .app-header {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .header-main-row {
     display: flex;
-    flex-direction: column;
-  }
-
-  .panel-section {
-    display: none;
+    align-items: center;
+    justify-content: space-between;
     width: 100%;
-    height: 100%;
+    min-width: 0;
+    gap: 8px;
   }
 
-  .panel-section.active {
-    display: flex;
+  .brand-group {
+    flex-shrink: 0;
   }
 
-  .app-nav {
-    display: flex;
-  }
-
-  .aux-tabs-bar {
-    display: none; /* 모바일에서는 상단 헤더 nav-tab으로 직접 진입 */
-  }
-
-  .target-section {
-    padding: 10px 14px;
-  }
-
-  .target-char-wrap {
-    min-width: 58px;
-    height: 58px;
-  }
-
-  .target-char {
-    font-size: 1.55rem;
-  }
-
-  .turn-log-section {
-    padding: 10px 14px;
-    gap: 10px;
-  }
-
-  .input-section {
-    padding: 8px 12px max(10px, env(safe-area-inset-bottom)) 12px;
-  }
-
-  .btn-text {
-    display: none;
+  .brand-title {
+    font-size: 1.05rem;
   }
 
   .brand-subtitle {
     display: none;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .header-btn {
+    padding: 5px 9px;
+    font-size: 0.74rem;
+  }
+
+  .header-btn .btn-text {
+    display: none;
+  }
+
+  .compact-ai-btn .btn-text {
+    display: inline !important;
+    font-size: 0.72rem;
+  }
+
+  /* 모바일 상단 3단 네비게이션 탭 (100% 너비, 터치 친화적 세그먼트) */
+  .app-nav {
+    display: flex;
+    width: 100%;
+    order: 10;
+    margin-top: 2px;
+    padding: 2px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    gap: 2px;
+  }
+
+  .nav-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 7px 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 6px;
+    gap: 4px;
+  }
+
+  .dashboard-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .panel-section {
+    display: none;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+  }
+
+  .panel-section.active {
+    display: flex;
+  }
+
+  .aux-tabs-bar {
+    display: none; /* 상단 탭으로 직접 이동 */
+  }
+
+  /* --------------------------------------------------------------------------
+     [제시어 영역] 모바일 겹침 완벽 해소!
+     -------------------------------------------------------------------------- */
+  .target-section {
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.75);
+    flex-shrink: 0;
+  }
+
+  .target-top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .turn-badge {
+    order: 1;
+    font-size: 0.74rem;
+    padding: 3px 8px;
+  }
+
+  .combo-pill {
+    order: 2;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    margin-left: auto;
+  }
+
   .difficulty-selector {
     order: 3;
-    width: 100%;
-    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 170px;
+    margin-top: 2px;
+  }
+
+  .diff-label {
+    display: none;
   }
 
   .diff-btn-group {
+    display: flex;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .diff-btn {
     flex: 1;
-    justify-content: space-around;
+    padding: 4px 2px;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
+  .rule-toggle-group {
+    order: 4;
+    flex-shrink: 0;
+    margin-top: 2px;
+    margin-left: 6px;
+  }
+
+  .rule-toggle-label {
+    gap: 5px;
+  }
+
+  .toggle-slider {
+    width: 28px;
+    height: 16px;
+  }
+
+  .toggle-slider::after {
+    width: 12px;
+    height: 12px;
+    top: 2px;
+    left: 2px;
+  }
+
+  .rule-toggle-label input:checked + .toggle-slider::after {
+    transform: translateX(12px);
+  }
+
+  .toggle-text {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  /* 제시어 카드 */
+  .target-main-card {
+    padding: 8px 12px;
+    gap: 10px;
+  }
+
+  .target-char-wrap {
+    min-width: 52px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .target-char {
+    font-size: 1.55rem;
+  }
+
+  .target-caption {
+    font-size: 0.55rem;
+  }
+
+  .dueum-badge {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    flex-wrap: wrap;
+  }
+
+  .last-word-name {
+    font-size: 0.76rem;
+  }
+
+  .last-word-desc {
+    font-size: 0.7rem;
+    line-height: 1.35;
+  }
+
+  /* --------------------------------------------------------------------------
+     [턴 로그 & 입력창]
+     -------------------------------------------------------------------------- */
+  .turn-log-section {
+    padding: 8px 12px 12px 12px;
+    gap: 8px;
+  }
+
+  .turn-card {
+    padding: 9px 11px;
+    gap: 5px;
+  }
+
+  .card-word-text {
+    font-size: 1.2rem;
+  }
+
+  .card-meaning {
+    font-size: 0.76rem;
+    padding: 5px 8px;
+    line-height: 1.4;
+  }
+
+  .input-section {
+    padding: 6px 10px max(10px, env(safe-area-inset-bottom)) 10px;
+    background: rgba(11, 15, 25, 0.95);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-light);
+  }
+
+  .prefix-badge {
+    min-width: 38px;
+    height: 38px;
+    font-size: 0.88rem;
+    padding: 0 4px;
+  }
+
+  .word-input {
+    height: 38px;
+    font-size: 15px;
+  }
+
+  .submit-btn {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 0.84rem;
+  }
+
+  /* --------------------------------------------------------------------------
+     [AI브리핑] 모바일 겹침 100% 해소
+     -------------------------------------------------------------------------- */
+  .briefing-control-bar {
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.7);
+  }
+
+  .flow-mode-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .flow-toggle-label,
+  .opponent-mode-label,
+  .briefing-rule-label {
+    gap: 4px;
+  }
+
+  .flow-toggle-label .toggle-text,
+  .opponent-mode-label .toggle-text,
+  .briefing-rule-label .toggle-text {
+    font-size: 0.68rem;
+    white-space: nowrap;
+  }
+
+  .action-mini-btn {
+    padding: 4px 8px;
+    font-size: 0.68rem;
+    margin-left: auto;
+  }
+
+  .briefing-chat-messages {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .briefing-msg {
+    max-width: 95%;
+    gap: 8px;
+  }
+
+  .msg-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .msg-bubble {
+    padding: 9px 11px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  /* 추천 단어 히어로 카드 */
+  .briefing-hero-card {
+    padding: 10px 12px;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .hero-word-display {
+    font-size: 1.4rem;
+  }
+
+  .hero-meaning-body {
+    font-size: 0.78rem;
+  }
+
+  .hero-action-buttons {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .hero-action-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 4px;
+    font-size: 0.72rem;
+    justify-content: center;
+  }
+
+  .hero-action-btn.hero-battle-btn {
+    flex: 1.3;
+  }
+
+  .quick-chips-row {
+    padding: 6px 10px;
+    gap: 5px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .quick-chips-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .briefing-chip {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .briefing-input-area {
+    padding: 6px 10px max(10px, env(safe-area-inset-bottom)) 10px;
+  }
+
+  .briefing-input {
+    height: 38px;
+    font-size: 15px;
+  }
+
+  .briefing-submit-btn {
+    height: 38px;
+    padding: 0 12px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   초소형 모바일 (< 400px) 극단적 최적화
+   -------------------------------------------------------------------------- */
+@media (max-width: 400px) {
+  .turn-badge, .combo-pill {
+    font-size: 0.68rem;
+    padding: 2px 6px;
+  }
+
+  .diff-btn {
+    font-size: 0.64rem;
+    padding: 3px 1px;
+  }
+
+  .toggle-text {
+    font-size: 0.66rem;
+  }
+
+  .hero-action-btn .btn-text-content small {
+    display: none;
   }
 }

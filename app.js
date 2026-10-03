@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const soundToggleBtn = document.getElementById('soundToggleBtn');
   const soundIcon = document.getElementById('soundIcon');
   const resetGameBtn = document.getElementById('resetGameBtn');
+  const compactAiToggleBtn = document.getElementById('compactAiToggleBtn');
   const appNav = document.getElementById('appNav');
   const navTabs = document.querySelectorAll('.nav-tab');
 
@@ -238,23 +239,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let tierClass = 'tier-1';
     let tierTitle = '💥 [1순위: 즉시 승리 한방 단어]';
-    if (tierNum === 2 || tierNum === 3) {
+    if (tierNum === 2) {
       tierClass = 'tier-2';
-      tierTitle = '⚔️ [2순위: 반격 불가 외통수 단어]';
-    } else if (tierNum === 4) {
+      tierTitle = '⚔️ [2순위: 2수 앞 필승 외통수 단어]';
+    } else if (tierNum === 3) {
       tierClass = 'tier-3';
-      tierTitle = '🛡️ [3순위: 한방 회피 안전 단어]';
-    } else if (tierNum >= 5) {
+      tierTitle = '🔥 [3순위: 반격 봉쇄 치명타 단어]';
+    } else if (tierNum === 4) {
       tierClass = 'tier-4';
-      tierTitle = '⚠️ [4순위: 위기 탈출 차선책]';
+      tierTitle = '🛡️ [4순위: 한방 회피 안전 단어]';
+    } else if (tierNum >= 5) {
+      tierClass = 'tier-5';
+      tierTitle = '⚠️ [5순위: 위기 탈출 차선책]';
     }
 
     let killBadgeHtml = '';
     const outCount = typeof ultimate.outCount === 'number' ? ultimate.outCount : 0;
     if (outCount === 0) {
       killBadgeHtml = `<div class="hero-kill-badge killing">💥 끝글자 '${endChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
-    } else if (outCount <= 3) {
-      killBadgeHtml = `<div class="hero-kill-badge trap">⚔️ 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (외통수 포위)</div>`;
+    } else if (tierNum === 2) {
+      killBadgeHtml = `<div class="hero-kill-badge trap">⚔️ 끝글자 '${endChar}' ➔ 다음 턴 100% 한방 격파 (2수 앞 필승 외통수)</div>`;
+    } else if (outCount <= 4) {
+      killBadgeHtml = `<div class="hero-kill-badge pressure">🔥 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (치명적 압박 포위망)</div>`;
     } else {
       killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
     }
@@ -346,6 +352,53 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------------------
   // 5. 탭 전환 (모바일 상단 탭 & PC 보조 탭)
   // ------------------------------------------------------------------------
+  // ⭐ 컴퓨터 화면 작게 했을 때 / AI 전용창 모드 제어
+  let isAiOnlyMode = false;
+  let autoCompactTriggered = false;
+
+  function setAiOnlyMode(enable, silent = false) {
+    isAiOnlyMode = enable;
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.classList.toggle('ai-only-mode', isAiOnlyMode);
+    
+    if (compactAiToggleBtn) {
+      compactAiToggleBtn.classList.toggle('active', isAiOnlyMode);
+      const textSpan = compactAiToggleBtn.querySelector('.btn-text');
+      if (textSpan) textSpan.textContent = isAiOnlyMode ? '전체 보기' : 'AI 창만';
+    }
+
+    if (isAiOnlyMode) {
+      switchTab('briefing');
+      if (!silent) showToast('⚡ AI 창 전용 모드가 켜졌습니다.');
+    } else {
+      switchTab('battle');
+      if (!silent) showToast('전체 대시보드 모드로 전환되었습니다.');
+    }
+  }
+
+  if (compactAiToggleBtn) {
+    compactAiToggleBtn.addEventListener('click', () => {
+      setAiOnlyMode(!isAiOnlyMode);
+      if (window.soundEngine) window.soundEngine.playCopy();
+    });
+  }
+
+  // ⭐ [요청사항] 컴퓨터에서 화면을 조그맣게 만들었을 때 AI창만 남게 자동 최적화!
+  function handleWindowResize() {
+    const width = window.innerWidth;
+    if (width < 900) {
+      if (!autoCompactTriggered && !isAiOnlyMode) {
+        autoCompactTriggered = true;
+        switchTab('briefing');
+      }
+    } else {
+      autoCompactTriggered = false;
+    }
+  }
+  window.addEventListener('resize', handleWindowResize);
+  // 초기 로드 시에도 창 크기 검사
+  setTimeout(handleWindowResize, 100);
+
   function switchTab(tabKey) {
     // 모바일 네비게이션 탭 갱신
     navTabs.forEach(tab => {
@@ -480,9 +533,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isUser) {
       let tierBadge = '';
       if (tierNumber === 1) tierBadge = '<span class="ai-strat-pill tier-1">💥 1순위 한방</span>';
-      else if (tierNumber === 2 || tierNumber === 3) tierBadge = '<span class="ai-strat-pill tier-2">⚔️ 2순위 외통수</span>';
-      else if (tierNumber === 4) tierBadge = '<span class="ai-strat-pill tier-3">🛡️ 3순위 안전수</span>';
-      else if (tierNumber === 5) tierBadge = '<span class="ai-strat-pill tier-4">⚠️ 4순위 차선책</span>';
+      else if (tierNumber === 2) tierBadge = '<span class="ai-strat-pill tier-2">⚔️ 2순위 외통수</span>';
+      else if (tierNumber === 3) tierBadge = '<span class="ai-strat-pill tier-3">🔥 3순위 치명타</span>';
+      else if (tierNumber === 4) tierBadge = '<span class="ai-strat-pill tier-4">🛡️ 4순위 안전수</span>';
+      else if (tierNumber >= 5) tierBadge = '<span class="ai-strat-pill tier-5">⚠️ 5순위 차선책</span>';
       if (tierBadge || strategyBrief) {
         strategyHtml = `<div class="card-strategy-brief">${tierBadge} ${strategyBrief || ''}</div>`;
       }
@@ -770,6 +824,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   flowModeCheckbox.addEventListener('change', () => {
     const isFlow = flowModeCheckbox.checked;
+    if (!isFlow) {
+      briefedWords = [];
+      flowOpponentStartChar = null;
+      updateFlowCount();
+    }
     updateBriefingPlaceholder();
     showToast(isFlow ? '🌊 흐름 모드가 켜졌습니다. (단어 중복 방지 및 대결 누적)' : '흐름 모드가 꺼졌습니다.');
     if (window.soundEngine) window.soundEngine.playCopy();
@@ -865,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
           message: cleanQuery,
           flowMode: isFlow,
           opponentWordMode: isOpponentMode,
-          briefedWords: briefedWords,
+          briefedWords: isFlow ? briefedWords : [],
           opponentStartChar: flowOpponentStartChar,
           noFirstTurnKill: briefingNoFirstTurnKillCheckbox ? briefingNoFirstTurnKillCheckbox.checked : (noFirstTurnKillCheckbox ? noFirstTurnKillCheckbox.checked : true)
         })
@@ -895,15 +954,19 @@ document.addEventListener('DOMContentLoaded', () => {
       aiMsg.scrollIntoView({ behavior: 'smooth' });
 
       // 흐름 모드 & 상대방 단어 적기 상태 및 단어 업데이트
-      if (Array.isArray(data.briefedWords)) {
-        briefedWords = data.briefedWords;
+      if (isFlow) {
+        if (Array.isArray(data.briefedWords)) {
+          briefedWords = data.briefedWords;
+        } else {
+          if (data.opponentWord && !briefedWords.includes(data.opponentWord)) {
+            briefedWords.push(data.opponentWord);
+          }
+          if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
+            briefedWords.push(data.briefedWord);
+          }
+        }
       } else {
-        if (data.opponentWord && !briefedWords.includes(data.opponentWord)) {
-          briefedWords.push(data.opponentWord);
-        }
-        if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
-          briefedWords.push(data.briefedWord);
-        }
+        briefedWords = [];
       }
       updateFlowCount();
 

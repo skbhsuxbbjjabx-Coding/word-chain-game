@@ -15,7 +15,7 @@
     
     <!-- 글로벌 상단 헤더 (PC & 모바일 공통) -->
     <header class="app-header">
-      <div class="header-left">
+      <div class="header-main-row">
         <div class="brand-group">
           <span class="brand-symbol">⚡</span>
           <div class="brand-titles">
@@ -24,33 +24,37 @@
           </div>
         </div>
 
-        <!-- 모바일 & PC 탭 네비게이션 -->
-        <nav class="app-nav" id="appNav">
-          <button class="nav-tab active" data-tab="battle">
-            <span class="nav-icon">⚔️</span>
-            <span class="nav-text">끝말잇기 배틀</span>
+        <div class="header-actions">
+          <button id="compactAiToggleBtn" class="header-btn compact-ai-btn" title="컴퓨터 화면 조그맣게 볼 때: AI 창만 보기 모드 토글">
+            <span>⚡</span>
+            <span class="btn-text">AI 창만</span>
           </button>
-          <button class="nav-tab" data-tab="briefing">
-            <span class="nav-icon">⚡</span>
-            <span class="nav-text">AI브리핑</span>
+          <button id="soundToggleBtn" class="header-btn" title="사운드 토글" aria-label="사운드 토글">
+            <span id="soundIcon">🔊</span>
+            <span class="btn-text">사운드</span>
           </button>
-          <button class="nav-tab" data-tab="dict">
-            <span class="nav-icon">📚</span>
-            <span class="nav-text">단어 사전</span>
+          <button id="resetGameBtn" class="header-btn reset" title="배틀 새 게임">
+            <span>🔄</span>
+            <span class="btn-text">새 게임</span>
           </button>
-        </nav>
+        </div>
       </div>
 
-      <div class="header-actions">
-        <button id="soundToggleBtn" class="header-btn" title="사운드 토글" aria-label="사운드 토글">
-          <span id="soundIcon">🔊</span>
-          <span class="btn-text">사운드</span>
+      <!-- 모바일 & PC 탭 네비게이션 (독립 행 배치로 겹침 원천 차단) -->
+      <nav class="app-nav" id="appNav">
+        <button class="nav-tab active" data-tab="battle">
+          <span class="nav-icon">⚔️</span>
+          <span class="nav-text">배틀</span>
         </button>
-        <button id="resetGameBtn" class="header-btn reset" title="배틀 새 게임">
-          <span>🔄</span>
-          <span class="btn-text">새 게임</span>
+        <button class="nav-tab" data-tab="briefing">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-text">AI브리핑</span>
         </button>
-      </div>
+        <button class="nav-tab" data-tab="dict">
+          <span class="nav-icon">📚</span>
+          <span class="nav-text">단어 사전</span>
+        </button>
+      </nav>
     </header>
 
     <!-- 메인 대시보드 뷰 (PC: 좌우 듀얼 패널 / 모바일: 선택된 탭 패널) -->
