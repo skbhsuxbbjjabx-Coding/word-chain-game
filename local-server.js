@@ -286,6 +286,11 @@ function getOutDegree(char) {
   return getDynamicOutDegree(char, null);
 }
 
+// ⭐ [절대 한방 종결 음절]: '릇', '늣', '녘', '쁨', '듐', '옄', '엌', '값' 등 현대 국어에서 반격이 불가능한 한방 글자 전수 정의
+const ABSOLUTE_KILLING_CHARS = new Set([
+  '녘', '쁨', '듐', '늧', '릇', '릎', '탉', '값', '옄', '엌', '헿', '흗', '늣', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸'
+]);
+
 // ⭐ [정적 킬러 음절 사전 인덱스 생성]: 한글 전체 음절 중 시작 단어가 전무(0개)한 음절 집합
 const staticTerminalCharSet = new Set();
 for (let code = 0xAC00; code <= 0xD7A3; code++) {
@@ -293,6 +298,10 @@ for (let code = 0xAC00; code <= 0xD7A3; code++) {
   const vars = getDueumVariants(ch);
   const total = vars.reduce((acc, v) => acc + (startMap.get(v)?.length || 0), 0);
   if (total === 0) staticTerminalCharSet.add(ch);
+}
+// ⭐ '릇', '늧', '늣' 등 절대 한방 글자는 무조건 정적 킬러 음절에 100% 영구 포함! ('은그릇' 피격 자살수 원천 방지)
+for (const ch of ABSOLUTE_KILLING_CHARS) {
+  staticTerminalCharSet.add(ch);
 }
 console.log(`🎯 사전 인덱싱된 정적 한방(반격 불가) 음절 수: ${staticTerminalCharSet.size.toLocaleString()}개`);
 
@@ -313,6 +322,24 @@ function getTerminalCharSet(usedWords = null) {
     }
   }
   return set;
+}
+
+// ⭐ [단어 즉시 한방 여부 엄격 판정]: 상대가 이 단어를 냈을 때 내가 다음 수를 둘 수 있는지(0개면 상대 한방) 판정
+function isWordInstantKill(word, currentUsed = null) {
+  if (!word || word.length < 2) return false;
+  const endChar = word[word.length - 1];
+  if (staticTerminalCharSet.has(endChar) || ABSOLUTE_KILLING_CHARS.has(endChar)) return true;
+  const vars = getDueumVariants(endChar);
+  for (let vi = 0; vi < vars.length; vi++) {
+    const list = startMap.get(vars[vi]);
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) {
+      if (!currentUsed || !currentUsed.has(list[i].word)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 // 3. 공인 국어사전 실시간 검색 엔진 (네이버 국어사전 공식 API3 실시간 전수 연동)
@@ -415,25 +442,6 @@ async function queryNaverDictionary(queryWord, timeoutMs = 3500) {
   const clean = rawInput.replace(/[^\uAC00-\uD7A3]/g, '');
   if (!clean || clean.length === 0) return getUnverifiedResult(queryWord);
 
-  // ⭐ 현대에 쓰이지 않는 옛말(사어/고어) 즉시 차단
-  if (ARCHAIC_BLACKLIST.has(clean)) {
-    const archaicRes = {
-      word: clean,
-      displayEntry: clean,
-      isVerified: false,
-      isArchaic: true,
-      source: '국어사전 옛말/사어 (끝말잇기 불가)',
-      totalMatches: 1,
-      partOfSpeech: '옛말',
-      meanings: ['현대에 쓰이지 않는 옛말(사어)입니다.'],
-      message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
-      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`,
-      naverResults: []
-    };
-    naverCache.set(clean, archaicRes);
-    return archaicRes;
-  }
-
   if (naverCache.has(clean)) {
     return naverCache.get(clean);
   }
@@ -512,38 +520,15 @@ async function queryNaverDictionary(queryWord, timeoutMs = 3500) {
         }
       }
 
-      // 최적 매칭 아이템 결정
+      // ⭐ [철저한 표제어 일치 검증]: 오직 검색어와 완전히 일치하거나 띄어쓰기만 제거했을 때 일치하는 단어만 채택!
+      // (검색어와 다른 엉뚱한 첫 번째 결과를 끌어오는 엉터리 폴백 완전 삭제 -> 없는 단어 통과 버그 100% 원천 차단)
       let bestMatch = naverResults.find(r => r.isExactMatch && r.meanings.length > 0);
       if (!bestMatch) {
         bestMatch = naverResults.find(r => r.cleanWord === clean && r.meanings.length > 0);
       }
-      if (!bestMatch && naverResults.length > 0) {
-        bestMatch = naverResults.find(r => (r.cleanWord.startsWith(clean) || clean.startsWith(r.cleanWord)) && r.meanings.length > 0);
-      }
-      if (!bestMatch && naverResults.length > 0) {
-        bestMatch = naverResults[0];
-      }
 
+      // ⭐ 네이버 국어사전에 실제로 표제어와 뜻풀이가 등재되어 있으면 '옛말/고어'('션믈' 등)라도 100% 인정!
       if (bestMatch && bestMatch.meanings.length > 0) {
-        const hasArchaic = bestMatch.meanings.every(m => m.includes('옛말') || m.includes('고어'));
-        if (hasArchaic) {
-          const archaicRes = {
-            word: clean,
-            displayEntry: bestMatch.entry,
-            isVerified: false,
-            isArchaic: true,
-            source: bestMatch.source,
-            totalMatches: naverResults.length,
-            partOfSpeech: '옛말',
-            meanings: bestMatch.meanings.slice(0, 5),
-            message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
-            link: bestMatch.link,
-            naverResults
-          };
-          naverCache.set(clean, archaicRes);
-          return archaicRes;
-        }
-
         apiResult = {
           word: clean,
           displayEntry: bestMatch.entry,
@@ -572,7 +557,6 @@ async function queryNaverDictionary(queryWord, timeoutMs = 3500) {
     naverCache.set(clean, apiResult);
     return apiResult;
   }
-
   // 네이버 국어사전 검색 결과에 유효한 뜻이 없으면 무조건 미등재 판정!
   const unverified = getUnverifiedResult(clean);
   naverCache.set(clean, unverified);
@@ -748,7 +732,6 @@ function getRebuttalAnalysis(endChar, counterPlan = [], usedWords = null) {
 // 절대 규칙: 한방 당하는 단어(상대에게 한방을 내주는 자살수)는 철저히 회피!
 // ============================================================================
 
-const ABSOLUTE_KILLING_CHARS = new Set(['녘', '쁨', '듐', '늧', '릇', '릎', '탉', '값', '옄', '엌', '헿', '흗', '늣', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸']);
 const FOREIGN_NAMES_SET = new Set(['해리슨', '윌슨', '존슨', '앤더슨', '잭슨', '톰슨', '파킨슨', '클린턴', '워싱턴', '뉴턴', '에디슨', '로빈슨', '마이컬슨', '스티븐슨', '제퍼슨']);
 const ICONIC_WORDS = new Set([
   '해질녘', '새벽녘', '황혼녘', '동녘', '서녘', '남녘', '북녘',
@@ -867,19 +850,21 @@ async function findUltimateBestWord(inputChar, options = {}) {
       qualityScore -= 120000; // 끝말잇기에서 동사/형용사 기본형 배제
     }
 
-    if (item.isPure) qualityScore += 25000;
-    if (word.length === 2) qualityScore += 50000;
-    else if (word.length === 3) qualityScore += 45000;
+    if (item.isPure) qualityScore += 35000;
+    if (word.length === 2) qualityScore += 90000;
+    else if (word.length === 3) qualityScore += 70000;
     else if (word.length === 4) qualityScore += 20000;
-    else if (word.length >= 5) qualityScore -= (word.length * 35000);
+    else if (word.length >= 5) qualityScore -= (word.length * 45000);
 
-    if (ICONIC_WORDS.has(word)) qualityScore += 250000;
+    // ⭐ 일상 대표 공인 단어 최우선 장려
+    if (ICONIC_WORDS.has(word)) qualityScore += 300000;
+    // 명사 가산점
+    if (pos === '명사') qualityScore += 50000;
+    // 방언/북한어보다 현대 표준어 강력 우대
+    if (pos.includes('방언') || pos.includes('북한')) qualityScore -= 120000;
+
     if (FOREIGN_NAMES_SET.has(word) || (/^[가-힣]{3,}$/.test(word) && word.endsWith('슨') && word !== '이순신')) {
       qualityScore -= 500000;
-    }
-    // 고어/방언성 희귀 음절 감점 (현대 표준어 최우선 장려)
-    if (/[죵픠돓늣븟늧옄읓앛뤂]/.test(word)) {
-      qualityScore -= 350000;
     }
 
     // ------------------------------------------------------------------------
@@ -964,14 +949,13 @@ async function findUltimateBestWord(inputChar, options = {}) {
       continue;
     }
 
-    // 상대방의 즉시 한방 역공(자살수) 확인: O(M) 단일 루프 Set 체크
+    // 상대방의 즉시 한방 역공(자살수) 확인: 상대의 반격 어휘 중 나를 즉사시키는 한방 단어(은그릇, 은시안화칼륨 등) 전수 감지
     const oppKillingMoves = [];
     for (let oi = 0; oi < oppMoves.length; oi++) {
       const oppWord = oppMoves[oi].word;
-      const oppEnd = oppWord[oppWord.length - 1];
-      if (terminalSet.has(oppEnd)) {
+      if (isWordInstantKill(oppWord, nextUsed)) {
         oppKillingMoves.push(oppMoves[oi]);
-        if (oppKillingMoves.length >= 3) break;
+        if (oppKillingMoves.length >= 5) break;
       }
     }
     const hasSuicideRisk = oppKillingMoves.length > 0;
@@ -1102,6 +1086,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
         endChar,
         outCount: oppCount,
         tier: 4,
+        hasSuicideRisk: false,
         tierName: '🛡️ 4순위: 안전하게 쓸 수 있는 방어 단어',
         tierBadgeClass: 'tier-4',
         tierIcon: '🛡️',
@@ -1129,6 +1114,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
         endChar,
         outCount: oppCount,
         tier: 5,
+        hasSuicideRisk: true,
         tierName: '⚠️ 5순위: 위기 탈출 차선책 단어 (한방 주의)',
         tierBadgeClass: 'tier-5',
         tierIcon: '⚠️',
@@ -1274,11 +1260,11 @@ async function findUltimateBestWord(inputChar, options = {}) {
     return null;
   }
 
-  // 대안 후보군 선별 (중복 없이 최대 3개 선별, 실제 네이버 사전 뜻풀이가 존재하는 단어만 엄격 채택)
+  // ⭐ 대안 후보군 선별: 상대에게 한방(은그릇 등)을 헌납하는 자살수 단어(hasSuicideRisk)는 100% 영구 배제!
   const candidateTiers = noFirstTurnKill
-    ? [...chosenTierList, ...tier4_safePlay, ...tier3_nearKill, ...tier2_forcedWin, ...tier5_desperate]
+    ? [...chosenTierList, ...tier4_safePlay, ...tier3_nearKill, ...tier2_forcedWin]
     : [...chosenTierList, ...tier1_instantKill, ...tier2_forcedWin, ...tier3_nearKill, ...tier4_safePlay];
-  const allCandidates = candidateTiers.filter(c => c.word !== best.word && !ARCHAIC_BLACKLIST.has(c.word) && (!noFirstTurnKill || c.outCount > 0));
+  const allCandidates = candidateTiers.filter(c => c.word !== best.word && (!noFirstTurnKill || c.outCount > 0) && !c.hasSuicideRisk);
 
   const seenAltWords = new Set([best.word]);
   const uniqueAlternatives = [];
@@ -1545,29 +1531,9 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     if (pureKorean.length >= 2 || forceOpponentTurn) {
       const opponentWord = pureKorean;
 
-      // 상대방 단어 옛말/사어 블랙리스트 검사
-      if (ARCHAIC_BLACKLIST.has(opponentWord)) {
-        return {
-          text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
-          flowMode,
-          opponentWordMode: true,
-          isAwaitingOpponentWord: true,
-          opponentStartChar: oppStartCharParam || opponentWord[0]
-        };
-      }
-
-      // 상대방 단어 국어사전 정밀 검증
+      // 상대방 단어 네이버 국어사전 정밀 검증 (네이버 사전에 있는 단어는 옛말이라도 전수 100% 인정!)
       const oppDict = await queryNaverDictionary(opponentWord);
-      if (!oppDict || !oppDict.isVerified || oppDict.isArchaic) {
-        if (oppDict && oppDict.isArchaic) {
-          return {
-            text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
-            flowMode,
-            opponentWordMode: true,
-            isAwaitingOpponentWord: true,
-            opponentStartChar: oppStartCharParam || opponentWord[0]
-          };
-        }
+      if (!oppDict || !oppDict.isVerified) {
         if (oppDict && oppDict.isSpacedWord) {
           return {
             text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 국어사전에 **‘${oppDict.spacedEntry || opponentWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어**만 인정되므로 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
@@ -1771,11 +1737,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
       if (pureWord.length >= 2) {
         const selfDict = await queryNaverDictionary(pureWord);
-        if (selfDict && selfDict.isArchaic) {
-          return {
-            text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${pureWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않으므로 사용하실 수 없습니다.`
-          };
-        }
+        // 네이버 사전에 등재된 단어는 옛말/방언 포함 100% 인정
         if (selfDict && selfDict.isSpacedWord) {
           return {
             text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${pureWord}」**은(는) 국어사전에 **‘${selfDict.spacedEntry || pureWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 들어간 말(구, 관용구, 복합표현)은 단어가 아니므로 인정되지 않습니다.** 반드시 붙여 쓰는 한 단어만 사용해 주세요!`
@@ -1944,15 +1906,9 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     }
   }
 
-  // 네이버 국어사전 실시간 검색 검증 (네이버 사전에 실제 등재되어 있는 단어만 100% 인정)
+  // 네이버 국어사전 실시간 검색 검증 (네이버 사전에 등재된 단어는 옛말/방언 포함 100% 인정)
   const dictCheck = await queryNaverDictionary(cleanWord);
-  if (!dictCheck || !dictCheck.isVerified || dictCheck.isArchaic) {
-    if (dictCheck && dictCheck.isArchaic) {
-      return {
-        success: false,
-        message: `「${cleanWord}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로 끝말잇기 규칙상 사용할 수 없습니다.`
-      };
-    }
+  if (!dictCheck || !dictCheck.isVerified) {
     if (dictCheck && dictCheck.isSpacedWord) {
       return {
         success: false,
