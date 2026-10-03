@@ -1200,12 +1200,14 @@ function parseUserTargetChar(message) {
 async function generateAiChatResponse(message, history = [], options = {}) {
   const trimmed = message.trim();
   const flowMode = !!options.flowMode;
+  const opponentWordMode = options.opponentWordMode !== false; // 기본값: 상대방 단어 적기 모드 ON
   const briefedWords = Array.isArray(options.briefedWords) ? options.briefedWords : [];
   const usedWords = flowMode && briefedWords.length > 0 ? new Set(briefedWords) : new Set();
+  const noFirstTurnKill = options.noFirstTurnKill !== undefined ? !!options.noFirstTurnKill : true;
 
   if (trimmed.includes('안녕') || trimmed.includes('반가워')) {
     return {
-      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n🌊 **흐름 모드**를 켜시면 상대의 시작 글자(앞글자) 입력 ➔ 상대 단어 입력 ➔ 내 1순위 필승 반격 수로 랠리가 이어집니다!\n지금 바로 앞글자(예: *'기'*, *'산기슭'*)를 입력해보세요!`
+      text: `안녕하세요! ⚡ **끝말잇기 AI브리핑**입니다.\n\n국립국어원 우리말샘 및 네이버 국어사전 전수 어휘를 바탕으로 **4단계 지능 의사결정**을 제공합니다:\n\n1. 💥 **1순위 (한방 단어 위주)**: 상대 반격 0개로 즉시 승리하는 필승 단어\n2. ⚔️ **2순위 (되받아칠 단어 거의 없는 단어)**: 상대 반격 1~3개뿐인 치명타/외통수\n3. 🛡️ **3순위 (한방에 당하지 않는 단어)**: 상대 한방을 완벽히 피하는 안전 수\n4. ⚠️ **4순위 (할 수라도 있는 단어)**: 자살수를 감수하고 이어가는 차선책\n\n📝 **상대방 단어 적기 모드 안내**:\n• **앞글자만(1자) 입력** (예: *'기'*): **[내 턴]** 최적의 필승 수 즉시 추천!\n• **풀네임(2자 이상) 입력** (예: *'비행기'*): **[상대 턴]**으로 자동 인식하여 상대 단어 검증 및 카운터 반격 수 브리핑!\n\n지금 바로 앞글자나 단어를 입력해보세요!`
     };
   }
 
@@ -1215,76 +1217,122 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     };
   }
 
-  // ⭐ 띄어쓰기(공백) 검증 (단, "첫 턴 추천해줘", "기 최적수 알려줘" 등 자연어 질문 문장은 허용하고, 단어 자체에 공백이 들어간 경우만 룰 안내)
-  const isQuestionSentence = /(?:알려줘|알려달라|알려|추천|어때|뭐있어|뭐야|가르쳐|해줘|이어|받아|단어|글자|첫\s*턴|첫턴)/.test(trimmed);
-  if (/\s/.test(trimmed) && !isQuestionSentence) {
+  // ⭐ 질문성 자연어 문장 여부 감지 (질문 문장은 단어 자동 인식에서 제외하고 자연어 질의로 처리)
+  const isQuestionSentence = /(?:알려줘|알려달라|알려|추천|어때|뭐있어|뭐야|가르쳐|해줘|이어|받아|단어|글자|첫\s*턴|첫턴|뜻|검색)/.test(trimmed);
+
+  let cleanText = trimmed;
+  let forceOpponentTurn = false;
+  let forceMyTurn = false;
+
+  if (cleanText.startsWith('상대턴') || cleanText.startsWith('상대방') || cleanText.startsWith('상대')) {
+    forceOpponentTurn = true;
+    cleanText = cleanText.replace(/^(?:상대턴|상대방|상대)\s*/, '');
+  } else if (cleanText.startsWith('내턴') || cleanText.startsWith('내 턴') || cleanText.startsWith('나의턴') || cleanText.startsWith('내 차례')) {
+    forceMyTurn = true;
+    cleanText = cleanText.replace(/^(?:내턴|내\s*턴|나의턴|내\s*차례)\s*/, '');
+  }
+
+  // ⭐ 띄어쓰기(공백) 검증 (단, 질문 문장은 허용)
+  if (/\s/.test(cleanText) && !isQuestionSentence) {
     return {
       text: `⚠️ **[끝말잇기 룰 안내]**\n\n입력하신 **「${trimmed}」**에는 띄어쓰기(공백)가 포함되어 있습니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어(단일어 또는 합성명사)**만 유효하므로 게임에서 인정되지 않습니다.`
     };
   }
 
-  const pureKorean = trimmed.replace(/[^가-힣]/g, '');
+  const pureKorean = cleanText.replace(/[^가-힣]/g, '');
 
   // --------------------------------------------------------------------------
-  // 🌊 [흐름 모드 전용 로직] "상대 앞에글자 입력하면 상대 단어도 그 다음에 입력하게 해줘"
+  // 🎯 [상대방 단어 적기 모드] 앞글자만 입력 -> [내 턴], 풀네임 입력 -> [상대 턴] 자동인식
   // --------------------------------------------------------------------------
-  if (flowMode) {
+  if (opponentWordMode && !isQuestionSentence && pureKorean.length > 0) {
     const oppStartCharParam = options.opponentStartChar ? String(options.opponentStartChar).trim() : null;
 
-    // 1) 1글자 입력이거나 "상대" 단어와 함께 시작 글자를 지정한 경우: 상대 시작 글자 접수 후 상대 단어 입력 대기!
-    const isSingleChar = pureKorean.length === 1;
-    const isOpponentStartCharIntent = isSingleChar || (trimmed.includes('상대') && pureKorean.length <= 2);
+    // 1) 앞글자만 입력 (1글자) 또는 명시적 내턴: [내 턴] 자동인식!
+    if (pureKorean.length === 1 || forceMyTurn) {
+      const myStartChar = pureKorean.length === 1 ? pureKorean : (pureKorean[0] || '기');
+      const isFirstTurnIntent = !!noFirstTurnKill && (trimmed.includes('첫 턴') || trimmed.includes('첫턴') || briefedWords.length === 0);
+      const analysis = await findUltimateBestWord(myStartChar, {
+        usedWords,
+        difficulty: 'hell',
+        noFirstTurnKill: isFirstTurnIntent
+      });
 
-    if (isOpponentStartCharIntent) {
-      const oppStartChar = pureKorean.length === 1 ? pureKorean : pureKorean[pureKorean.length - 1];
-      const variants = getDueumVariants(oppStartChar);
-      const candidateSamples = [];
-      for (const v of variants) {
-        if (startMap.has(v)) {
-          for (const item of startMap.get(v)) {
-            if (!usedWords.has(item.word) && item.word.length >= 2 && !ARCHAIC_BLACKLIST.has(item.word)) {
-              candidateSamples.push(item.word);
-              if (candidateSamples.length >= 4) break;
-            }
-          }
-        }
-        if (candidateSamples.length >= 4) break;
+      if (!analysis || !analysis.ultimateWord) {
+        return {
+          text: `🤔 아쉽게도 현재 국어사전에서 '${myStartChar}'(으)로 시작하는 유효한 단어를 찾을 수 없습니다. (사전에 없는 음절이거나 끝말잇기 한방 글자일 가능성이 높습니다)`,
+          opponentWordMode: true
+        };
       }
 
-      const sampleText = candidateSamples.length > 0 ? ` (예: **'${candidateSamples.join("', '")}'** 등)` : '';
+      const ultimate = analysis.ultimateWord;
+      const tierNum = ultimate.tierInfo?.tierNumber || 1;
+
+      let speech = '';
+      if (ultimate.word === '윰라대왕' || myStartChar === '륨' || myStartChar === '늄' || myStartChar === '윰') {
+        speech = `🛡️ **'${myStartChar}'**(은)는 두음법칙(한글 맞춤법 제10항·제11항)에 따라 **'윰'**으로 변환하여 이어갈 수 있습니다!\n\n` +
+                 `국어사전 전체에서 '윰'으로 시작하는 단어는 국립국어원 우리말샘 공인 표제어인 **「${ultimate.word}」**(강원 방언) 단 1개만 존재합니다!\n\n` +
+                 `상대방의 '나트륨'이나 '알루미늄' 공격을 무력화하고 주도권을 가져오는 **유일무이한 회심의 방어 카드**입니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (isFirstTurnIntent && ultimate.outCount > 0) {
+        speech = `🛡️ **'${myStartChar}'**(으)로 이어질 **[첫 턴 한방제외 모드 추천 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+                 `첫 턴 한방 제외 룰에 따라 한방 단어를 쓰지 않고, 상대에게 한방 역공을 허용하지 않으면서 주도권을 확고히 잡는 최적의 단어입니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 1) {
+        speech = `💥 **'${myStartChar}'**(으)로 시작할 **[1순위: 즉시 승리 한방 단어]**는 단연 **「${ultimate.word}」**입니다!\n\n` +
+                 `끝글자 **'${ultimate.endChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 내가 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 **즉시 100% 승리(한방)**합니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 2 || tierNum === 3) {
+        speech = `⚔️ **'${myStartChar}'**(으)로 시작할 **[2순위: 되받아칠 단어가 거의 없는 외통수 단어]**는 바로 **「${ultimate.word}」**입니다!\n\n` +
+                 `상대방의 다음 선택지가 국어사전 전체에서 단 **${ultimate.outCount}개**(${ultimate.minimax.samples.slice(0, 3).join(', ')})뿐이며, 다음 턴 100% 한방으로 격파하는 **필승 2수 앞 덫**입니다!\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else if (tierNum === 4) {
+        speech = `🛡️ **'${myStartChar}'**(으)로 시작할 **[3순위: 한방단어에 당하지 않는 안전 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+                 `상대의 한방 역공(자살수)을 원천 차단하면서 안정적으로 주도권을 쥐고 랠리를 이어가는 최선의 안전 수입니다.\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      } else {
+        speech = `⚠️ **'${myStartChar}'**(으)로 시작할 **[4순위: 할 수라도 있는 차선책 단어]**로 **「${ultimate.word}」**을(를) 추천합니다!\n\n` +
+                 `상대의 역공 위험이 다소 있으나 현재 상황에서 유효하게 전세를 만회해 나가는 유일한 수입니다.\n\n` +
+                 `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
+      }
+
+      const isDirectWin = ultimate.outCount === 0;
+      const nextPrompt = isDirectWin
+        ? `\n\n👑 **[필승 완승 경고]** 내가 낸 **「${ultimate.word}」**의 끝글자 **'${ultimate.endChar}'**(으)로 상대가 낼 수 있는 단어가 국어사전에 **전무(0개)**하여 게임이 즉시 승리로 끝납니다!`
+        : `\n\n👉 내가 **「${ultimate.word}」**(으)로 공격했습니다!\n상대방이 다음 끝글자 **'${ultimate.endChar}'**(으)로 어떤 단어로 받아쳤나요? 상대방이 낸 단어를 풀네임으로 입력해주세요!`;
+
+      const fullText = `🎯 **[내 턴: 시작 글자 '${myStartChar}']**\n\n` +
+                       `내가 둘 차례입니다! 시작 글자 **'${myStartChar}'**(으)로 상대방을 압도할 **최적의 필승 수**를 브리핑합니다:\n\n` +
+                       speech +
+                       nextPrompt;
+
+      const newBriefed = flowMode ? [...briefedWords, ultimate.word] : [...briefedWords];
 
       return {
-        text: `🎯 **[상대방 턴: 시작 글자 '${oppStartChar}']**\n\n상대방 차례의 시작 글자 **'${oppStartChar}'**(이)가 접수되었습니다!\n\n상대방이 **'${oppStartChar}'**(으)로 어떤 단어를 냈나요? 상대방이 낸 단어를 아래 입력창에 입력해주세요!${sampleText}\n\n입력하시면 상대방의 단어를 완벽하게 격파할 **1순위 필승 수**를 즉시 브리핑해 드립니다!`,
-        flowMode: true,
-        isAwaitingOpponentWord: true,
-        opponentStartChar: oppStartChar,
-        sampleWords: candidateSamples
+        text: fullText,
+        analysis,
+        hasUltimateCard: true,
+        turnType: 'myTurn',
+        briefedWord: ultimate.word,
+        briefedWords: newBriefed,
+        tierNumber: tierNum,
+        flowMode,
+        opponentWordMode: true,
+        isAwaitingOpponentWord: !isDirectWin,
+        opponentStartChar: ultimate.endChar,
+        nextTargetChar: ultimate.endChar
       };
     }
 
-    // 2) 2글자 이상 단어 입력인 경우: 상대방이 낸 단어로 접수 후, 나의 최적 반격 수 브리핑!
-    if (pureKorean.length >= 2) {
+    // 2) 풀네임 단어 입력 (2글자 이상): [상대 턴] 자동인식!
+    if (pureKorean.length >= 2 || forceOpponentTurn) {
       const opponentWord = pureKorean;
-
-      // 만약 직전 턴에서 상대 시작 글자가 지정되어 있었다면 두음법칙 포함 일치 여부 엄격 검증!
-      if (oppStartCharParam) {
-        const allowedStarts = getDueumVariants(oppStartCharParam);
-        if (!allowedStarts.includes(opponentWord[0])) {
-          const dueumNote = allowedStarts.length > 1 ? ` (두음법칙 허용: '${allowedStarts.join("', '")}')` : '';
-          return {
-            text: `⚠️ **[상대방 시작 글자 불일치]**\n\n현재 상대방 차례의 시작 글자는 **'${oppStartCharParam}'**입니다.${dueumNote}\n\n상대방이 **'${oppStartCharParam}'**(으)로 낸 단어를 입력해주세요! (현재 입력: 「${opponentWord}」)`,
-            flowMode: true,
-            isAwaitingOpponentWord: true,
-            opponentStartChar: oppStartCharParam
-          };
-        }
-      }
 
       // 상대방 단어 옛말/사어 블랙리스트 검사
       if (ARCHAIC_BLACKLIST.has(opponentWord)) {
         return {
-          text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
-          flowMode: true,
+          text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
+          flowMode,
+          opponentWordMode: true,
           isAwaitingOpponentWord: true,
           opponentStartChar: oppStartCharParam || opponentWord[0]
         };
@@ -1295,49 +1343,69 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       if (!oppDict || !oppDict.isVerified || oppDict.isArchaic) {
         if (oppDict && oppDict.isArchaic) {
           return {
-            text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
-            flowMode: true,
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 현대에 쓰이지 않는 **옛말(사어)**입니다.\n\n끝말잇기 공식 규칙상 옛말이나 사어는 인정되지 않습니다. 상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
+            flowMode,
+            opponentWordMode: true,
             isAwaitingOpponentWord: true,
             opponentStartChar: oppStartCharParam || opponentWord[0]
           };
         }
         if (oppDict && oppDict.isSpacedWord) {
           return {
-            text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${opponentWord}」**은(는) 국어사전에 **‘${oppDict.spacedEntry || opponentWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어**만 인정되므로 사용하실 수 없습니다.`,
-            flowMode: true,
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n상대방이 낸 **「${opponentWord}」**은(는) 국어사전에 **‘${oppDict.spacedEntry || opponentWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어**만 인정되므로 상대방이 낸 올바른 단어를 다시 입력해주세요!`,
+            flowMode,
+            opponentWordMode: true,
             isAwaitingOpponentWord: true,
             opponentStartChar: oppStartCharParam || opponentWord[0]
           };
         }
         return {
           text: `🤔 **「${opponentWord}」**은(는) 공인 국어사전(우리말샘 / 표준국어대사전)에 등재되지 않은 단어입니다.\n\n상대방이 낸 올바른 표준 단어를 다시 입력해주세요!`,
-          flowMode: true,
+          flowMode,
+          opponentWordMode: true,
           isAwaitingOpponentWord: true,
           opponentStartChar: oppStartCharParam || opponentWord[0]
         };
       }
 
-      // 이미 사용된 단어인지 확인
-      if (usedWords.has(opponentWord)) {
+      // 이미 사용된 단어인지 확인 (흐름 모드 ON 시)
+      if (flowMode && usedWords.has(opponentWord)) {
         return {
           text: `⚠️ **[중복 단어 경고]**\n\n**「${opponentWord}」**은(는) 이번 대결 흐름에서 이미 사용된 단어입니다.\n\n상대방이 낸 다른 단어를 입력해주세요!`,
-          flowMode: true,
+          flowMode,
+          opponentWordMode: true,
           isAwaitingOpponentWord: true,
           opponentStartChar: oppStartCharParam || opponentWord[0]
         };
+      }
+
+      // 직전 턴 제시어와 다른 경우 부드러운 안내
+      let startCharNotice = '';
+      if (oppStartCharParam) {
+        const allowedStarts = getDueumVariants(oppStartCharParam);
+        if (!allowedStarts.includes(opponentWord[0])) {
+          const dueumNote = allowedStarts.length > 1 ? ` (두음법칙 허용: '${allowedStarts.join("', '")}')` : '';
+          startCharNotice = `*(참고: 직전 차례 제시어 '${oppStartCharParam}'${dueumNote} 대신 새로운 단어 「${opponentWord}」 접수)*\n\n`;
+        }
       }
 
       // 상대방 단어의 끝글자로 내가 반격할 최적의 수 탐색!
       const oppEndChar = opponentWord[opponentWord.length - 1];
       const newUsedWords = new Set([...usedWords, opponentWord]);
-      const analysis = await findUltimateBestWord(oppEndChar, { usedWords: newUsedWords, difficulty: 'hell' });
+      const analysis = await findUltimateBestWord(oppEndChar, {
+        usedWords: newUsedWords,
+        difficulty: 'hell',
+        noFirstTurnKill: false
+      });
 
       if (!analysis || !analysis.ultimateWord) {
         return {
-          text: `🎉 **[플레이어 완승!]**\n\n상대방이 **「${opponentWord}」**(으)로 냈으나, 끝글자 **'${oppEndChar}'**(으)로 시작하는 단어가 국어사전에 더 이상 없습니다!\n\n상대방이 치명적인 자살수를 두었으므로 플레이어의 승리입니다!`,
+          text: `${startCharNotice}🎉 **[플레이어 완승!]**\n\n상대방이 **「${opponentWord}」**(으)로 냈으나, 끝글자 **'${oppEndChar}'**(으)로 시작하는 단어가 국어사전에 더 이상 없습니다!\n\n상대방이 치명적인 자살수를 두었으므로 플레이어의 승리입니다!`,
           opponentWord,
-          briefedWords: [...briefedWords, opponentWord],
-          flowMode: true,
+          turnType: 'opponentTurn',
+          briefedWords: flowMode ? [...briefedWords, opponentWord] : [...briefedWords],
+          flowMode,
+          opponentWordMode: true,
           isAwaitingOpponentWord: false,
           opponentStartChar: null
         };
@@ -1372,23 +1440,28 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
       const isDirectWin = ultimate.outCount === 0;
       const nextPrompt = isDirectWin
-        ? `\n\n👑 **[필승 완승 경고]** 내가 낸 **「${ultimate.word}」**의 끝글자 **'${ultimate.endChar}'**(으)로 상대가 낼 수 있는 단어가 국어사전에 **전무(0개)**하여 상대방은 무조건 패배합니다!`
-        : `\n\n👉 내가 **「${ultimate.word}」**(으)로 반격했습니다!\n상대방이 다음 끝글자 **'${ultimate.endChar}'**(으)로 어떤 단어로 받아쳤나요? 상대방의 다음 단어를 입력해주세요!`;
+        ? `\n\n👑 **[필승 완승 경고]** 내가 반격한 **「${ultimate.word}」**의 끝글자 **'${ultimate.endChar}'**(으)로 상대가 낼 수 있는 단어가 국어사전에 **전무(0개)**하여 상대방은 100% 패배합니다!`
+        : `\n\n👉 내가 **「${ultimate.word}」**(으)로 반격했습니다!\n상대방이 다음 끝글자 **'${ultimate.endChar}'**(으)로 어떤 단어로 받아쳤나요? 상대방의 다음 단어를 풀네임으로 입력해주세요!`;
 
-      const fullText = `⚔️ **[상대방 응수: 「${opponentWord}」 ➔ 반격 제시어: '${oppEndChar}']**\n\n` +
-                       `상대방이 낸 **「${opponentWord}」**을(를) 격파할 **최적의 필승 수**를 브리핑합니다:\n\n` +
+      const fullText = `${startCharNotice}⚔️ **[상대방 턴: 「${opponentWord}」 접수 ➔ 반격 제시어: '${oppEndChar}']**\n\n` +
+                       `상대방이 **「${opponentWord}」**(으)로 공격해 왔습니다!\n` +
+                       `상대방을 격파할 **최적의 필승 반격 수**를 브리핑합니다:\n\n` +
                        speech +
                        nextPrompt;
+
+      const newBriefed = flowMode ? [...briefedWords, opponentWord, ultimate.word] : [...briefedWords];
 
       return {
         text: fullText,
         analysis,
         hasUltimateCard: true,
+        turnType: 'opponentTurn',
         briefedWord: ultimate.word,
         opponentWord: opponentWord,
-        briefedWords: [...briefedWords, opponentWord, ultimate.word],
+        briefedWords: newBriefed,
         tierNumber: tierNum,
-        flowMode: true,
+        flowMode,
+        opponentWordMode: true,
         isAwaitingOpponentWord: !isDirectWin,
         opponentStartChar: ultimate.endChar,
         nextTargetChar: ultimate.endChar
@@ -1765,6 +1838,7 @@ async function handleRequest(req, res) {
       const data = await parseRequestBody(req);
       const reply = await generateAiChatResponse(data.message || '', data.history || [], {
         flowMode: !!data.flowMode,
+        opponentWordMode: data.opponentWordMode !== undefined ? !!data.opponentWordMode : true,
         briefedWords: Array.isArray(data.briefedWords) ? data.briefedWords : [],
         opponentStartChar: data.opponentStartChar || null,
         noFirstTurnKill: data.noFirstTurnKill !== undefined ? !!data.noFirstTurnKill : true

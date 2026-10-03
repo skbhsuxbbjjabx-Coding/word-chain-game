@@ -1016,6 +1016,22 @@ html, body {
   color: #34d399;
 }
 
+/* 📝 상대방 단어 적기 모드 토글 스타일 */
+.opponent-mode-label input:checked + .toggle-slider {
+  background: #f43f5e;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.45);
+}
+
+.opponent-mode-label input:checked ~ .toggle-text {
+  color: #fda4af;
+}
+
+.opponent-mode-label .toggle-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fb7185;
+}
+
 .flow-toggle-label {
   display: inline-flex;
   align-items: center;
@@ -1218,6 +1234,20 @@ html, body {
   background: rgba(56, 189, 248, 0.2);
   color: #bae6fd;
   border: 1px solid rgba(56, 189, 248, 0.45);
+}
+
+.highlight-tier-pill.my-turn-pill {
+  background: rgba(56, 189, 248, 0.25);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.highlight-tier-pill.opp-turn-pill {
+  background: rgba(244, 63, 94, 0.25);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.55);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.3);
 }
 
 /* ⭐ AI 추천 단어 하이라이트 히어로 카드 (초특급 시각적 강조) */

@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // AI브리핑 DOM
   const flowModeCheckbox = document.getElementById('flowModeCheckbox');
   const flowCountBadge = document.getElementById('flowCountBadge');
+  const opponentWordModeCheckbox = document.getElementById('opponentWordModeCheckbox');
   const clearChatBtn = document.getElementById('clearChatBtn');
   const briefingMessages = document.getElementById('briefingMessages');
   const briefingForm = document.getElementById('briefingForm');
@@ -206,11 +207,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. 글자 강조: '...'
     html = html.replace(/'([^']+)'/g, '<span class="highlight-char-pill">\'$1\'</span>');
 
-    // 3. 티어 순위 강조
+    // 3. 티어 순위 및 턴 인식 강조
     html = html.replace(/\[1순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-1">💥 $&</span>');
     html = html.replace(/\[2순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-2">⚔️ $&</span>');
     html = html.replace(/\[3순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-3">🛡️ $&</span>');
     html = html.replace(/\[4순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-4">⚠️ $&</span>');
+    html = html.replace(/\[내 턴:[^\]]+\]/g, '<span class="highlight-tier-pill my-turn-pill">🎯 $&</span>');
+    html = html.replace(/\[상대방 턴:[^\]]+\]/g, '<span class="highlight-tier-pill opp-turn-pill">⚔️ $&</span>');
 
     // 4. 볼드 및 이탤릭
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -256,6 +259,13 @@ document.addEventListener('DOMContentLoaded', () => {
       killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
     }
 
+    let subLabel = '🌟 AI 추천 최적수 단어';
+    if (data.turnType === 'opponentTurn' && data.opponentWord) {
+      subLabel = `⚔️ 상대 「${escapeHtml(data.opponentWord)}」 격파 ➔ 회심의 반격 단어`;
+    } else if (data.turnType === 'myTurn') {
+      subLabel = `🎯 [내 턴] 시작 글자 '${escapeHtml(targetChar)}' ➔ 필승 추천 단어`;
+    }
+
     const card = document.createElement('div');
     card.className = `briefing-hero-card ${tierClass}`;
     card.innerHTML = `
@@ -266,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <div class="hero-center-box">
         <div class="hero-word-header">
-          <div class="hero-sub-label">🌟 AI 추천 최적수 단어</div>
+          <div class="hero-sub-label">${subLabel}</div>
           <div class="hero-word-row">
             <span class="hero-word-display">${word}</span>
             <span class="hero-pos-tag">[${ultimate.partOfSpeech || '명사'}]</span>
@@ -733,21 +743,47 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------------------
   // 7. [AI브리핑] 로직 (흐름 모드 & 4단계 우선순위 브리핑)
   // ------------------------------------------------------------------------
-  let flowOpponentStartChar = null; // 흐름 모드에서 대기 중인 상대방 시작 글자
+  // 7. [AI브리핑] 로직 (흐름 모드 & 상대방 단어 적기 모드 & 4단계 우선순위 브리핑)
+  // ------------------------------------------------------------------------
+  let flowOpponentStartChar = null; // 대기 중인 상대방 시작 글자
 
   function updateFlowCount() {
-    flowCountBadge.textContent = `(${briefedWords.length})`;
+    if (flowCountBadge) {
+      flowCountBadge.textContent = `(${briefedWords.length})`;
+    }
+  }
+
+  function updateBriefingPlaceholder() {
+    const isOpponentMode = opponentWordModeCheckbox ? opponentWordModeCheckbox.checked : true;
+    if (isOpponentMode) {
+      if (flowOpponentStartChar) {
+        briefingInput.placeholder = `상대 단어(풀네임: '${flowOpponentStartChar}'...) 또는 내 앞글자 입력...`;
+      } else {
+        briefingInput.placeholder = '앞글자 1자(내 턴) 또는 풀네임(상대 턴)을 입력하세요...';
+      }
+    } else if (flowModeCheckbox && flowModeCheckbox.checked) {
+      briefingInput.placeholder = '앞글자 또는 단어를 입력하세요 (예: 기, 기차)...';
+    } else {
+      briefingInput.placeholder = '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
+    }
   }
 
   flowModeCheckbox.addEventListener('change', () => {
     const isFlow = flowModeCheckbox.checked;
-    flowOpponentStartChar = null;
-    briefingInput.placeholder = isFlow
-      ? '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...'
-      : '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
-    showToast(isFlow ? '흐름 모드가 켜졌습니다. (상대 앞글자 ➔ 상대 단어 연쇄 입력 지원)' : '흐름 모드가 꺼졌습니다.');
+    updateBriefingPlaceholder();
+    showToast(isFlow ? '🌊 흐름 모드가 켜졌습니다. (단어 중복 방지 및 대결 누적)' : '흐름 모드가 꺼졌습니다.');
     if (window.soundEngine) window.soundEngine.playCopy();
   });
+
+  if (opponentWordModeCheckbox) {
+    opponentWordModeCheckbox.addEventListener('change', () => {
+      const isOpponent = opponentWordModeCheckbox.checked;
+      flowOpponentStartChar = null;
+      updateBriefingPlaceholder();
+      showToast(isOpponent ? '📝 상대방 단어 적기 모드가 켜졌습니다. (앞글자=내턴 / 풀네임=상대턴)' : '상대방 단어 적기 모드가 꺼졌습니다.');
+      if (window.soundEngine) window.soundEngine.playCopy();
+    });
+  }
 
   if (noFirstTurnKillCheckbox) {
     noFirstTurnKillCheckbox.addEventListener('change', () => {
@@ -771,21 +807,22 @@ document.addEventListener('DOMContentLoaded', () => {
     briefedWords = [];
     flowOpponentStartChar = null;
     updateFlowCount();
-    briefingInput.placeholder = flowModeCheckbox.checked
-      ? '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...'
-      : '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
+    updateBriefingPlaceholder();
     briefingMessages.innerHTML = `
       <div class="briefing-msg ai">
         <div class="msg-avatar">⚡</div>
         <div class="msg-bubble">
           <p>채팅 및 흐름 모드가 초기화되었습니다! 🔄</p>
-          <p>원하시는 앞글자(예: <em>'기'</em>, <em>'하'</em>, <em>'마'</em>)나 단어를 입력해주세요.</p>
+          <p>원하시는 앞글자(1자: [내 턴])나 단어 풀네임(2자 이상: [상대 턴])을 입력해주세요.</p>
           <ol class="briefing-priority-list">
-            <li>💥 <strong>1순위</strong>: 한방 단어 위주</li>
-            <li>⚔️ <strong>2순위</strong>: 되받아칠 단어가 거의 없는 단어</li>
-            <li>🛡️ <strong>3순위</strong>: 한방단어에 당하지 않는 단어</li>
-            <li>⚠️ <strong>4순위</strong>: 할 수라도 있는 단어</li>
+            <li>💥 <strong>1순위</strong>: 일단 <strong>한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
+            <li>⚔️ <strong>2순위</strong>: 없으면 <strong>되받아칠 단어가 거의 없는 단어</strong> (외통수/치명타)</li>
+            <li>🛡️ <strong>3순위</strong>: 없으면 <strong>한방단어에 당하지 않는 단어</strong> (안전 수)</li>
+            <li>⚠️ <strong>4순위</strong>: 없으면 <strong>할 수라도 있는 단어</strong> (차선책)</li>
           </ol>
+          <p class="flow-mode-note">
+            📝 <strong>상대방 단어 적기 모드</strong>: <strong>앞글자(1자)</strong> 입력 시 [내 턴] 필승 수 추천, <strong>단어 풀네임(2자 이상)</strong> 입력 시 [상대 턴]으로 자동 인식하여 반격 수를 브리핑합니다.
+          </p>
         </div>
       </div>
     `;
@@ -819,13 +856,15 @@ document.addEventListener('DOMContentLoaded', () => {
     briefingSendBtn.disabled = true;
 
     try {
-      const isFlow = flowModeCheckbox.checked;
+      const isFlow = flowModeCheckbox ? flowModeCheckbox.checked : true;
+      const isOpponentMode = opponentWordModeCheckbox ? opponentWordModeCheckbox.checked : true;
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: cleanQuery,
           flowMode: isFlow,
+          opponentWordMode: isOpponentMode,
           briefedWords: briefedWords,
           opponentStartChar: flowOpponentStartChar,
           noFirstTurnKill: briefingNoFirstTurnKillCheckbox ? briefingNoFirstTurnKillCheckbox.checked : (noFirstTurnKillCheckbox ? noFirstTurnKillCheckbox.checked : true)
@@ -855,31 +894,29 @@ document.addEventListener('DOMContentLoaded', () => {
       briefingMessages.appendChild(aiMsg);
       aiMsg.scrollIntoView({ behavior: 'smooth' });
 
-      // 흐름 모드 상태 및 단어 업데이트
-      if (isFlow) {
+      // 흐름 모드 & 상대방 단어 적기 상태 및 단어 업데이트
+      if (Array.isArray(data.briefedWords)) {
+        briefedWords = data.briefedWords;
+      } else {
         if (data.opponentWord && !briefedWords.includes(data.opponentWord)) {
           briefedWords.push(data.opponentWord);
         }
         if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
           briefedWords.push(data.briefedWord);
         }
-        updateFlowCount();
+      }
+      updateFlowCount();
 
+      if (isOpponentMode) {
         if (data.isAwaitingOpponentWord && data.opponentStartChar) {
           flowOpponentStartChar = data.opponentStartChar;
-          briefingInput.placeholder = `상대방이 '${flowOpponentStartChar}'(으)로 낸 단어를 입력하세요...`;
         } else {
           flowOpponentStartChar = null;
-          briefingInput.placeholder = '상대 시작 글자 또는 단어를 입력하세요 (예: 기, 기차)...';
         }
       } else {
         flowOpponentStartChar = null;
-        if (data.briefedWord && !briefedWords.includes(data.briefedWord)) {
-          briefedWords.push(data.briefedWord);
-          updateFlowCount();
-        }
-        briefingInput.placeholder = '앞글자 또는 단어를 입력하세요 (예: 기, 산기슭)...';
       }
+      updateBriefingPlaceholder();
 
       if (window.soundEngine) window.soundEngine.playCopy();
     } catch (err) {
@@ -1336,5 +1373,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 초기 상태 설정
   updateTargetSection('', true);
   updateFlowCount();
+  updateBriefingPlaceholder();
   wordInput.focus();
 });
