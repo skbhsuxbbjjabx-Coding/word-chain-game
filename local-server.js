@@ -372,33 +372,19 @@ for (const [pw, ppos, pmean, psource] of PRELOAD_WORDS) {
 }
 
 // 네이버 국어사전 실시간 쿼리 함수 (실제 공인 사전에 등재된 유효 표제어만 100% 검증)
-async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
+async function queryNaverDictionary(queryWord, timeoutMs = 4000) {
   if (!queryWord) return null;
   const rawInput = String(queryWord).trim();
 
-  // ⭐ 1) 단어 자체에 띄어쓰기(공백)가 포함되어 있는 경우 끝말잇기 룰 위반으로 즉시 배제
-  if (/\s/.test(rawInput)) {
-    return {
-      word: rawInput,
-      isVerified: false,
-      isSpacedWord: true,
-      spacedEntry: rawInput,
-      source: '띄어쓰기(공백) 포함 어휘 (끝말잇기 룰 위반)',
-      totalMatches: 0,
-      partOfSpeech: '구/복합표현',
-      meanings: ['띄어쓰기(공백)가 포함된 말은 끝말잇기 규칙상 사용할 수 없습니다.'],
-      message: '띄어쓰기(공백)가 포함된 말은 끝말잇기 규칙상 사용할 수 없습니다.',
-      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(rawInput)}`
-    };
-  }
-
+  // 1글자 이상 유효 한글 추출 (1자 단어도 사전 검색 완벽 허용!)
   const clean = rawInput.replace(/[^\uAC00-\uD7A3]/g, '');
-  if (!clean || clean.length < 2) return getUnverifiedResult(queryWord);
+  if (!clean || clean.length === 0) return getUnverifiedResult(queryWord);
 
   // ⭐ 현대에 쓰이지 않는 옛말(사어/고어) 즉시 차단
   if (ARCHAIC_BLACKLIST.has(clean)) {
     const archaicRes = {
       word: clean,
+      displayEntry: clean,
       isVerified: false,
       isArchaic: true,
       source: '국어사전 옛말/사어 (끝말잇기 불가)',
@@ -406,7 +392,8 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
       partOfSpeech: '옛말',
       meanings: ['현대에 쓰이지 않는 옛말(사어)입니다.'],
       message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
-      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`
+      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(clean)}`,
+      naverResults: []
     };
     naverCache.set(clean, archaicRes);
     return archaicRes;
@@ -417,11 +404,8 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
   }
 
   const encoded = encodeURIComponent(clean);
-
-  // 1) 네이버 국어사전 공식 API3 실시간 조회 (공인 사전 표제어 WORD만 조회, 비표준/오픈사전 제외)
   let apiResult = null;
-  let apiResponded = false; // 네이버 API와 정상 통신 여부
-  let spacedSampleEntry = '';
+  const naverResults = []; // 네이버 사전 실제 검색 결과 목록 전체
 
   try {
     const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc`;
@@ -435,159 +419,116 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
     });
 
     if (res.ok) {
-      apiResponded = true;
       const data = await res.json();
       const listMap = data?.searchResultMap?.searchResultListMap || {};
-      // 국립국어원 표준국어대사전, 네이버 국어사전, 고려대 한국어대사전 등 공인 표제어만 탐색 (오픈사전 제외)
       const officialItems = listMap.WORD?.items || [];
+      const openItems = listMap.OPEN?.items || [];
+      const combinedItems = [...officialItems, ...openItems];
 
-      let matchedItem = null;
-      let matchedSource = '네이버 국어사전';
-
-      for (const item of officialItems) {
-        // 표제어 원문 (HTML 태그, 첨자 숫자 등 제거)
+      // 검색된 모든 네이버 사전 항목 파싱하여 naverResults 목록 구축
+      for (const item of combinedItems) {
         const entryRaw = (item.handleEntry || item.expEntry || item.expEntryRaw || '')
           .replace(/<[^>]+>/g, '')
           .replace(/[0-9]/g, '')
           .trim();
+        const rawClean = entryRaw.replace(/[-^ㆍ·\s\(\)]/g, '').replace(/[^\uAC00-\uD7A3]/g, '').trim();
 
-        // 기호 제거 후 순수 한글만 비교
-        const raw = entryRaw
-          .replace(/[-^ㆍ·\s\(\)]/g, '')
-          .replace(/[^\uAC00-\uD7A3]/g, '')
-          .trim();
-
-        // ⭐ 절대 규칙: 검색어와 100% 일치할 때만 판정!
-        if (raw === clean) {
-          // 표제어 자체에 띄어쓰기(공백)가 포함되어 있는지 검사 (예: "인공 지능", "고양이 세수")
-          if (/\s/.test(entryRaw)) {
-            if (!spacedSampleEntry) spacedSampleEntry = entryRaw;
-          } else {
-            matchedItem = item;
-            matchedSource = item.sourceDictnameKO ? `네이버 국어사전 (${item.sourceDictnameKO})` : '네이버 국어사전';
-            break; // 띄어쓰기 없는 온전한 한 단어(단일어/합성명사) 우선 채택!
-          }
-        }
-      }
-
-      // ⭐ 온전한 한 단어는 없고 오직 띄어쓰기가 들어간 표제어(구/복합표현)만 존재하는 경우: 끝말잇기 룰에 따라 배제!
-      if (!matchedItem && spacedSampleEntry) {
-        const spacedResult = {
-          word: clean,
-          isVerified: false,
-          isSpacedWord: true,
-          spacedEntry: spacedSampleEntry,
-          source: '국어사전 표제어 띄어쓰기 포함 어휘 (끝말잇기 불가)',
-          totalMatches: officialItems.length,
-          partOfSpeech: '구/복합표현',
-          meanings: [`국어사전에 ‘${spacedSampleEntry}’(으)로 띄어쓰기가 포함되어 등재된 어휘/구입니다. 끝말잇기에서는 띄어쓰기 없는 한 단어만 인정되므로 사용이 불가합니다.`],
-          message: `「${clean}」은(는) 국어사전에 ‘${spacedSampleEntry}’(으)로 띄어쓰기가 포함되어 등재된 어휘(구/복합표현)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
-          link: `https://ko.dict.naver.com/#/search?query=${encoded}`
-        };
-        naverCache.set(clean, spacedResult);
-        return spacedResult;
-      }
-
-      if (matchedItem) {
-        const meanings = [];
-        let partOfSpeech = wordInfoMap.get(clean)?.part || '명사';
-        let hasArchaicMeaning = false;
-        let hasModernMeaning = false;
-
-        if (matchedItem.meansCollector && matchedItem.meansCollector.length > 0) {
-          for (const mc of matchedItem.meansCollector) {
-            if (mc.partOfSpeech) partOfSpeech = mc.partOfSpeech;
+        let itemPos = '명사';
+        const itemMeans = [];
+        if (item.meansCollector && item.meansCollector.length > 0) {
+          for (const mc of item.meansCollector) {
+            if (mc.partOfSpeech) itemPos = mc.partOfSpeech;
             for (const m of (mc.means || [])) {
               const val = (m.value || '').replace(/<[^>]+>/g, '').trim();
-              if (val && val.length >= 2) {
-                meanings.push(val);
-                const isArchaic = m.subjectGroup === '옛말' || m.subjectGroup === '옛' || val.includes('옛말') || val.includes('고어');
-                const isDialect = m.subjectGroup === '방언' || val.includes('방언') || val.includes('사투리');
-                if (isArchaic) {
-                  hasArchaicMeaning = true;
-                } else if (!isDialect) {
-                  hasModernMeaning = true;
-                }
-              }
+              if (val && !itemMeans.includes(val)) itemMeans.push(val);
             }
           }
         }
-
-        if (meanings.length === 0) {
-          const fallbackText = matchedItem.abstractContent?.value || matchedItem.abstractContent || matchedItem.expAbstract || matchedItem.etcExplain;
-          if (fallbackText && typeof fallbackText === 'string') {
-            const cleanFallback = fallbackText.replace(/<[^>]+>/g, '').trim();
-            meanings.push(cleanFallback);
-            if (cleanFallback.includes('옛말') || cleanFallback.includes('고어')) {
-              hasArchaicMeaning = true;
-            } else {
-              hasModernMeaning = true;
-            }
+        if (itemMeans.length === 0) {
+          const fb = item.abstractContent?.value || item.abstractContent || item.expAbstract || item.etcExplain;
+          if (fb && typeof fb === 'string') {
+            const cleanFb = fb.replace(/<[^>]+>/g, '').trim();
+            if (cleanFb && !itemMeans.includes(cleanFb)) itemMeans.push(cleanFb);
           }
         }
 
-        // ⭐ 순수 옛말/사어(현대 표준 의미가 전혀 없음, 예: '입거웆') 배제!
-        const isPureArchaic = (hasArchaicMeaning && !hasModernMeaning) || (meanings.length > 0 && meanings.every(m => m.includes('옛말')));
-        if (isPureArchaic) {
-          const archaicResult = {
+        const sourceName = item.sourceDictnameKO 
+          ? `네이버 국어사전 (${item.sourceDictnameKO})` 
+          : (item.sourceDictname ? `네이버 국어사전 (${item.sourceDictname})` : '네이버 국어사전');
+
+        const itemLink = item.destinationLink
+          ? (item.destinationLink.startsWith('http') ? item.destinationLink : `https://ko.dict.naver.com/${item.destinationLink}`)
+          : `https://ko.dict.naver.com/#/search?query=${encoded}`;
+
+        if (itemMeans.length > 0 || rawClean.length > 0) {
+          naverResults.push({
+            entry: entryRaw || clean,
+            cleanWord: rawClean || clean,
+            partOfSpeech: itemPos,
+            meanings: itemMeans,
+            source: sourceName,
+            link: itemLink,
+            isExactMatch: rawClean === clean
+          });
+        }
+      }
+
+      // 최적 매칭 아이템 결정
+      // 1순위: 완전 일치 (rawClean === clean)
+      let bestMatch = naverResults.find(r => r.isExactMatch && r.meanings.length > 0);
+      // 2순위: 띄어쓰기 제외 일치 (예: "인공 지능" -> "인공지능")
+      if (!bestMatch) {
+        bestMatch = naverResults.find(r => r.cleanWord === clean && r.meanings.length > 0);
+      }
+      // 3순위: 검색어가 포함되거나 검색어로 시작하는 1위 항목
+      if (!bestMatch && naverResults.length > 0) {
+        bestMatch = naverResults.find(r => (r.cleanWord.startsWith(clean) || clean.startsWith(r.cleanWord)) && r.meanings.length > 0);
+      }
+      // 4순위: 네이버 검색 결과의 첫 번째 항목
+      if (!bestMatch && naverResults.length > 0) {
+        bestMatch = naverResults[0];
+      }
+
+      if (bestMatch && bestMatch.meanings.length > 0) {
+        const hasArchaic = bestMatch.meanings.every(m => m.includes('옛말') || m.includes('고어'));
+        if (hasArchaic) {
+          const archaicRes = {
             word: clean,
+            displayEntry: bestMatch.entry,
             isVerified: false,
             isArchaic: true,
-            source: '국어사전 옛말/사어 (끝말잇기 불가)',
-            totalMatches: officialItems.length,
+            source: bestMatch.source,
+            totalMatches: naverResults.length,
             partOfSpeech: '옛말',
-            meanings: meanings.slice(0, 5),
+            meanings: bestMatch.meanings.slice(0, 5),
             message: `「${clean}」은(는) 현대에 쓰이지 않는 옛말(사어)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
-            link: matchedItem.destinationLink
-              ? (matchedItem.destinationLink.startsWith('http') ? matchedItem.destinationLink : `https://ko.dict.naver.com/${matchedItem.destinationLink}`)
-              : `https://ko.dict.naver.com/#/search?query=${encoded}`
+            link: bestMatch.link,
+            naverResults
           };
-          naverCache.set(clean, archaicResult);
-          return archaicResult;
+          naverCache.set(clean, archaicRes);
+          return archaicRes;
         }
 
-        // ⭐ 끝말잇기 대원칙: 동사/형용사(용언) 기본형 '-다' 엄격 차단 (명사 화이트리스트 제외)
-        if ((partOfSpeech.includes('동사') || partOfSpeech.includes('형용사')) && clean.endsWith('다') && !NOUN_DA_WHITELIST.has(clean)) {
-          const verbResult = {
-            word: clean,
-            isVerified: false,
-            isVerbStem: true,
-            source: '국어사전 용언(동사/형용사) 기본형 (끝말잇기 불가)',
-            totalMatches: officialItems.length,
-            partOfSpeech,
-            meanings: meanings.slice(0, 5),
-            message: `「${clean}」은(는) 동사/형용사(용언) 기본형이므로 끝말잇기 규칙상 사용할 수 없습니다. 끝말잇기에서는 체언(명사)만 인정됩니다.`,
-            link: matchedItem.destinationLink
-              ? (matchedItem.destinationLink.startsWith('http') ? matchedItem.destinationLink : `https://ko.dict.naver.com/${matchedItem.destinationLink}`)
-              : `https://ko.dict.naver.com/#/search?query=${encoded}`
-          };
-          naverCache.set(clean, verbResult);
-          return verbResult;
-        }
-
-        if (meanings.length > 0) {
-          apiResult = {
-            word: clean,
-            isVerified: true,
-            isArchaic: false,
-            source: matchedSource,
-            totalMatches: officialItems.length,
-            partOfSpeech,
-            meanings: meanings.slice(0, 5),
-            isDialectOrArchaic: meanings[0]?.includes('방언') || meanings[0]?.includes('북한어'),
-            link: matchedItem.destinationLink
-              ? (matchedItem.destinationLink.startsWith('http') ? matchedItem.destinationLink : `https://ko.dict.naver.com/${matchedItem.destinationLink}`)
-              : `https://ko.dict.naver.com/#/search?query=${encoded}`
-          };
-          registerDynamicWord(clean, partOfSpeech);
-        }
+        apiResult = {
+          word: clean,
+          displayEntry: bestMatch.entry,
+          isVerified: true,
+          isArchaic: false,
+          source: bestMatch.source,
+          totalMatches: naverResults.length,
+          partOfSpeech: bestMatch.partOfSpeech || '명사',
+          meanings: bestMatch.meanings.slice(0, 5),
+          link: bestMatch.link,
+          naverResults
+        };
+        registerDynamicWord(clean, bestMatch.partOfSpeech || '명사');
       }
     }
   } catch (err) {
-    // 네트워크 일시 오류 또는 타임아웃
+    // 네트워크 타임아웃
   }
 
-  // 3) 네이버 API에서 직접 실존 표제어와 뜻을 찾았으면 캐시 후 반환
+  // 네이버 검색에서 결과를 찾았으면 캐시 후 반환
   if (apiResult) {
     if (naverCache.size >= MAX_CACHE_SIZE) {
       const firstKey = naverCache.keys().next().value;
@@ -597,19 +538,27 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
     return apiResult;
   }
 
-  // 4) ⭐ [공인 국어사전 100% 직접 연결]: 네이버 실시간 API 응답이 없거나 매칭이 누락되었어도 로컬 52만 공인 사전에 있으면 100% 인정!
+  // 로컬 사전 fallback (네이버 API가 응답하지 않았거나 검색 결과가 없을 때)
   if (wordInfoMap.has(clean) || posMap.has(clean)) {
     const item = wordInfoMap.get(clean) || { word: clean, part: posMap.get(clean) || '명사' };
     const partOfSpeech = item.part || posMap.get(clean) || '명사';
     const verifiedResult = {
       word: clean,
+      displayEntry: clean,
       isVerified: true,
       source: '네이버 국어사전',
       totalMatches: 1,
       partOfSpeech,
-      meanings: [`네이버 국어사전에 공식 등재된 표준 [${partOfSpeech}] 표제어입니다.`],
+      meanings: [`네이버 국어사전 공식 표제어 (${partOfSpeech})`],
       isDialectOrArchaic: false,
-      link: `https://ko.dict.naver.com/#/search?query=${encoded}`
+      link: `https://ko.dict.naver.com/#/search?query=${encoded}`,
+      naverResults: [{
+        entry: clean,
+        partOfSpeech,
+        meanings: [`네이버 국어사전에 공식 등재된 표준 표제어입니다.`],
+        source: '네이버 국어사전',
+        link: `https://ko.dict.naver.com/#/search?query=${encoded}`
+      }]
     };
     registerDynamicWord(clean, partOfSpeech);
     if (naverCache.size >= MAX_CACHE_SIZE) {
@@ -620,15 +569,17 @@ async function queryNaverDictionary(queryWord, timeoutMs = 2500) {
     return verifiedResult;
   }
 
-  // 5) 네이버 및 국립국어원 공인 사전 어디에도 없는 단어 최종 판정
+  // 네이버 및 로컬 어디에도 없는 경우
   const unverified = {
     word: clean,
+    displayEntry: clean,
     isVerified: false,
     source: '공인 국어사전 미등재 단어',
     totalMatches: 0,
     partOfSpeech: '미상',
     meanings: ['네이버 국어사전에 구체적인 표제어가 등재되지 않은 단어입니다.'],
-    link: `https://ko.dict.naver.com/#/search?query=${encoded}`
+    link: `https://ko.dict.naver.com/#/search?query=${encoded}`,
+    naverResults: []
   };
   naverCache.set(clean, unverified);
   return unverified;

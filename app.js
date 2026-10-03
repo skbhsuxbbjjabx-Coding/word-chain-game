@@ -1288,6 +1288,46 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
+      // 3-1. 네이버 국어사전 실제 검색 결과 목록 (무조건 네이버 사전 검색 결과로 나오게!)
+      let naverResultsHtml = '';
+      if (Array.isArray(data.naverResults) && data.naverResults.length > 0) {
+        naverResultsHtml = `
+          <div class="naver-dict-results-section">
+            <div class="naver-results-header">
+              <span class="naver-results-badge">🟢 NAVER</span>
+              <h3 class="naver-results-title">네이버 국어사전 실시간 검색 결과 <strong>(${data.naverResults.length}건)</strong></h3>
+            </div>
+            <div class="naver-results-list">
+              ${data.naverResults.map((nr, idx) => `
+                <div class="naver-result-card ${nr.isExactMatch ? 'exact-match' : ''}">
+                  <div class="nr-top-row">
+                    <span class="nr-entry">${escapeHtml(nr.entry)}</span>
+                    <span class="nr-pos">[${escapeHtml(nr.partOfSpeech || '명사')}]</span>
+                    <span class="nr-source">${escapeHtml(nr.source || '네이버 국어사전')}</span>
+                    ${nr.isExactMatch ? '<span class="nr-exact-tag">일치</span>' : ''}
+                  </div>
+                  <div class="nr-meanings-list">
+                    ${nr.meanings && nr.meanings.length > 0
+                      ? nr.meanings.map((m, mIdx) => `
+                        <div class="nr-meaning-item">
+                          <span class="nr-num">${mIdx + 1}.</span>
+                          <span class="nr-text">${escapeHtml(m)}</span>
+                        </div>
+                      `).join('')
+                      : '<div class="nr-meaning-item empty">네이버 국어사전 공인 표제어입니다.</div>'
+                    }
+                  </div>
+                  <div class="nr-bottom-row">
+                    <button type="button" class="dict-action-btn dict-battle-btn mini" data-word="${escapeHtml(nr.cleanWord || nr.entry)}">⚔️ 배틀에 쓰기</button>
+                    <a href="${nr.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(nr.cleanWord || nr.entry)}`}" target="_blank" rel="noopener noreferrer" class="nr-link">네이버 사전 원문 보기 ↗</a>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
       // 4. 요약 바 및 파트별 필터 탭
       const summaryBarHtml = `
         <div class="dict-summary-bar">
@@ -1352,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 전체 조합
       dictContentArea.innerHTML = `
         ${heroCardHtml}
+        ${naverResultsHtml}
         ${summaryBarHtml}
         <div class="dict-partitions-wrapper" id="dictPartitionsWrapper">
           ${prefixSectionHtml}

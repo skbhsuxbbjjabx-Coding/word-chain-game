@@ -3026,3 +3026,164 @@ html, body {
     display: none;
   }
 }
+
+/* ==========================================================================
+   네이버 국어사전 실시간 검색 결과 리스트 섹션 (풍부한 사전 표제어/뜻풀이 카드)
+   ========================================================================== */
+.naver-dict-results-section {
+  margin: 16px 0;
+  background: var(--bg-card);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.naver-results-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.naver-results-badge {
+  background: #03c75a;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.naver-results-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.naver-results-title strong {
+  color: #10b981;
+}
+
+.naver-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.naver-result-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.naver-result-card:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}
+
+.naver-result-card.exact-match {
+  border-color: rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.nr-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.nr-entry {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.naver-result-card.exact-match .nr-entry {
+  color: #10b981;
+}
+
+.nr-pos {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.nr-source {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.nr-exact-tag {
+  font-size: 0.68rem;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.nr-meanings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 10px 0;
+}
+
+.nr-meaning-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.nr-num {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.nr-text {
+  word-break: break-all;
+}
+
+.nr-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dict-action-btn.mini {
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  height: 28px;
+}
+
+.nr-link {
+  font-size: 0.76rem;
+  color: #38bdf8;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.nr-link:hover {
+  color: #7dd3fc;
+  text-decoration: underline;
+}
