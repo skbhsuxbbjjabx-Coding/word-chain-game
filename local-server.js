@@ -74,6 +74,7 @@ try {
   const rawData = require('./data/dictionary.json');
   for (const [s, wordList] of Object.entries(rawData)) {
     for (const w of wordList) {
+      if (!w || /\s/.test(w)) continue;
       const item = { word: w, isPure: true, part: '명사', raw: w };
       wordInfoMap.set(w, item);
       if (!startMap.has(s)) startMap.set(s, []);
@@ -91,6 +92,7 @@ try {
       const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
       for (const [s, wordList] of Object.entries(rawData)) {
         for (const w of wordList) {
+          if (!w || /\s/.test(w)) continue;
           const item = { word: w, isPure: true, part: '명사', raw: w };
           wordInfoMap.set(w, item);
           if (!startMap.has(s)) startMap.set(s, []);
@@ -126,6 +128,8 @@ if (!loadedFromJson) {
         const part = parts[1] || '명사';
 
         if (invalidParts.has(part)) continue;
+        // ⭐ 띄어쓰기(공백)가 포함된 단어/구는 끝말잇기 룰에 어긋나므로 원천 배제
+        if (/\s/.test(raw) || raw.includes(' ')) continue;
 
         const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
         if (!clean || clean.length < 2) continue;
@@ -161,6 +165,7 @@ console.timeEnd('📖 52만 공인 사전 데이터 로드');
 console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개`);
 
 function registerDynamicWord(word, part = '명사') {
+  if (!word || word.length < 2 || /\s/.test(word)) return;
   if (wordInfoMap.has(word)) return;
   const item = { word, isPure: true, part, raw: word };
   wordInfoMap.set(word, item);
@@ -204,7 +209,25 @@ naverCache.set('윰라대왕', {
 // 네이버 국어사전 실시간 쿼리 함수 (실제 공인 사전에 등재된 유효 표제어만 100% 검증)
 async function queryNaverDictionary(queryWord) {
   if (!queryWord) return null;
-  const clean = queryWord.trim().replace(/[^\uAC00-\uD7A3]/g, '');
+  const rawInput = String(queryWord).trim();
+
+  // ⭐ 1) 단어 자체에 띄어쓰기(공백)가 포함되어 있는 경우 끝말잇기 룰 위반으로 즉시 배제
+  if (/\s/.test(rawInput)) {
+    return {
+      word: rawInput,
+      isVerified: false,
+      isSpacedWord: true,
+      spacedEntry: rawInput,
+      source: '띄어쓰기(공백) 포함 어휘 (끝말잇기 룰 위반)',
+      totalMatches: 0,
+      partOfSpeech: '구/복합표현',
+      meanings: ['띄어쓰기(공백)가 포함된 말은 끝말잇기 규칙상 사용할 수 없습니다.'],
+      message: '띄어쓰기(공백)가 포함된 말은 끝말잇기 규칙상 사용할 수 없습니다.',
+      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(rawInput)}`
+    };
+  }
+
+  const clean = rawInput.replace(/[^\uAC00-\uD7A3]/g, '');
   if (!clean || clean.length < 2) return getUnverifiedResult(queryWord);
 
   if (naverCache.has(clean)) {
@@ -216,6 +239,7 @@ async function queryNaverDictionary(queryWord) {
   // 1) 네이버 국어사전 공식 API3 실시간 조회 (공인 사전 표제어 WORD만 조회, 비표준/오픈사전 제외)
   let apiResult = null;
   let apiResponded = false; // 네이버 API와 정상 통신 여부
+  let spacedSampleEntry = '';
 
   try {
     const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc`;
@@ -239,21 +263,47 @@ async function queryNaverDictionary(queryWord) {
       let matchedSource = '국립국어원 우리말샘 / 표준국어대사전';
 
       for (const item of officialItems) {
-        // 표제어에서 HTML 태그, 첨자 숫자, 기호, 괄호, 공백 등 완전 제거 후 순수 한글만 비교
-        const raw = (item.expEntry || item.handleEntry || item.expEntryRaw || '')
+        // 표제어 원문 (HTML 태그, 첨자 숫자 등 제거)
+        const entryRaw = (item.handleEntry || item.expEntry || item.expEntryRaw || '')
           .replace(/<[^>]+>/g, '')
           .replace(/[0-9]/g, '')
+          .trim();
+
+        // 기호 제거 후 순수 한글만 비교
+        const raw = entryRaw
           .replace(/[-^ㆍ·\s\(\)]/g, '')
           .replace(/[^\uAC00-\uD7A3]/g, '')
           .trim();
 
-
-        // ⭐ 절대 규칙: 검색어와 100% 일치할 때만 표제어로 인정! (유사/부분 일치 절대 금지)
+        // ⭐ 절대 규칙: 검색어와 100% 일치할 때만 판정!
         if (raw === clean) {
-          matchedItem = item;
-          matchedSource = item.sourceDictnameKO ? `공인 국어사전 (${item.sourceDictnameKO})` : '국립국어원 우리말샘 / 표준국어대사전';
-          break;
+          // 표제어 자체에 띄어쓰기(공백)가 포함되어 있는지 검사 (예: "인공 지능", "고양이 세수")
+          if (/\s/.test(entryRaw)) {
+            if (!spacedSampleEntry) spacedSampleEntry = entryRaw;
+          } else {
+            matchedItem = item;
+            matchedSource = item.sourceDictnameKO ? `공인 국어사전 (${item.sourceDictnameKO})` : '국립국어원 우리말샘 / 표준국어대사전';
+            break; // 띄어쓰기 없는 온전한 한 단어(단일어/합성명사) 우선 채택!
+          }
         }
+      }
+
+      // ⭐ 온전한 한 단어는 없고 오직 띄어쓰기가 들어간 표제어(구/복합표현)만 존재하는 경우: 끝말잇기 룰에 따라 배제!
+      if (!matchedItem && spacedSampleEntry) {
+        const spacedResult = {
+          word: clean,
+          isVerified: false,
+          isSpacedWord: true,
+          spacedEntry: spacedSampleEntry,
+          source: '국어사전 표제어 띄어쓰기 포함 어휘 (끝말잇기 불가)',
+          totalMatches: officialItems.length,
+          partOfSpeech: '구/복합표현',
+          meanings: [`국어사전에 ‘${spacedSampleEntry}’(으)로 띄어쓰기가 포함되어 등재된 어휘/구입니다. 끝말잇기에서는 띄어쓰기 없는 한 단어만 인정되므로 사용이 불가합니다.`],
+          message: `「${clean}」은(는) 국어사전에 ‘${spacedSampleEntry}’(으)로 띄어쓰기가 포함되어 등재된 어휘(구/복합표현)이므로, 끝말잇기 규칙상 사용할 수 없습니다.`,
+          link: `https://ko.dict.naver.com/#/search?query=${encoded}`
+        };
+        naverCache.set(clean, spacedResult);
+        return spacedResult;
       }
 
       if (matchedItem) {
@@ -578,10 +628,16 @@ async function ensureCharWordsFromNaver(char) {
         const officialItems = listMap.WORD?.items || [];
 
         for (const item of officialItems) {
-          const raw = (item.expEntry || item.handleEntry || '')
+          const entryRaw = (item.handleEntry || item.expEntry || '')
             .replace(/<[^>]+>/g, '')
             .replace(/[0-9]/g, '')
-            .replace(/[-^ㆍ·\s\(\)]/g, '')
+            .trim();
+
+          // ⭐ 띄어쓰기(공백)가 있는 표제어는 끝말잇기 룰 위반이므로 엄격히 배제!
+          if (/\s/.test(entryRaw)) continue;
+
+          const raw = entryRaw
+            .replace(/[-^ㆍ·\(\)]/g, '')
             .replace(/[^\uAC00-\uD7A3]/g, '')
             .trim();
 
@@ -1085,9 +1141,21 @@ async function generateAiChatResponse(message, history = [], options = {}) {
         };
       }
 
+      if (/\s/.test(trimmed)) {
+        return {
+          text: `⚠️ **[끝말잇기 룰 안내]**\n\n입력하신 **「${trimmed}」**에는 띄어쓰기(공백)가 포함되어 있습니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 없는 한 단어(단일어 또는 합성명사)**만 유효하므로 게임에서 인정되지 않습니다.`
+        };
+      }
+
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
       if (pureWord.length >= 2) {
         const selfDict = await queryNaverDictionary(pureWord);
+        if (selfDict && selfDict.isSpacedWord) {
+          return {
+            text: `⚠️ **[끝말잇기 룰 안내]**\n\n**「${pureWord}」**은(는) 국어사전에 **‘${selfDict.spacedEntry || pureWord}’**(으)로 띄어쓰기가 포함되어 등재된 구/복합표현입니다.\n\n끝말잇기 공식 규칙상 **띄어쓰기가 들어간 말(구, 관용구, 복합표현)은 단어가 아니므로 인정되지 않습니다.** 반드시 붙여 쓰는 한 단어만 사용해 주세요!`
+          };
+        }
+
         if (selfDict && selfDict.isVerified && selfDict.meanings && selfDict.meanings.length > 0) {
           const directEndChar = pureWord[pureWord.length - 1];
           const directRebuttal = getRebuttalAnalysis(directEndChar);
@@ -1192,7 +1260,21 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
 // 8. 실시간 끝말잇기 게임 엔진 (PvE 대결) - 4단계 난이도 (쉬움, 중간, 어려움, 헬)
 async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') {
-  const cleanWord = userWord.trim().replace(/[^\uAC00-\uD7A3]/g, '');
+  if (!userWord || typeof userWord !== 'string') {
+    return { success: false, message: '단어를 입력해주세요.' };
+  }
+
+  const rawTrimmed = userWord.trim();
+
+  // ⭐ 띄어쓰기(공백) 포함 여부 철저 검증 (끝말잇기 대원칙)
+  if (/\s/.test(rawTrimmed)) {
+    return {
+      success: false,
+      message: '띄어쓰기(공백)가 포함된 단어는 끝말잇기 규칙상 사용할 수 없습니다.'
+    };
+  }
+
+  const cleanWord = rawTrimmed.replace(/[^\uAC00-\uD7A3]/g, '');
 
   if (cleanWord.length < 2) {
     return { success: false, message: '단어는 최소 2글자 이상이어야 합니다.' };
@@ -1225,6 +1307,12 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell') 
   // 네이버 국어사전 실시간 검색 검증 (네이버 사전에 실제 등재되어 있는 단어만 100% 인정)
   const dictCheck = await queryNaverDictionary(cleanWord);
   if (!dictCheck || !dictCheck.isVerified) {
+    if (dictCheck && dictCheck.isSpacedWord) {
+      return {
+        success: false,
+        message: dictCheck.message || `「${cleanWord}」은(는) 국어사전 표제어에 띄어쓰기가 포함된 어휘(구)이므로 끝말잇기 규칙상 사용할 수 없습니다.`
+      };
+    }
     return {
       success: false,
       message: `「${cleanWord}」은(는) 공인 국어사전(우리말샘 / 네이버 사전)에 등재되지 않은 단어입니다.`
@@ -1394,11 +1482,13 @@ async function handleRequest(req, res) {
   // API 3: 네이버 국어사전 실시간 검색/검증 및 일치도 순 단어 쫘르르륵 검색
   if (pathname === '/api/dict/search' && req.method === 'GET') {
     const word = parsedUrl.query.word || parsedUrl.query.q || '';
-    const clean = word.trim().replace(/[^\uAC00-\uD7A3]/g, '');
-    const info = await queryNaverDictionary(clean);
+    const rawTrimmed = String(word).trim();
+    const hasSpace = /\s/.test(rawTrimmed);
+    const clean = rawTrimmed.replace(/[^\uAC00-\uD7A3]/g, '');
+    const info = await queryNaverDictionary(hasSpace ? rawTrimmed : clean);
 
     let rebuttal = null;
-    if (clean) {
+    if (clean && !hasSpace) {
       const lastChar = clean[clean.length - 1];
       rebuttal = getRebuttalAnalysis(lastChar);
     }

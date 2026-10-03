@@ -1715,6 +1715,12 @@ html, body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.1);
 }
 
+.dict-hero-card.spaced {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(239, 68, 68, 0.18);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(30, 41, 59, 0.7));
+}
+
 .dict-hero-badge-bar {
   display: flex;
   align-items: center;
@@ -1741,6 +1747,19 @@ html, body {
   background: rgba(245, 158, 11, 0.18);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.dict-hero-seal.spaced {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.dict-rebuttal-box.spaced-rule-box {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-left: 4px solid #ef4444;
 }
 
 .dict-hero-pos {

@@ -545,9 +545,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isSubmitting) return;
 
-    const cleanWord = (rawInput || '').trim().replace(/[^\uAC00-\uD7A3]/g, '');
+    const trimmedInput = (rawInput || '').trim();
 
-    // 1차 룰 검증
+    // 1차 띄어쓰기(공백) 검증 - 끝말잇기 대원칙 룰
+    if (/\s/.test(trimmedInput)) {
+      showFeedback('띄어쓰기(공백)가 포함된 단어는 끝말잇기 규칙상 사용할 수 없습니다.');
+      if (window.soundEngine) window.soundEngine.playError();
+      wordInput.focus();
+      return;
+    }
+
+    const cleanWord = trimmedInput.replace(/[^\uAC00-\uD7A3]/g, '');
+
+    // 2차 룰 검증
     if (cleanWord.length < 2) {
       showFeedback('단어는 최소 2글자 이상이어야 합니다.');
       if (window.soundEngine) window.soundEngine.playError();
@@ -946,22 +956,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function searchDictionary(word) {
-    const clean = word.trim().replace(/[^\uAC00-\uD7A3]/g, '');
-    if (!clean) return;
+    const rawTrimmed = (word || '').trim();
+    if (!rawTrimmed) return;
+    const hasSpace = /\s/.test(rawTrimmed);
+    const clean = rawTrimmed.replace(/[^\uAC00-\uD7A3]/g, '');
+    if (!clean && !hasSpace) return;
 
-    dictSearchInput.value = clean;
+    dictSearchInput.value = rawTrimmed;
     dictClearBtn.style.display = 'block';
     dictEmptyState.style.display = 'none';
     dictContentArea.style.display = 'block';
     dictContentArea.innerHTML = `
       <div class="dict-loading-box">
         <div class="dict-loading-spinner"></div>
-        <div class="dict-loading-text"><strong>「${escapeHtml(clean)}」</strong> 국어사전 실시간 정밀 탐색 중...</div>
+        <div class="dict-loading-text"><strong>「${escapeHtml(rawTrimmed)}」</strong> 국어사전 실시간 정밀 탐색 중...</div>
       </div>
     `;
 
     try {
-      const res = await fetch(`/api/dict/search?word=${encodeURIComponent(clean)}`);
+      const res = await fetch(`/api/dict/search?word=${encodeURIComponent(rawTrimmed)}`);
       const data = await res.json();
 
       const cats = data.categories || {
@@ -982,7 +995,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 1. 헤드워드 끝말잇기 반격 분석 카드
       let rebuttalHtml = '';
-      if (data.rebuttal) {
+      if (data.isSpacedWord) {
+        rebuttalHtml = `
+          <div class="dict-rebuttal-box spaced-rule-box">
+            <div class="dict-rebuttal-top">
+              <div class="dict-rebuttal-title">
+                <span>🚫</span>
+                <span>끝말잇기 공식 규칙 위반 (띄어쓰기 포함)</span>
+              </div>
+              <span class="dict-rebuttal-status-badge killing">끝말잇기 사용 불가</span>
+            </div>
+            <div class="dict-rebuttal-samples">
+              <span class="sample-words" style="color: #fca5a5;">
+                국립국어원 표준 사전에 ‘${escapeHtml(data.spacedEntry || data.word || rawTrimmed)}’(으)로 띄어쓰기(공백)가 포함되어 등재된 어휘/구입니다.<br>
+                끝말잇기 공식 대원칙상 <strong>띄어쓰기가 없는 한 단어(단일어 또는 합성명사)</strong>만 유효하므로 게임에서 인정되지 않습니다.
+              </span>
+            </div>
+          </div>
+        `;
+      } else if (data.rebuttal) {
         const r = data.rebuttal;
         let statusClass = 'safe';
         let statusIcon = '🛡️';
@@ -1039,12 +1070,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 3. 초대형 표제어 히어로 카드 (처음에 일치하는거 크게 뜨고!)
       const isVerified = !!data.isVerified;
-      const heroWord = data.word || clean;
+      const isSpaced = !!data.isSpacedWord;
+      const heroWord = data.word || clean || rawTrimmed;
+      const sealClass = isVerified ? 'verified' : (isSpaced ? 'spaced' : 'unverified');
+      const sealText = isVerified 
+        ? '🏛️ 국립국어원 / 네이버 공인 표제어' 
+        : (isSpaced ? '🚫 끝말잇기 불가 (띄어쓰기 포함 어휘/구)' : '⚠️ 사전 미등재');
       const heroCardHtml = `
-        <div class="dict-hero-card ${isVerified ? 'verified' : 'unverified'}">
+        <div class="dict-hero-card ${sealClass}">
           <div class="dict-hero-badge-bar">
-            <span class="dict-hero-seal ${isVerified ? 'verified' : 'unverified'}">
-              ${isVerified ? '🏛️ 국립국어원 / 네이버 공인 표제어' : '⚠️ 사전 미등재'}
+            <span class="dict-hero-seal ${sealClass}">
+              ${sealText}
             </span>
             <span class="dict-hero-pos">[${escapeHtml(data.partOfSpeech || '명사')}]</span>
             <span class="dict-hero-source">${escapeHtml(data.source || '공인 국어사전')}</span>
