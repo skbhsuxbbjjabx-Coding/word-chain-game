@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (briefingNoFirstTurnKillCheckbox) {
     briefingNoFirstTurnKillCheckbox.addEventListener('change', () => {
       const isChecked = briefingNoFirstTurnKillCheckbox.checked;
-      showToast(isChecked ? '🛡️ 한방제외 모드가 켜졌습니다. (한방 단어 추천 제외)' : '한방제외 모드가 꺼졌습니다. (1순위 한방 단어 추천)');
+      showToast(isChecked ? '🛡️ 한방제외 모드가 켜졌습니다. (한방 및 한방유도 단어 완전 제외)' : '한방제외 모드가 꺼졌습니다. (1순위 한방 단어 추천 허용)');
       if (window.soundEngine) window.soundEngine.playCopy();
     });
   }

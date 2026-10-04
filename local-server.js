@@ -63,14 +63,14 @@ function getDueumVariants(char) {
 
 // ⭐ 현대에 쓰이지 않는 옛말(사어/고어) 및 단독 외래 인명 블랙리스트 (입거웆, 슘페터 등 원천 차단)
 const ARCHAIC_BLACKLIST = new Set([
-  '입거웆', '입거웇', '이웆', '가웆', '가늣', '모믈늣', '버들늣', '늣', '븟', '게웆다', '뉘웇다',
+  '입거웆', '입거웇', '이웆', '가웆', '븟', '게웆다', '뉘웇다',
   '슘페터', '귄나르손', '무뤂'
 ]);
 
-// 끝말잇기 표준 룰 불허 품사 (체언인 명사/대명사/수사 외의 품사 철저 배제)
+// 끝말잇기 표준 룰 불허 품사 (체언 및 표준 부사 허용, 문법 어미/조사/용언 기본형 등 차단)
 const invalidParts = new Set([
   '어미', '접사', '조사', '인명', '지명', '성씨', '인물',
-  '동사', '형용사', '보조동사', '보조형용사', '부사', '감탄사'
+  '동사', '형용사', '보조동사', '보조형용사', '감탄사'
 ]);
 
 // 명사 중 '-다'로 끝나는 합법 표준 명사 화이트리스트
@@ -118,7 +118,7 @@ try {
   const rawData = require('./data/dictionary.json');
   for (const [s, wordList] of Object.entries(rawData)) {
     for (const w of wordList) {
-      if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓늣븟늧옄읓앛뤂]/.test(w)) continue;
+      if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
       const part = posMap.get(w);
       if (part && invalidParts.has(part)) continue;
       // 끝말잇기 표준 룰: 용언(동사/형용사) 기본형 '-다' 엄격 차단 (명사 화이트리스트 제외)
@@ -142,7 +142,7 @@ try {
       const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
       for (const [s, wordList] of Object.entries(rawData)) {
         for (const w of wordList) {
-          if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓늣븟늧옄읓앛뤂]/.test(w)) continue;
+          if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
           const part = posMap.get(w);
           if (part && invalidParts.has(part)) continue;
           if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
@@ -219,7 +219,7 @@ if (!loadedFromJson) {
 // 3) kr_korean.csv(posMap)에 등재된 유효 표준 체언(명사 등) 중 미등록 단어 전수 색인 통합
 for (const [w, part] of posMap.entries()) {
   if (wordInfoMap.has(w)) continue;
-  if (!w || w.length < 2 || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓늣븟늧옄읓앛뤂]/.test(w)) continue;
+  if (!w || w.length < 2 || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
   if (part && invalidParts.has(part)) continue;
   if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
 
@@ -284,6 +284,37 @@ if (wordInfoMap.has('꾼둑')) {
   item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BE%BC%EB%91%91';
 }
 
+registerDynamicWord('릇무', '명사');
+if (wordInfoMap.has('릇무')) {
+  wordInfoMap.get('릇무').naverMeaning = '‘무’의 방언 (함북)';
+  wordInfoMap.get('릇무').source = '네이버 국어사전 (우리말샘)';
+  wordInfoMap.get('릇무').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%A6%87%EB%AC%B4';
+}
+registerDynamicWord('릇비', '명사');
+if (wordInfoMap.has('릇비')) {
+  wordInfoMap.get('릇비').naverMeaning = '‘비’의 옛말/방언';
+  wordInfoMap.get('릇비').source = '네이버 국어사전 (우리말샘)';
+  wordInfoMap.get('릇비').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%A6%87%EB%B9%84';
+}
+registerDynamicWord('늣치', '명사');
+if (wordInfoMap.has('늣치')) {
+  wordInfoMap.get('늣치').naverMeaning = '‘느치’의 원말 (물고기)';
+  wordInfoMap.get('늣치').source = '네이버 국어사전 (표준국어대사전)';
+  wordInfoMap.get('늣치').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%8A%A3%EC%B9%98';
+}
+registerDynamicWord('꽐꽐', '부사');
+if (wordInfoMap.has('꽐꽐')) {
+  wordInfoMap.get('꽐꽐').naverMeaning = '많은 양의 액체가 급히 쏟아져 흐르는 소리.';
+  wordInfoMap.get('꽐꽐').source = '네이버 국어사전 (표준국어대사전)';
+  wordInfoMap.get('꽐꽐').naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BD%90%EA%BD%90';
+}
+registerDynamicWord('꽐깍꽐깍', '부사');
+if (wordInfoMap.has('꽐깍꽐깍')) {
+  wordInfoMap.get('꽐깍꽐깍').naverMeaning = '많은 양의 액체가 목구멍으로 급히 넘어가는 소리.';
+  wordInfoMap.get('꽐깍꽐깍').source = '네이버 국어사전 (표준국어대사전)';
+  wordInfoMap.get('꽐깍꽐깍').naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BD%90%EA%B9%8D%EA%BD%90%EA%B9%8D';
+}
+
 // ⭐ [동적 차수(Out-Degree) 계산 엔진]: usedWords(이미 사용된 단어)를 완벽히 반영
 function getDynamicOutDegree(char, usedWords = null) {
   if (!char || typeof char !== 'string') return 0;
@@ -307,28 +338,25 @@ function getOutDegree(char) {
   return getDynamicOutDegree(char, null);
 }
 
-// ⭐ [절대 한방 종결 음절]: '릇', '늣', '녘', '쁨', '듐', '믓', '뻑' 등 현대 국어에서 반격이 불가능한 한방 글자 전수 정의
-// ('값'은 상대가 '값어치', '값표' 등으로 반격 가능하므로 1순위 한방이 아니며, '한방 유도' 2순위로 분류!)
+// ⭐ [절대 한방 종결 음절]: 현대 국어에서 반격이 불가능한 한방 글자 전수 정의
+// ('릇', '늣', '값', '둑' 등은 상대가 반격 가능하거나 유도용이므로 1순위 한방이 아니며, '한방 유도' 2순위로 분류!)
 const ABSOLUTE_KILLING_CHARS = new Set([
-  '녘', '쁨', '듐', '늧', '릇', '릎', '탉', '옄', '엌', '헿', '흗', '늣', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸', '믓', '뻑', '늄', '륨'
+  '녘', '쁨', '듐', '늧', '릎', '탉', '옄', '엌', '헿', '흗', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸', '믓', '뻑', '늄', '륨'
 ]);
 
-// ⭐ [한방 유도 음절]: 완벽한 한방은 아니지만 상대 반격을 극소화하고 다음 턴 한방으로 유도하는 핵심 유도 글자 ('값' 등)
+// ⭐ [한방 유도 음절]: 완벽한 한방은 아니지만 상대 반격을 극소화하고 다음 턴 한방으로 유도하는 핵심 유도 글자 ('릇', '늣', '값', '둑' 등)
+// 유저 요구: "그리고 릇이나 늣은 한방 유도 단어지 제대로 분류해 시스템"
 const KILLING_INDUCTION_CHARS = new Set([
-  '값', '엌', '옄', '릇', '녘', '삵', '삯', '팎', '섶', '읖', '겉', '돝', '돜', '갹', '갼', '걘', '곈', '궉', '궘', '궵', '긕', '깈', '낟', '낢', '둑'
+  '릇', '늣', '값', '둑', '엌', '옄', '삵', '삯', '팎', '섶', '읖', '겉', '돝', '돜', '갹', '갼', '걘', '곈', '궉', '궘', '궵', '긕', '깈', '낟', '낢'
 ]);
 
-// ⭐ [정적 킬러 음절 사전 인덱스 생성]: 한글 전체 음절 중 시작 단어가 전무(0개)한 음절 집합
+// ⭐ [정적 킬러 음절 사전 인덱스 생성]: 공인된 절대 한방 음절 집합 (1순위 한방 전용)
+// ⚠️ 주의: '릇', '늣', '값', '둑' 등 한방 유도 음절이나 '꽐' 등 임의의 음절은 절대 한방 집합에 포함되지 않음!
 const staticTerminalCharSet = new Set();
-for (let code = 0xAC00; code <= 0xD7A3; code++) {
-  const ch = String.fromCharCode(code);
-  const vars = getDueumVariants(ch);
-  const total = vars.reduce((acc, v) => acc + (startMap.get(v)?.length || 0), 0);
-  if (total === 0) staticTerminalCharSet.add(ch);
-}
-// ⭐ '릇', '늧', '늣' 등 절대 한방 글자는 무조건 정적 킬러 음절에 100% 영구 포함! ('은그릇' 피격 자살수 원천 방지)
 for (const ch of ABSOLUTE_KILLING_CHARS) {
-  staticTerminalCharSet.add(ch);
+  if (!KILLING_INDUCTION_CHARS.has(ch)) {
+    staticTerminalCharSet.add(ch);
+  }
 }
 console.log(`🎯 사전 인덱싱된 정적 한방(반격 불가) 음절 수: ${staticTerminalCharSet.size.toLocaleString()}개`);
 
@@ -342,7 +370,7 @@ function getTerminalCharSet(usedWords = null) {
       const vars = getDueumVariants(s);
       for (let vi = 0; vi < vars.length; vi++) {
         const v = vars[vi];
-        if (!set.has(v) && getDynamicOutDegree(v, usedWords) === 0) {
+        if (!set.has(v) && !KILLING_INDUCTION_CHARS.has(v) && ABSOLUTE_KILLING_CHARS.has(v) && getDynamicOutDegree(v, usedWords) === 0) {
           set.add(v);
         }
       }
@@ -355,18 +383,9 @@ function getTerminalCharSet(usedWords = null) {
 function isWordInstantKill(word, currentUsed = null) {
   if (!word || word.length < 2) return false;
   const endChar = word[word.length - 1];
+  if (KILLING_INDUCTION_CHARS.has(endChar)) return false; // '릇', '늣' 등은 한방 유도(2순위)이지 즉시 한방이 아님!
   if (staticTerminalCharSet.has(endChar) || ABSOLUTE_KILLING_CHARS.has(endChar)) return true;
-  const vars = getDueumVariants(endChar);
-  for (let vi = 0; vi < vars.length; vi++) {
-    const list = startMap.get(vars[vi]);
-    if (!list) continue;
-    for (let i = 0; i < list.length; i++) {
-      if (!currentUsed || !currentUsed.has(list[i].word)) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return false;
 }
 
 // 3. 공인 국어사전 실시간 검색 엔진 (네이버 국어사전 공식 API3 실시간 전수 연동)
@@ -962,9 +981,14 @@ async function findUltimateBestWord(inputChar, options = {}) {
     // 명사 가산점
     if (pos === '명사') qualityScore += 30000;
 
-    // 공인 한방 음절 (륨, 늄, 슘, 듐, 뮴, 녘, 쁨, 릇, 늣, 릎, 믓, 뻑, 삯...) 대폭 우대
-    if (ABSOLUTE_KILLING_CHARS.has(endChar)) {
+    const isKillingInductionChar = KILLING_INDUCTION_CHARS.has(endChar);
+    const isAbsoluteKillingChar = ABSOLUTE_KILLING_CHARS.has(endChar) && !isKillingInductionChar;
+
+    // 공인 한방 음절 (륨, 늄, 슘, 듐, 뮴, 녘, 쁨, 릎, 믓, 뻑...) 대폭 우대
+    if (isAbsoluteKillingChar) {
       qualityScore += 300000;
+    } else if (isKillingInductionChar) {
+      qualityScore += 180000;
     }
 
     if (FOREIGN_NAMES_SET.has(word) || (/^[가-힣]{3,}$/.test(word) && word.endsWith('슨') && word !== '이순신')) {
@@ -973,10 +997,11 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
     // ------------------------------------------------------------------------
     // 🥇 1순위: 즉시 한방 단어 (O(1) 킬러 음절 인덱스 검사)
+    // ⚠️ '릇', '늣', '값', '둑' 등 한방 유도 글자는 2순위이므로 1순위 진입 원천 차단!
+    // ⚠️ 미확인 음절(예: '꽐' 등)도 사전에 없는 부사(꽐꽐) 등이 있을 수 있으므로 1순위 진입 배제!
     // ------------------------------------------------------------------------
-    if (terminalSet.has(endChar) || ABSOLUTE_KILLING_CHARS.has(endChar)) {
-      let score = 1000000 + qualityScore;
-      if (ABSOLUTE_KILLING_CHARS.has(endChar)) score += 100000;
+    if (isAbsoluteKillingChar && (terminalSet.has(endChar) || ABSOLUTE_KILLING_CHARS.has(endChar))) {
+      let score = 1000000 + qualityScore + 100000;
 
       tier1_instantKill.push({
         word,
@@ -1023,10 +1048,72 @@ async function findUltimateBestWord(inputChar, options = {}) {
     }
     const oppCount = oppMoves.length;
 
-    // 만약 다음 단어가 실제로 0개면 (동적 한방)
+    // 만약 다음 단어가 실제로 0개일 때 (동적 한방 / 소진):
     if (oppCount === 0) {
-      let score = 1000000 + qualityScore;
-      tier1_instantKill.push({
+      // 1) 한방 유도 글자('릇', '늣', '값', '둑' 등)인 경우: 무조건 2순위 한방 유도로 정밀 분류!
+      if (isKillingInductionChar) {
+        let score = 850000 + qualityScore;
+        tier2_killingInduction.push({
+          word,
+          item,
+          length: word.length,
+          isPure: item.isPure,
+          part: item.part,
+          startChar: word[0],
+          endChar,
+          outCount: 0,
+          tier: 2,
+          tierName: '🎯 2순위: 한방 유도 단어',
+          tierBadgeClass: 'tier-2',
+          tierIcon: '🎯',
+          score,
+          counterPlan: [],
+          minimax: {
+            type: 'KILLING_INDUCTION',
+            score,
+            brief: `🎯 [한방 유도 단어] 끝글자 '${endChar}'(으)로 상대 반격을 0개로 봉쇄하고 다음 턴 한방 승부로 유도하는 전략적 수입니다!`,
+            rebuttalCount: 0,
+            samples: [],
+            counterPlan: []
+          }
+        });
+        continue;
+      }
+
+      // 2) 공인 절대 한방 음절(ABSOLUTE_KILLING_CHARS)인 경우: 1순위 즉시 한방 배정!
+      if (isAbsoluteKillingChar) {
+        let score = 1000000 + qualityScore;
+        tier1_instantKill.push({
+          word,
+          item,
+          length: word.length,
+          isPure: item.isPure,
+          part: item.part,
+          startChar: word[0],
+          endChar,
+          outCount: 0,
+          tier: 1,
+          tierName: '💥 1순위: 즉시 승리 한방 단어',
+          tierBadgeClass: 'tier-1',
+          tierIcon: '💥',
+          score,
+          counterPlan: [],
+          minimax: {
+            type: 'WIN_1_STEP',
+            score,
+            brief: `💥 [1수 즉시 승리] 끝글자 '${endChar}'(으)로 시작하는 단어가 국어사전에 전무(0개)합니다!`,
+            rebuttalCount: 0,
+            samples: [],
+            counterPlan: []
+          }
+        });
+        continue;
+      }
+
+      // 3) 그 외 미확인 음절(꽐 등)은 사전에 안 잡힌 단어(부사 꽐꽐 등)가 존재할 수 있으므로
+      // 유저를 기만하지 않고 3순위(치명적 압박 단어)로 안전 배정!
+      let score = 450000 + qualityScore;
+      tier3_nearKill.push({
         word,
         item,
         length: word.length,
@@ -1035,16 +1122,16 @@ async function findUltimateBestWord(inputChar, options = {}) {
         startChar: word[0],
         endChar,
         outCount: 0,
-        tier: 1,
-        tierName: '💥 1순위: 즉시 승리 한방 단어',
-        tierBadgeClass: 'tier-1',
-        tierIcon: '💥',
+        tier: 3,
+        tierName: '🔥 3순위: 치명적 압박 단어',
+        tierBadgeClass: 'tier-3',
+        tierIcon: '🔥',
         score,
         counterPlan: [],
         minimax: {
-          type: 'WIN_1_STEP',
+          type: 'PRESSURE',
           score,
-          brief: `💥 [1수 즉시 승리] 끝글자 '${endChar}'(으)로 시작하는 단어가 모두 소진되어 0개입니다!`,
+          brief: `🔥 [치명적 압박] 끝글자 '${endChar}'(으)로 상대의 반격 경로를 강하게 제한하는 압박 수입니다.`,
           rebuttalCount: 0,
           samples: [],
           counterPlan: []
@@ -1053,7 +1140,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
       continue;
     }
 
-    // 상대방의 즉시 한방 역공(자살수) 확인: 상대의 반격 어휘 중 나를 즉사시키는 한방 단어(은그릇, 은시안화칼륨 등) 전수 감지
+    // 상대방의 즉시 한방 역공(자살수) 확인: 상대의 반격 어휘 중 나를 즉사시키는 한방 단어(은시안화칼륨 등) 전수 감지
     const oppKillingMoves = [];
     for (let oi = 0; oi < oppMoves.length; oi++) {
       const oppWord = oppMoves[oi].word;
@@ -1067,12 +1154,40 @@ async function findUltimateBestWord(inputChar, options = {}) {
     // ------------------------------------------------------------------------
     // 🎯 2순위: 한방 유도 단어 (Killing Move Induction & Trap)
     // 유저 명시 요구: "아무리 한방으로 유도된다해도 한방은 아니잖아 값으로 끝나는거나 완벽한 한방은 아니잖아 그니까 한방유도 카테고리 추가하고 2순위를 대체해"
-    // 조건:
-    // 1) 자살수가 없고 (!hasSuicideRisk)
-    // 2) '값' 등 한방 유도 글자이거나, 상대 모든 반격에 100% 한방 카운터가 설계되었거나, 70% 이상 한방 카운터가 포진된 수!
+    // "그리고 릇이나 늣은 한방 유도 단어지 제대로 분류해 시스템"
     // ------------------------------------------------------------------------
     let killerCounterCount = 0;
     const counterPlan = [];
+
+    // ⭐ '릇', '늣', '값', '둑' 등 한방 유도 글자는 자살수가 없으면 100% 무조건 2순위로 분류!
+    if (!hasSuicideRisk && isKillingInductionChar) {
+      let score = 850000 - (oppCount * 2500) + qualityScore;
+      tier2_killingInduction.push({
+        word,
+        item,
+        length: word.length,
+        isPure: item.isPure,
+        part: item.part,
+        startChar: word[0],
+        endChar,
+        outCount: oppCount,
+        tier: 2,
+        tierName: '🎯 2순위: 한방 유도 단어',
+        tierBadgeClass: 'tier-2',
+        tierIcon: '🎯',
+        score,
+        counterPlan: [],
+        minimax: {
+          type: 'KILLING_INDUCTION',
+          score,
+          brief: `🎯 [한방 유도 단어] 완벽한 1수 한방은 아니지만 끝글자 '${endChar}'(으)로 상대 반격을 ${oppCount}개로 봉쇄하고 다음 턴 한방 승부로 유도하는 치명적 수입니다!`,
+          rebuttalCount: oppCount,
+          samples: oppMoves.slice(0, 6).map(o => o.word),
+          counterPlan: []
+        }
+      });
+      continue;
+    }
 
     if (!hasSuicideRisk && oppCount >= 1 && oppCount <= 30) {
       for (let oi = 0; oi < oppMoves.length; oi++) {
@@ -1259,8 +1374,25 @@ async function findUltimateBestWord(inputChar, options = {}) {
   const noFirstTurnKill = !!options.noFirstTurnKill;
 
   let tierBuckets;
-  if (diff === 'easy') {
-    // [쉬움]: 플레이어가 편하게 이어갈 수 있도록 안전 수(반격 선택지 많은 단어) 우선 추천! 한방 및 2수 외통수 완전 배제
+  if (noFirstTurnKill) {
+    // ⭐ [한방 제외 모드]: 1순위 즉시 한방단어(tier 1)와 2순위 한방 유도 단어(tier 2)를 100% 완전 배제!
+    // 유저 명시 요구: "그리고 한방 제외 모드에서 당연히 한방 유도 단어는 제외해야지"
+    // 오직 4순위 안전 방어 단어, 3순위 일반 압박 수, 5순위 차선책으로만 랠리 진행!
+    if (diff === 'easy' || diff === 'normal') {
+      tier4_safePlay.sort((a, b) => b.outCount - a.outCount || b.score - a.score);
+    } else {
+      tier4_safePlay.sort((a, b) => b.score - a.score);
+    }
+    const cleanTier3 = tier3_nearKill.filter(c => !KILLING_INDUCTION_CHARS.has(c.endChar) && !ABSOLUTE_KILLING_CHARS.has(c.endChar));
+    const cleanTier5 = tier5_desperate.filter(c => !KILLING_INDUCTION_CHARS.has(c.endChar) && !ABSOLUTE_KILLING_CHARS.has(c.endChar));
+
+    tierBuckets = [
+      { list: tier4_safePlay, num: 4 },
+      { list: cleanTier3, num: 3 },
+      { list: cleanTier5, num: 5 }
+    ];
+  } else if (diff === 'easy') {
+    // [쉬움]: 플레이어가 편하게 이어갈 수 있도록 안전 수 우선 추천
     tier4_safePlay.sort((a, b) => b.outCount - a.outCount || b.score - a.score);
     tierBuckets = [
       { list: tier4_safePlay, num: 4 },
@@ -1270,7 +1402,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
       { list: tier1_instantKill, num: 1 }
     ];
   } else if (diff === 'normal') {
-    // [중간]: 균형 있는 랠리와 안전 수 우선, 1순위 한방은 후순위로 미뤄 흥미진진한 승부 유도
+    // [중간]: 균형 있는 랠리와 안전 수 우선
     tier4_safePlay.sort((a, b) => b.score - a.score);
     tierBuckets = [
       { list: tier4_safePlay, num: 4 },
@@ -1280,14 +1412,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
       { list: tier1_instantKill, num: 1 }
     ];
   } else if (diff === 'hard') {
-    // [어려움]: 2수 앞 외통수 및 치명타 우선, 강력한 수 구사
-    tierBuckets = noFirstTurnKill ? [
-      { list: tier4_safePlay, num: 4 },
-      { list: tier3_nearKill, num: 3 },
-      { list: tier2_killingInduction, num: 2 },
-      { list: tier5_desperate, num: 5 },
-      { list: tier1_instantKill, num: 1 }
-    ] : [
+    // [어려움]: 한방 및 유도 수 우선
+    tierBuckets = [
       { list: tier1_instantKill, num: 1 },
       { list: tier2_killingInduction, num: 2 },
       { list: tier3_nearKill, num: 3 },
@@ -1296,18 +1422,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     ];
   } else {
     // [헬]: 100% 무자비한 최고 지능 Minimax
-    // 한방제외(noFirstTurnKill) 모드 시: 한방 단어(반격 0개)를 철저히 배제하고 안전 수와 압박 수로 랠리 형성!
-    const nonKillingBuckets = [
-      { list: tier2_killingInduction, num: 2 },
-      { list: tier3_nearKill, num: 3 },
-      { list: tier4_safePlay, num: 4 },
-      { list: tier5_desperate, num: 5 }
-    ];
-    tierBuckets = noFirstTurnKill ? (
-      nonKillingBuckets.some(b => b.list.length > 0)
-        ? nonKillingBuckets
-        : [{ list: tier1_instantKill, num: 1 }]
-    ) : [
+    tierBuckets = [
       { list: tier1_instantKill, num: 1 },
       { list: tier2_killingInduction, num: 2 },
       { list: tier3_nearKill, num: 3 },
@@ -1330,6 +1445,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     // 상위 후보 중 실제 네이버 사전 뜻이 확실하게 존재하는 단어를 탐색
     for (const cand of bucket.list.slice(0, 35)) {
       if (ARCHAIC_BLACKLIST.has(cand.word)) continue;
+      if (noFirstTurnKill && (cand.tier === 1 || cand.tier === 2 || KILLING_INDUCTION_CHARS.has(cand.endChar) || ABSOLUTE_KILLING_CHARS.has(cand.endChar))) continue;
 
       let dict = naverCache.get(cand.word);
       if (!dict) {
@@ -1351,11 +1467,12 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
   // 1순위 후보 티어에서 못 찾았을 경우 전체 리스트에서 유효한 단어 탐색
   if (!best || !bestDict) {
-    const allFallbackCandidates = [
-      ...tier1_instantKill, ...tier2_killingInduction, ...tier3_nearKill, ...tier4_safePlay, ...tier5_desperate
-    ];
+    const allFallbackCandidates = noFirstTurnKill
+      ? [...tier4_safePlay, ...tier3_nearKill, ...tier5_desperate].filter(c => !KILLING_INDUCTION_CHARS.has(c.endChar) && !ABSOLUTE_KILLING_CHARS.has(c.endChar))
+      : [...tier1_instantKill, ...tier2_killingInduction, ...tier3_nearKill, ...tier4_safePlay, ...tier5_desperate];
     for (const cand of allFallbackCandidates.slice(0, 40)) {
       if (ARCHAIC_BLACKLIST.has(cand.word)) continue;
+      if (noFirstTurnKill && (cand.tier === 1 || cand.tier === 2 || KILLING_INDUCTION_CHARS.has(cand.endChar) || ABSOLUTE_KILLING_CHARS.has(cand.endChar))) continue;
       let dict = naverCache.get(cand.word);
       if (!dict) {
         dict = await queryNaverDictionary(cand.word, 2500);
@@ -1365,7 +1482,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
       best = cand;
       bestDict = dict;
-      chosenTierNumber = cand.tier || 1;
+      chosenTierNumber = cand.tier || (noFirstTurnKill ? 4 : 1);
       chosenTierList = allFallbackCandidates;
       break;
     }
@@ -1376,10 +1493,11 @@ async function findUltimateBestWord(inputChar, options = {}) {
   }
 
   // ⭐ 대안 후보군 선별: 상대에게 한방(은그릇 등)을 헌납하는 자살수 단어(hasSuicideRisk)는 100% 영구 배제!
+  // 한방제외 모드일 때는 1순위 한방과 2순위 한방 유도 단어까지 대안에서 완전 배제!
   const candidateTiers = noFirstTurnKill
-    ? [...chosenTierList, ...tier4_safePlay, ...tier3_nearKill, ...tier2_killingInduction]
+    ? [...chosenTierList, ...tier4_safePlay, ...tier3_nearKill].filter(c => !KILLING_INDUCTION_CHARS.has(c.endChar) && !ABSOLUTE_KILLING_CHARS.has(c.endChar) && c.tier !== 1 && c.tier !== 2)
     : [...chosenTierList, ...tier1_instantKill, ...tier2_killingInduction, ...tier3_nearKill, ...tier4_safePlay];
-  const allCandidates = candidateTiers.filter(c => c.word !== best.word && (!noFirstTurnKill || c.outCount > 0) && !c.hasSuicideRisk);
+  const allCandidates = candidateTiers.filter(c => c.word !== best.word && (!noFirstTurnKill || (c.outCount > 0 && !KILLING_INDUCTION_CHARS.has(c.endChar) && !ABSOLUTE_KILLING_CHARS.has(c.endChar) && c.tier !== 1 && c.tier !== 2)) && !c.hasSuicideRisk);
 
   const seenAltWords = new Set([best.word]);
   const uniqueAlternatives = [];
@@ -1572,11 +1690,13 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
       const reb1 = getRebuttalAnalysis(w1[w1.length - 1]);
       const reb2 = getRebuttalAnalysis(w2[w2.length - 1]);
+      const end1 = w1[w1.length - 1];
+      const end2 = w2[w2.length - 1];
 
-      const isKill1 = reb1.totalCount === 0;
-      const isKill2 = reb2.totalCount === 0;
-      const isTrap1 = reb1.totalCount <= 30;
-      const isTrap2 = reb2.totalCount <= 30;
+      const isTrap1 = KILLING_INDUCTION_CHARS.has(end1) || reb1.totalCount <= 30;
+      const isKill1 = !KILLING_INDUCTION_CHARS.has(end1) && ABSOLUTE_KILLING_CHARS.has(end1) && reb1.totalCount === 0;
+      const isTrap2 = KILLING_INDUCTION_CHARS.has(end2) || reb2.totalCount <= 30;
+      const isKill2 = !KILLING_INDUCTION_CHARS.has(end2) && ABSOLUTE_KILLING_CHARS.has(end2) && reb2.totalCount === 0;
 
       const desc1 = isKill1 ? '💥 1순위 즉시 승리 한방 단어' : (isTrap1 ? '🎯 2순위 한방 유도 필승 수' : '🛡️ 일반 수');
       const desc2 = isKill2 ? '💥 1순위 즉시 승리 한방 단어' : (isTrap2 ? '🎯 2순위 한방 유도 필승 수' : '⚠️ 상대 반격 다수 허용 단어');
@@ -1614,9 +1734,10 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     if (uniqueTokens.length === 1) {
       const singleWord = uniqueTokens[0];
       const dict = await queryNaverDictionary(singleWord);
-      const reb = getRebuttalAnalysis(singleWord[singleWord.length - 1]);
-      const isKill = reb.totalCount === 0;
-      const isTrap = reb.totalCount <= 30;
+      const endC = singleWord[singleWord.length - 1];
+      const reb = getRebuttalAnalysis(endC);
+      const isTrap = KILLING_INDUCTION_CHARS.has(endC) || reb.totalCount <= 30;
+      const isKill = !KILLING_INDUCTION_CHARS.has(endC) && ABSOLUTE_KILLING_CHARS.has(endC) && reb.totalCount === 0;
 
       if (dict && dict.isVerified) {
         return {
@@ -1777,8 +1898,8 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       // 2-B) 일반 단어 입력: [공수 양면 종합 전략 카드 (Dual-Perspective Strategy)]
       const endChar = queryWord[queryWord.length - 1];
       const reb = getRebuttalAnalysis(endChar);
-      const isKill = reb.totalCount === 0;
-      const isTrap = reb.totalCount <= 30;
+      const isTrap = KILLING_INDUCTION_CHARS.has(endChar) || reb.totalCount <= 30;
+      const isKill = !KILLING_INDUCTION_CHARS.has(endChar) && ABSOLUTE_KILLING_CHARS.has(endChar) && reb.totalCount === 0;
       const tierNum = isKill ? 1 : (isTrap ? 2 : 3);
       const tierName = isKill ? '💥 1순위: 즉시 승리 한방 단어' : (isTrap ? '🎯 2순위: 한방 유도 필승 수' : '🛡️ 3순위: 일반 안전 수');
 
@@ -1882,13 +2003,17 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     if (dict && dict.isVerified && !dict.isArchaic) {
       const endC = lookupWord[lookupWord.length - 1];
       const reb = getRebuttalAnalysis(endC);
-      const isKill = reb.totalCount === 0;
+      const isTrap = KILLING_INDUCTION_CHARS.has(endC) || reb.totalCount <= 30;
+      const isKill = !KILLING_INDUCTION_CHARS.has(endC) && ABSOLUTE_KILLING_CHARS.has(endC) && reb.totalCount === 0;
+      const verdictText = isKill 
+        ? '💥 **즉시 승리 한방 단어** (상대 반격 0개)' 
+        : (isTrap ? `🎯 **한방 유도 단어** (상대 반격 어휘 ${reb.totalCount}개 극소화)` : `🛡️ **유효 단어** (상대 반격 어휘 ${reb.totalCount}개)`);
       return {
         text: `📚 **[단어 사전 정보: 「${lookupWord}」]**\n\n` +
               `• **품사**: ${dict.partOfSpeech || '명사'}\n` +
               `• **출처**: ${dict.source || '네이버 국어사전'}\n` +
               `• **사전 뜻**: ${dict.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이'}\n` +
-              `• **끝말잇기 판정**: ${isKill ? '💥 **즉시 승리 한방 단어** (상대 반격 0개)' : `🛡️ **유효 단어** (상대 반격 어휘 ${reb.totalCount}개)`}\n\n` +
+              `• **끝말잇기 판정**: ${verdictText}\n\n` +
               `🔗 [네이버 국어사전 원문 보기](${dict.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(lookupWord)}`})`,
         flowMode,
         opponentWordMode: false,
@@ -1920,18 +2045,24 @@ async function generateAiChatResponse(message, history = [], options = {}) {
         if (selfDict && selfDict.isVerified && selfDict.meanings && selfDict.meanings.length > 0) {
           const directEndChar = pureWord[pureWord.length - 1];
           const directRebuttal = getRebuttalAnalysis(directEndChar);
-          const isDirectKilling = directRebuttal.totalCount === 0;
+          const isDirectTrap = KILLING_INDUCTION_CHARS.has(directEndChar) || directRebuttal.totalCount <= 30;
+          const isDirectKilling = !KILLING_INDUCTION_CHARS.has(directEndChar) && ABSOLUTE_KILLING_CHARS.has(directEndChar) && directRebuttal.totalCount === 0;
+          const directTierNum = isDirectKilling ? 1 : (isDirectTrap ? 2 : 3);
+          const directTierName = isDirectKilling ? '1순위 한방 단어' : (isDirectTrap ? '2순위 한방 유도 단어' : '공인 등재 단어');
+          const directTierDesc = isDirectKilling ? '상대 반격 0개 절대 필승' : (isDirectTrap ? '상대 선택지 극소화 한방 유도' : '네이버 국어사전 등재 어휘');
 
           return {
-            text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **${isDirectKilling ? '절대 승리 한방 단어' : '공인 유효 표제어'}**입니다!\n\n` +
+            text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **${directTierName}**입니다!\n\n` +
                   (isDirectKilling
                     ? `끝글자 **'${directEndChar}'**(으)로 시작하는 단어가 국어사전에 **정확히 0개**이므로, 실전 끝말잇기 배틀에서 이 단어를 내는 순간 상대방은 어떠한 반격도 하지 못하고 즉시 패배합니다!\n\n`
-                    : `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개 존재합니다.\n\n`) +
+                    : (isDirectTrap 
+                        ? `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개뿐인 치명적 한방 유도 단어입니다.\n\n`
+                        : `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개 존재합니다.\n\n`)) +
                   `📚 **공인 사전 공식 뜻**: ${selfDict.meanings[0]} (${selfDict.source})`,
             hasUltimateCard: true,
             briefedWord: pureWord,
             briefedWords: flowMode ? [...briefedWords, pureWord] : [],
-            tierNumber: isDirectKilling ? 1 : 3,
+            tierNumber: directTierNum,
             flowMode,
             analysis: {
               targetChar: pureWord[0],
@@ -1942,9 +2073,9 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                 source: selfDict.source,
                 outCount: directRebuttal.totalCount,
                 tierInfo: {
-                  tierNumber: isDirectKilling ? 1 : 3,
-                  name: isDirectKilling ? '1순위 한방 단어' : '공인 등재 단어',
-                  desc: isDirectKilling ? '상대 반격 0개 절대 필승' : '네이버 국어사전 등재 어휘'
+                  tierNumber: directTierNum,
+                  name: directTierName,
+                  desc: directTierDesc
                 },
                 minimax: {
                   samples: directRebuttal.samples || []
@@ -2104,14 +2235,15 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
 
   const nextTargetChar = cleanWord[cleanWord.length - 1];
 
-  // ⭐ [첫 턴 한방제외 모드 검증]: 플레이어가 첫 턴에 한방 단어를 낸 경우 차단
+  // ⭐ [첫 턴 한방제외 모드 검증]: 플레이어가 첫 턴에 한방 또는 한방 유도 단어를 낸 경우 차단
   if (isFirstTurn && noFirstTurnKill) {
     const userRebuttal = getRebuttalAnalysis(nextTargetChar, [], new Set([cleanWord]));
-    if (userRebuttal.totalCount === 0) {
+    const isKillOrTrap = (userRebuttal.totalCount === 0 && ABSOLUTE_KILLING_CHARS.has(nextTargetChar)) || KILLING_INDUCTION_CHARS.has(nextTargetChar);
+    if (isKillOrTrap) {
       return {
         success: false,
         isFirstTurnKill: true,
-        message: `🛡️ [첫 턴 한방제외 룰] 「${cleanWord}」은(는) 끝글자 '${nextTargetChar}'(으)로 상대가 시작할 수 있는 단어가 없는 💥한방 단어입니다. 첫 턴 한방제외 모드에서는 첫 번째 턴에 한방 단어를 쓸 수 없습니다! 랠리를 이어갈 수 있는 다른 단어를 입력해주세요.`
+        message: `🛡️ [첫 턴 한방제외 룰] 「${cleanWord}」은(는) 끝글자 '${nextTargetChar}'(으)로 상대가 반격하기 극히 어려운 ${KILLING_INDUCTION_CHARS.has(nextTargetChar) ? '🎯한방 유도' : '💥한방'} 단어입니다. 첫 턴 한방제외 모드에서는 한방 및 한방 유도 단어를 쓸 수 없습니다! 랠리를 이어갈 수 있는 다른 안전 단어를 입력해주세요.`
       };
     }
   }
