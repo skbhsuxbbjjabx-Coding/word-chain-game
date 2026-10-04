@@ -260,10 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
       killBadgeHtml = `<div class="hero-kill-badge killing">💥 끝글자 '${endChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
     } else if (tierNum === 2) {
       killBadgeHtml = `<div class="hero-kill-badge trap">🎯 끝글자 '${endChar}' ➔ 상대 반격 극소화 및 다음 수 한방 유도 (한방 유도 단어)</div>`;
+    } else if (tierNum === 5) {
+      const dangerTxt = ultimate.hasKillingRisk ? '한방 피격 주의' : (ultimate.hasTrapRisk ? '유도 피격(값/릇 등) 주의' : '역공/유도 주의');
+      killBadgeHtml = `<div class="hero-kill-badge danger">⚠️ 끝글자 '${endChar}' ➔ 상대 ${dangerTxt} (차선책 방어, 반격 ${outCount}개)</div>`;
     } else if (outCount <= 4) {
       killBadgeHtml = `<div class="hero-kill-badge pressure">🔥 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (치명적 압박 포위망)</div>`;
     } else {
-      killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
+      killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방/유도 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
     }
 
     let subLabel = '🌟 AI 추천 최적수 단어';
