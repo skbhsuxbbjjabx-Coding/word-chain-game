@@ -276,6 +276,13 @@ if (wordInfoMap.has('슴뻑')) {
   item.source = '네이버 국어사전 (표준국어대사전)';
   item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EC%8A%B4%EB%BB%91';
 }
+registerDynamicWord('꾼둑', '명사');
+if (wordInfoMap.has('꾼둑')) {
+  const item = wordInfoMap.get('꾼둑');
+  item.naverMeaning = '고개를 앞으로 깊이 숙이며 조는 모양.';
+  item.source = '네이버 국어사전 (우리말샘)';
+  item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BE%BC%EB%91%91';
+}
 
 // ⭐ [동적 차수(Out-Degree) 계산 엔진]: usedWords(이미 사용된 단어)를 완벽히 반영
 function getDynamicOutDegree(char, usedWords = null) {
@@ -308,7 +315,7 @@ const ABSOLUTE_KILLING_CHARS = new Set([
 
 // ⭐ [한방 유도 음절]: 완벽한 한방은 아니지만 상대 반격을 극소화하고 다음 턴 한방으로 유도하는 핵심 유도 글자 ('값' 등)
 const KILLING_INDUCTION_CHARS = new Set([
-  '값', '엌', '옄', '릇', '녘', '삵', '삯', '팎', '섶', '읖', '겉', '돝', '돜', '갹', '갼', '걘', '곈', '궉', '궘', '궵', '긕', '깈', '낟', '낢'
+  '값', '엌', '옄', '릇', '녘', '삵', '삯', '팎', '섶', '읖', '겉', '돝', '돜', '갹', '갼', '걘', '곈', '궉', '궘', '궵', '긕', '깈', '낟', '낢', '둑'
 ]);
 
 // ⭐ [정적 킬러 음절 사전 인덱스 생성]: 한글 전체 음절 중 시작 단어가 전무(0개)한 음절 집합
@@ -377,7 +384,8 @@ naverCache.set('윰라대왕', {
 
 // 주요 공인 필수 어휘 사전 캐시 즉시 예열 (네트워크 지연 0초 보장)
 const PRELOAD_WORDS = [
-  ['엇저믓', '명사', '‘엊저녁’의 방언 (제주)', '네이버 국어사전'],
+  ['꾼둑', '명사', '고개를 앞으로 깊이 숙이며 조는 모양.', '우리말샘'],
+  ['엇저믓', '명사', '‘엊저녁’의 방언 (제주)', '고려대 한국어대사전'],
   ['슴뻑', '명사', '눈꺼풀을 움직이며 눈을 한 번 감았다 뜨는 모양. ‘슴벅’보다 조금 센 느낌을 준다.', '표준국어대사전'],
   ['해질녘', '명사', '해가 질 무렵.', '표준국어대사전'],
   ['새벽녘', '명사', '새벽 무렵.', '표준국어대사전'],
@@ -756,7 +764,7 @@ function getRebuttalAnalysis(endChar, counterPlan = [], usedWords = null) {
 
 const FOREIGN_NAMES_SET = new Set(['해리슨', '윌슨', '존슨', '앤더슨', '잭슨', '톰슨', '파킨슨', '클린턴', '워싱턴', '뉴턴', '에디슨', '로빈슨', '마이컬슨', '스티븐슨', '제퍼슨']);
 const ICONIC_WORDS = new Set([
-  '엇저믓', '슴뻑',
+  '꾼둑', '엇저믓', '슴뻑',
   '해질녘', '새벽녘', '황혼녘', '동녘', '서녘', '남녘', '북녘',
   '기쁨', '슬픔', '아픔', '괴로움', '외로움', '그리움', '산기슭', '눈시울',
   '알루미늄', '나트륨', '마그네슘', '칼륨', '칼슘', '헬륨', '리튬', '베릴륨', '바나듐', '티타늄',
@@ -769,6 +777,8 @@ const ICONIC_WORDS = new Set([
   '인공지능', '알고리즘', '컴퓨터', '빅데이터', '데이터', '네트워크', '대한민국', '끝말잇기'
 ]);
 
+const fetchedNaverChars = new Set();
+
 // ⭐ [사전-AI-배틀 실시간 일원화] 글자(또는 두음 변이)로 시작하는 단어가 로컬 사전에 부족할 때 네이버 사전을 실시간 조회하여 동기화
 async function ensureCharWordsFromNaver(char) {
   if (!char || typeof char !== 'string') return;
@@ -776,25 +786,30 @@ async function ensureCharWordsFromNaver(char) {
 
   for (const v of variants) {
     const existing = startMap.get(v) || [];
-    // 이미 3개 이상 충분히 있으면 스킵 (불필요한 외부 네트워크 지연 차단)
-    if (existing.length >= 3) continue;
+    // 이미 네이버 조회를 완료했거나 어휘가 25개 이상 충분히 많으면 스킵
+    if (fetchedNaverChars.has(v) || existing.length >= 25) continue;
+    fetchedNaverChars.add(v);
 
-    try {
-      const encoded = encodeURIComponent(v);
-      const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc`;
-      const res = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Referer': 'https://ko.dict.naver.com/',
-          'Accept': 'application/json, text/plain, */*'
-        },
-        signal: AbortSignal.timeout(1500)
-      });
+    const pages = [1, 2];
+    for (const page of pages) {
+      try {
+        const q = v + '*';
+        const encoded = encodeURIComponent(q);
+        const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc&range=word&page=${page}`;
+        const res = await fetch(apiUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://ko.dict.naver.com/',
+            'Accept': 'application/json, text/plain, */*'
+          },
+          signal: AbortSignal.timeout(2000)
+        });
 
-      if (res.ok) {
+        if (!res.ok) continue;
         const data = await res.json();
         const listMap = data?.searchResultMap?.searchResultListMap || {};
         const officialItems = listMap.WORD?.items || [];
+        if (officialItems.length === 0) break;
 
         for (const item of officialItems) {
           const entryRaw = (item.handleEntry || item.expEntry || '')
@@ -814,17 +829,42 @@ async function ensureCharWordsFromNaver(char) {
             .replace(/[^\uAC00-\uD7A3]/g, '')
             .trim();
 
-          if (raw.startsWith(v) && raw.length >= 2) {
+          // 2글자 이상, '다'로 끝나지 않는 유효 어휘 등록
+          if (raw.startsWith(v) && raw.length >= 2 && !raw.endsWith('다')) {
             let part = '명사';
-            if (item.meansCollector?.[0]?.partOfSpeech) {
-              part = item.meansCollector[0].partOfSpeech;
+            const means = [];
+            if (item.meansCollector && item.meansCollector.length > 0) {
+              for (const mc of item.meansCollector) {
+                if (mc.partOfSpeech) part = mc.partOfSpeech;
+                for (const m of (mc.means || [])) {
+                  const val = (m.value || '').replace(/<[^>]+>/g, '').trim();
+                  if (val && isRealMeaning(val) && !means.includes(val)) {
+                    means.push(val);
+                  }
+                }
+              }
             }
             registerDynamicWord(raw, part);
+            // 네이버 사전 실시간 검증 캐시 즉시 적재
+            if (means.length > 0 && !naverCache.has(raw)) {
+              naverCache.set(raw, {
+                word: raw,
+                displayEntry: entryRaw,
+                isVerified: true,
+                isArchaic: false,
+                source: item.sourceDictnameKO ? `네이버 국어사전 (${item.sourceDictnameKO})` : '네이버 국어사전',
+                partOfSpeech: part,
+                meanings: means.slice(0, 5),
+                link: item.destinationLink
+                  ? (item.destinationLink.startsWith('http') ? item.destinationLink : `https://ko.dict.naver.com/${item.destinationLink}`)
+                  : `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(raw)}`
+              });
+            }
           }
         }
+      } catch (err) {
+        break;
       }
-    } catch (err) {
-      // 네트워크 일시 오류 또는 타임아웃 무시
     }
   }
 }
@@ -868,7 +908,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     // 내부 품질 점수 (품사, 길이, 순수어, 대표 공인어)
     let qualityScore = 0;
     const pos = item.part || '명사';
-    if (pos === '명사' || pos.includes('명사') || pos === '수사' || pos === '대명사') {
+    if (pos === '명사' || pos.includes('명사') || pos === '수사' || pos === '대명사' || pos === '부사') {
       qualityScore += 60000;
     } else if (word.endsWith('다')) {
       qualityScore -= 120000; // 끝말잇기에서 동사/형용사 기본형 배제
@@ -886,8 +926,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
     } else if (pos.includes('방언') || pos.includes('북한')) {
       qualityScore -= 120000;
     }
-    // 명사 가산점
-    if (pos === '명사') qualityScore += 50000;
+    // 명사/부사 가산점
+    if (pos === '명사' || pos === '부사') qualityScore += 30000;
 
     if (FOREIGN_NAMES_SET.has(word) || (/^[가-힣]{3,}$/.test(word) && word.endsWith('슨') && word !== '이순신')) {
       qualityScore -= 500000;
@@ -1032,7 +1072,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
       const killerRatio = oppCount > 0 ? (killerCounterCount / oppCount) : 0;
       const isInductionChar = KILLING_INDUCTION_CHARS.has(endChar);
-      const isKillingInduction = isInductionChar || killerCounterCount === oppCount || (oppCount <= 16 && killerRatio >= 0.7);
+      const isKillingInduction = isInductionChar || killerCounterCount === oppCount || (oppCount <= 35 && killerRatio >= 0.65);
 
       if (isKillingInduction) {
         let score = 750000 - (oppCount * 2500) + qualityScore;
@@ -1112,7 +1152,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     // 조건: 상대에게 한방 역공(자살수)을 허용하지 않고 게임을 이어감
     // ------------------------------------------------------------------------
     if (!hasSuicideRisk) {
-      let score = 150000 - (oppCount * 40) + qualityScore;
+      let score = 150000 - (oppCount * 120) + qualityScore;
       tier4_safePlay.push({
         word,
         item,
