@@ -190,8 +190,8 @@
                 <span class="toggle-slider"></span>
                 <span class="toggle-text">📝 상대방 단어 적기</span>
               </label>
-              <label class="rule-toggle-label briefing-rule-label" title="한방제외 모드 켜짐 시 상대 반격 0개인 즉시 한방 단어를 제외하고 안전 수와 주도권 단어를 추천합니다">
-                <input type="checkbox" id="briefingNoFirstTurnKillCheckbox" checked>
+              <label class="rule-toggle-label briefing-rule-label" title="한방제외 모드 켜짐 시 상대 반격 0개인 즉시 한방 단어를 제외하고 2순위 한방 유도 단어 및 안전 수를 추천합니다">
+                <input type="checkbox" id="briefingNoFirstTurnKillCheckbox">
                 <span class="toggle-slider"></span>
                 <span class="toggle-text">🛡️ 한방제외 모드</span>
               </label>
@@ -209,10 +209,11 @@
                 <p>안녕하세요! <strong>AI브리핑</strong>입니다.</p>
                 <p>아래 순서로 최적의 수를 계산하여 실시간으로 브리핑해 드립니다:</p>
                 <ol class="briefing-priority-list">
-                  <li>💥 <strong>1순위</strong>: 일단 <strong>한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
-                  <li>⚔️ <strong>2순위</strong>: 없으면 <strong>되받아칠 단어가 거의 없는 단어</strong> (외통수/치명타)</li>
-                  <li>🛡️ <strong>3순위</strong>: 없으면 <strong>한방단어에 당하지 않는 단어</strong> (안전 수)</li>
-                  <li>⚠️ <strong>4순위</strong>: 없으면 <strong>할 수라도 있는 단어</strong> (차선책)</li>
+                  <li>💥 <strong>1순위</strong>: 일단 <strong>즉시 승리 한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
+                  <li>🎯 <strong>2순위</strong>: 없으면 <strong>한방 유도 단어</strong> ('값' 등 상대 선택지 극소화 및 다음 턴 한방 유도)</li>
+                  <li>🔥 <strong>3순위</strong>: 없으면 <strong>치명적 압박 단어</strong> (상대 선택지 극소 제한)</li>
+                  <li>🛡️ <strong>4순위</strong>: 없으면 <strong>한방 회피 안전 단어</strong> (상대 한방 역공 0개 원천 차단)</li>
+                  <li>⚠️ <strong>5순위</strong>: 없으면 <strong>위기 탈출 차선책</strong> (최선의 응수로 위기 극복)</li>
                 </ol>
                 <p class="flow-mode-note">
                   📝 <strong>상대방 단어 적기 모드</strong>: <strong>앞글자(1자)</strong> 입력 시 <strong>[내 턴]</strong> 필승 수 추천, <strong>단어 풀네임(2자 이상)</strong> 입력 시 <strong>[상대 턴]</strong>으로 자동 인식하여 상대 단어 검증 및 반격 수를 브리핑합니다.

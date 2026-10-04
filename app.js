@@ -210,9 +210,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. 티어 순위 및 턴 인식 강조
     html = html.replace(/\[1순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-1">💥 $&</span>');
-    html = html.replace(/\[2순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-2">⚔️ $&</span>');
-    html = html.replace(/\[3순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-3">🛡️ $&</span>');
-    html = html.replace(/\[4순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-4">⚠️ $&</span>');
+    html = html.replace(/\[2순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-2">🎯 $&</span>');
+    html = html.replace(/\[3순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-3">🔥 $&</span>');
+    html = html.replace(/\[4순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-4">🛡️ $&</span>');
+    html = html.replace(/\[5순위:[^\]]+\]/g, '<span class="highlight-tier-pill tier-5">⚠️ $&</span>');
     html = html.replace(/\[내 턴:[^\]]+\]/g, '<span class="highlight-tier-pill my-turn-pill">🎯 $&</span>');
     html = html.replace(/\[상대방 턴:[^\]]+\]/g, '<span class="highlight-tier-pill opp-turn-pill">⚔️ $&</span>');
 
@@ -241,10 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let tierTitle = '💥 [1순위: 즉시 승리 한방 단어]';
     if (tierNum === 2) {
       tierClass = 'tier-2';
-      tierTitle = '⚔️ [2순위: 2수 앞 필승 외통수 단어]';
+      tierTitle = '🎯 [2순위: 한방 유도 단어]';
     } else if (tierNum === 3) {
       tierClass = 'tier-3';
-      tierTitle = '🔥 [3순위: 반격 봉쇄 치명타 단어]';
+      tierTitle = '🔥 [3순위: 치명적 압박 단어]';
     } else if (tierNum === 4) {
       tierClass = 'tier-4';
       tierTitle = '🛡️ [4순위: 한방 회피 안전 단어]';
@@ -258,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (outCount === 0) {
       killBadgeHtml = `<div class="hero-kill-badge killing">💥 끝글자 '${endChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
     } else if (tierNum === 2) {
-      killBadgeHtml = `<div class="hero-kill-badge trap">⚔️ 끝글자 '${endChar}' ➔ 다음 턴 100% 한방 격파 (2수 앞 필승 외통수)</div>`;
+      killBadgeHtml = `<div class="hero-kill-badge trap">🎯 끝글자 '${endChar}' ➔ 상대 반격 극소화 및 다음 수 한방 유도 (한방 유도 단어)</div>`;
     } else if (outCount <= 4) {
       killBadgeHtml = `<div class="hero-kill-badge pressure">🔥 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (치명적 압박 포위망)</div>`;
     } else {
@@ -547,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!isUser) {
       let tierBadge = '';
       if (tierNumber === 1) tierBadge = '<span class="ai-strat-pill tier-1">💥 1순위 한방</span>';
-      else if (tierNumber === 2) tierBadge = '<span class="ai-strat-pill tier-2">⚔️ 2순위 외통수</span>';
+      else if (tierNumber === 2) tierBadge = '<span class="ai-strat-pill tier-2">🎯 2순위 한방유도</span>';
       else if (tierNumber === 3) tierBadge = '<span class="ai-strat-pill tier-3">🔥 3순위 치명타</span>';
       else if (tierNumber === 4) tierBadge = '<span class="ai-strat-pill tier-4">🛡️ 4순위 안전수</span>';
       else if (tierNumber >= 5) tierBadge = '<span class="ai-strat-pill tier-5">⚠️ 5순위 차선책</span>';
@@ -886,10 +887,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <p>채팅 및 흐름 모드가 초기화되었습니다! 🔄</p>
           <p>원하시는 앞글자(1자: [내 턴])나 단어 풀네임(2자 이상: [상대 턴])을 입력해주세요.</p>
           <ol class="briefing-priority-list">
-            <li>💥 <strong>1순위</strong>: 일단 <strong>한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
-            <li>⚔️ <strong>2순위</strong>: 없으면 <strong>되받아칠 단어가 거의 없는 단어</strong> (외통수/치명타)</li>
-            <li>🛡️ <strong>3순위</strong>: 없으면 <strong>한방단어에 당하지 않는 단어</strong> (안전 수)</li>
-            <li>⚠️ <strong>4순위</strong>: 없으면 <strong>할 수라도 있는 단어</strong> (차선책)</li>
+            <li>💥 <strong>1순위</strong>: 일단 <strong>즉시 승리 한방 단어</strong> 위주로 탐색 (상대 반격 0개)</li>
+            <li>🎯 <strong>2순위</strong>: 없으면 <strong>한방 유도 단어</strong> ('값' 등 상대 선택지 극소화 및 다음 턴 한방 유도)</li>
+            <li>🔥 <strong>3순위</strong>: 없으면 <strong>치명적 압박 단어</strong> (상대 선택지 극소 제한)</li>
+            <li>🛡️ <strong>4순위</strong>: 없으면 <strong>한방 회피 안전 단어</strong> (상대 한방 역공 0개 원천 차단)</li>
+            <li>⚠️ <strong>5순위</strong>: 없으면 <strong>위기 탈출 차선책</strong> (최선의 응수로 위기 극복)</li>
           </ol>
           <p class="flow-mode-note">
             📝 <strong>상대방 단어 적기 모드</strong>: <strong>앞글자(1자)</strong> 입력 시 [내 턴] 필승 수 추천, <strong>단어 풀네임(2자 이상)</strong> 입력 시 [상대 턴]으로 자동 인식하여 반격 수를 브리핑합니다.
