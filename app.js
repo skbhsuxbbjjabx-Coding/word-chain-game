@@ -271,6 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
       subLabel = `⚔️ 상대 「${escapeHtml(data.opponentWord)}」 격파 ➔ 회심의 반격 단어`;
     } else if (data.turnType === 'myTurn') {
       subLabel = `🎯 [내 턴] 시작 글자 '${escapeHtml(targetChar)}' ➔ 필승 추천 단어`;
+    } else if (data.turnType === 'wordStrategy') {
+      subLabel = `🎯 [단어 전략 분석] 「${escapeHtml(word)}」 공인 사전 & 공수 전략`;
     }
 
     const card = document.createElement('div');
