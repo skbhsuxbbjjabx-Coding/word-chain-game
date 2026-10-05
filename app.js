@@ -233,40 +233,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const ultimate = analysis.ultimateWord;
     if (!ultimate || !ultimate.word) return null;
 
-    const word = ultimate.word;
-    const targetChar = analysis.targetChar || word[0];
-    const endChar = ultimate.endChar || word[word.length - 1];
-    const tierNum = data.tierNumber || ultimate.tierInfo?.tierNumber || 1;
+    const tierWords = analysis.tierWords || {};
+    let currentTier = data.tierNumber || ultimate.tierInfo?.tierNumber || 1;
+    let currentWordObj = tierWords[currentTier] || ultimate;
 
-    let tierClass = 'tier-1';
-    let tierTitle = '💥 [1순위: 즉시 승리 한방 단어]';
-    if (tierNum === 2) {
-      tierClass = 'tier-2';
-      tierTitle = '🎯 [2순위: 한방 유도 단어]';
-    } else if (tierNum === 3) {
-      tierClass = 'tier-3';
-      tierTitle = '🔥 [3순위: 치명적 압박 단어]';
-    } else if (tierNum === 4) {
-      tierClass = 'tier-4';
-      tierTitle = '🛡️ [4순위: 한방 회피 안전 단어]';
-    } else if (tierNum >= 5) {
-      tierClass = 'tier-5';
-      tierTitle = '⚠️ [5순위: 위기 탈출 차선책]';
+    const targetChar = analysis.targetChar || currentWordObj.word[0];
+
+    function getTierMeta(tNum) {
+      if (tNum === 1) return { cls: 'tier-1', title: '💥 [1순위: 즉시 승리 한방]', label: '1순위 한방' };
+      if (tNum === 2) return { cls: 'tier-2', title: '🎯 [2순위: 한방 유도 단어]', label: '2순위 유도' };
+      if (tNum === 3) return { cls: 'tier-3', title: '🔥 [3순위: 치명적 압박 단어]', label: '3순위 압박' };
+      if (tNum === 4) return { cls: 'tier-4', title: '🛡️ [4순위: 한방 회피 안전 단어]', label: '4순위 안전' };
+      return { cls: 'tier-5', title: '⚠️ [5순위: 위기 탈출 차선책]', label: '5순위 차선책' };
     }
 
-    let killBadgeHtml = '';
-    const outCount = typeof ultimate.outCount === 'number' ? ultimate.outCount : 0;
-    if (outCount === 0) {
-      killBadgeHtml = `<div class="hero-kill-badge killing">💥 끝글자 '${endChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
-    } else if (tierNum === 2) {
-      killBadgeHtml = `<div class="hero-kill-badge trap">🎯 끝글자 '${endChar}' ➔ 상대 반격 극소화 및 다음 수 한방 유도 (한방 유도 단어)</div>`;
-    } else if (tierNum === 5) {
-      const dangerTxt = ultimate.hasKillingRisk ? '한방 피격 주의' : (ultimate.hasTrapRisk ? '유도 피격(값/릇 등) 주의' : '역공/유도 주의');
-      killBadgeHtml = `<div class="hero-kill-badge danger">⚠️ 끝글자 '${endChar}' ➔ 상대 ${dangerTxt} (차선책 방어, 반격 ${outCount}개)</div>`;
-    } else if (outCount <= 4) {
-      killBadgeHtml = `<div class="hero-kill-badge pressure">🔥 끝글자 '${endChar}' ➔ 상대 선택지 단 ${outCount}개뿐 (치명적 압박 포위망)</div>`;
-    } else {
-      killBadgeHtml = `<div class="hero-kill-badge safe">🛡️ 끝글자 '${endChar}' ➔ 한방/유도 피하는 안전 수 (상대 반격 ${outCount}개)</div>`;
+    function getKillBadge(item, tNum) {
+      const eChar = item.endChar || item.word[item.word.length - 1];
+      const oCount = typeof item.outCount === 'number' ? item.outCount : 0;
+      if (oCount === 0) {
+        return `<div class="hero-kill-badge killing">💥 끝글자 '${eChar}' ➔ 상대 반격 단어 0개 (100% 필승 한방)</div>`;
+      } else if (tNum === 2) {
+        return `<div class="hero-kill-badge trap">🎯 끝글자 '${eChar}' ➔ 상대 반격 극소화 및 다음 수 한방 유도 (한방 유도 단어)</div>`;
+      } else if (tNum === 5) {
+        const dangerTxt = item.hasKillingRisk ? '한방 피격 주의' : (item.hasTrapRisk ? '유도 피격 주의' : '역공 주의');
+        return `<div class="hero-kill-badge danger">⚠️ 끝글자 '${eChar}' ➔ 상대 ${dangerTxt} (차선책 방어, 반격 ${oCount}개)</div>`;
+      } else if (oCount <= 4) {
+        return `<div class="hero-kill-badge pressure">🔥 끝글자 '${eChar}' ➔ 상대 선택지 단 ${oCount}개뿐 (치명적 압박 포위망)</div>`;
+      } else {
+        return `<div class="hero-kill-badge safe">🛡️ 끝글자 '${eChar}' ➔ 한방/유도 피하는 안전 수 (상대 반격 ${oCount}개)</div>`;
+      }
     }
 
     let subLabel = '🌟 AI 추천 최적수 단어';
@@ -275,74 +270,112 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (data.turnType === 'myTurn') {
       subLabel = `🎯 [내 턴] 시작 글자 '${escapeHtml(targetChar)}' ➔ 필승 추천 단어`;
     } else if (data.turnType === 'wordStrategy') {
-      subLabel = `🎯 [단어 전략 분석] 「${escapeHtml(word)}」 공인 사전 & 공수 전략`;
+      subLabel = `🎯 [단어 전략 분석] 「${escapeHtml(currentWordObj.word)}」 공인 사전 & 공수 전략`;
     }
 
     const card = document.createElement('div');
-    card.className = `briefing-hero-card ${tierClass}`;
-    card.innerHTML = `
-      <div class="hero-top-badge-row">
-        <span class="hero-tier-badge ${tierClass}">${tierTitle}</span>
-        <span class="hero-start-char-tag">시작: <strong>'${targetChar}'</strong></span>
-      </div>
+    card.className = `briefing-hero-card`;
 
-      <div class="hero-center-box">
-        <div class="hero-word-header">
-          <div class="hero-sub-label">${subLabel}</div>
-          <div class="hero-word-row">
-            <span class="hero-word-display">${word}</span>
-            <span class="hero-pos-tag">[${ultimate.partOfSpeech || '명사'}]</span>
-          </div>
+    function renderCardInner(item, tNum) {
+      const meta = getTierMeta(tNum);
+      const w = item.word;
+      const pos = item.partOfSpeech || item.part || '명사';
+      const meaning = item.naverMeaning || item.dict?.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이';
+      const source = item.source || item.dict?.source || '네이버 국어사전';
+      const badgeHtml = getKillBadge(item, tNum);
+
+      let pillsHtml = '';
+      const availableTiers = [1, 2, 3, 4].filter(num => tierWords[num]);
+      if (availableTiers.length > 1) {
+        pillsHtml = `<div class="hero-tier-pills-row">` +
+          availableTiers.map(num => {
+            const twObj = tierWords[num];
+            const tMeta = getTierMeta(num);
+            const active = num === tNum ? `active ${tMeta.cls}` : '';
+            return `<button type="button" class="hero-tier-pill-btn ${active}" data-tier="${num}">${tMeta.label}: <strong>「${escapeHtml(twObj.word)}」</strong></button>`;
+          }).join('') +
+        `</div>`;
+      }
+
+      card.className = `briefing-hero-card ${meta.cls}`;
+      card.innerHTML = `
+        <div class="hero-top-badge-row">
+          <span class="hero-tier-badge ${meta.cls}">${meta.title}</span>
+          <span class="hero-start-char-tag">시작: <strong>'${targetChar}'</strong></span>
         </div>
-        ${killBadgeHtml}
-      </div>
 
-      <div class="hero-meaning-card">
-        <div class="hero-source-label">📖 ${ultimate.source || '네이버 국어사전'} 공식 뜻</div>
-        <div class="hero-meaning-body">${escapeHtml(ultimate.naverMeaning || '네이버 국어사전 실시간 표준 뜻풀이')}</div>
-      </div>
+        ${pillsHtml}
 
-      <div class="hero-action-buttons">
-        <button type="button" class="hero-action-btn hero-battle-btn" data-word="${word}" title="이 단어로 배틀 즉시 플레이">
-          <span class="btn-icon">⚔️</span>
-          <span class="btn-text-content">
-            <strong>배틀에 바로 출격</strong>
-            <small>1-클릭 즉시 사용</small>
-          </span>
-        </button>
-        <button type="button" class="hero-action-btn hero-copy-btn" data-word="${word}" title="단어 복사">
-          <span class="btn-icon">📋</span>
-          <span>단어 복사</span>
-        </button>
-        <button type="button" class="hero-action-btn hero-dict-btn" data-word="${word}" title="국어사전에서 상세 조회">
-          <span class="btn-icon">🔍</span>
-          <span>사전 조회</span>
-        </button>
-      </div>
-    `;
+        <div class="hero-center-box">
+          <div class="hero-word-header">
+            <div class="hero-sub-label">${subLabel}</div>
+            <div class="hero-word-row">
+              <span class="hero-word-display">${w}</span>
+              <span class="hero-pos-tag">[${pos}]</span>
+            </div>
+          </div>
+          ${badgeHtml}
+        </div>
 
-    // 이벤트 리스너 연결
-    const battleBtn = card.querySelector('.hero-battle-btn');
-    if (battleBtn) {
-      battleBtn.addEventListener('click', () => {
-        applyWordToBattle(word, true);
+        <div class="hero-meaning-card">
+          <div class="hero-source-label">📖 ${source} 공식 뜻</div>
+          <div class="hero-meaning-body">${escapeHtml(meaning)}</div>
+        </div>
+
+        <div class="hero-action-buttons">
+          <button type="button" class="hero-action-btn hero-battle-btn" data-word="${w}" title="이 단어로 배틀 즉시 플레이">
+            <span class="btn-icon">⚔️</span>
+            <span class="btn-text-content">
+              <strong>배틀에 바로 출격</strong>
+              <small>1-클릭 즉시 사용</small>
+            </span>
+          </button>
+          <button type="button" class="hero-action-btn hero-copy-btn" data-word="${w}" title="단어 복사">
+            <span class="btn-icon">📋</span>
+            <span>단어 복사</span>
+          </button>
+          <button type="button" class="hero-action-btn hero-dict-btn" data-word="${w}" title="국어사전에서 상세 조회">
+            <span class="btn-icon">🔍</span>
+            <span>사전 조회</span>
+          </button>
+        </div>
+      `;
+
+      // Event listeners
+      const battleBtn = card.querySelector('.hero-battle-btn');
+      if (battleBtn) {
+        battleBtn.addEventListener('click', () => {
+          applyWordToBattle(w, true);
+        });
+      }
+
+      const copyBtn = card.querySelector('.hero-copy-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          copyToClipboard(w);
+        });
+      }
+
+      const dictBtn = card.querySelector('.hero-dict-btn');
+      if (dictBtn) {
+        dictBtn.addEventListener('click', () => {
+          inspectWordInDictionary(w);
+        });
+      }
+
+      const pillBtns = card.querySelectorAll('.hero-tier-pill-btn');
+      pillBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const selectedTier = parseInt(btn.dataset.tier, 10);
+          if (tierWords[selectedTier]) {
+            renderCardInner(tierWords[selectedTier], selectedTier);
+          }
+        });
       });
     }
 
-    const copyBtn = card.querySelector('.hero-copy-btn');
-    if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
-        copyToClipboard(word);
-      });
-    }
-
-    const dictBtn = card.querySelector('.hero-dict-btn');
-    if (dictBtn) {
-      dictBtn.addEventListener('click', () => {
-        inspectWordInDictionary(word);
-      });
-    }
-
+    renderCardInner(currentWordObj, currentTier);
     return card;
   }
 

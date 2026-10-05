@@ -1385,6 +1385,71 @@ html, body {
   color: #fff;
 }
 
+.hero-tier-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 6px 0;
+  scrollbar-width: thin;
+}
+
+.hero-tier-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.hero-tier-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.hero-tier-pill-btn.active.tier-1 {
+  background: rgba(244, 63, 94, 0.28);
+  border-color: rgba(244, 63, 94, 0.7);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
+}
+
+.hero-tier-pill-btn.active.tier-2 {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: rgba(245, 158, 11, 0.7);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.hero-tier-pill-btn.active.tier-3 {
+  background: rgba(168, 85, 247, 0.28);
+  border-color: rgba(168, 85, 247, 0.7);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+
+.hero-tier-pill-btn.active.tier-4 {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: rgba(16, 185, 129, 0.7);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.hero-tier-pill-btn.active.tier-5 {
+  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(148, 163, 184, 0.7);
+  color: #fff;
+}
+
 .hero-center-box {
   display: flex;
   flex-direction: column;
