@@ -61,14 +61,8 @@ function getDueumVariants(char) {
 }
 
 
-// ⭐ 현대에 쓰이지 않는 옛말(사어/고어), 비속어 및 단독 외래 인명 블랙리스트 (원천 차단)
-const ARCHAIC_BLACKLIST = new Set([
-  '입거웆', '입거웇', '이웆', '가웆', '븟', '게웆다', '뉘웇다',
-  '슘페터', '귄나르손', '무뤂', '다봊', '노좆', '모밇', '우창숴',
-  '허튓', '호쁘', '구듫', '어깆', '처꼉', '너흴', '저흴', '우릴',
-  '자챔', '초츤', '포킨', '타킨', '부쩝', '수퀑', '두듥', '늡늡', '늡',
-  '슭곰', '호라비좃', '차이쨔'
-]);
+// ⭐ 사전 단어 전수 허용 (임의 블랙리스트 배제 없이 사전의 모든 단어 100% 수용)
+const ARCHAIC_BLACKLIST = new Set();
 
 // 끝말잇기 표준 룰 불허 품사 (체언 및 표준 부사 허용, 문법 어미/조사/용언 기본형 등 차단)
 const invalidParts = new Set([
@@ -121,7 +115,7 @@ try {
   const rawData = require('./data/dictionary.json');
   for (const [s, wordList] of Object.entries(rawData)) {
     for (const w of wordList) {
-      if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
+      if (!w || /\s/.test(w)) continue;
       const part = posMap.get(w);
       if (part && invalidParts.has(part)) continue;
       // 끝말잇기 표준 룰: 용언(동사/형용사) 기본형 '-다' 엄격 차단 (명사 화이트리스트 제외)
@@ -145,7 +139,7 @@ try {
       const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
       for (const [s, wordList] of Object.entries(rawData)) {
         for (const w of wordList) {
-          if (!w || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
+          if (!w || /\s/.test(w)) continue;
           const part = posMap.get(w);
           if (part && invalidParts.has(part)) continue;
           if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
@@ -241,7 +235,7 @@ console.timeEnd('📖 52만 공인 사전 데이터 로드');
 console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (정확한 품사 매핑 완료)`);
 
 function registerDynamicWord(word, part = '명사') {
-  if (!word || word.length < 2 || /\s/.test(word) || ARCHAIC_BLACKLIST.has(word)) return;
+  if (!word || word.length < 2 || /\s/.test(word)) return;
   if (wordInfoMap.has(word)) return;
   const isPure = !word.includes('-') && !word.includes('^');
   const item = { word, isPure, part, raw: word };
@@ -615,7 +609,7 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
       // ⭐ 옛말/고어/북한어/어근 정밀 감지 (단독 어휘가 아닌 '어근'이거나 블랙리스트인 경우만 무효화)
       let isArchaic = false;
       if (bestMatch) {
-        if (bestMatch.partOfSpeech === '어근' || ARCHAIC_BLACKLIST.has(clean)) {
+        if (bestMatch.partOfSpeech === '어근') {
           isArchaic = true;
         }
       }
@@ -940,10 +934,6 @@ async function findUltimateBestWord(inputChar, options = {}) {
     const item = candidateItems[ci];
     const word = item.word;
     const endChar = word[word.length - 1];
-
-    if (ARCHAIC_BLACKLIST.has(word)) continue;
-    // 조사 축약형 (너흴, 우릴 등) 및 부적절 어휘 배제
-    if (/^[가-힣]+[흴릴]$/.test(word) && ['너흴', '우릴', '저흴', '나를', '너를'].includes(word)) continue;
 
     // 내부 품질 점수
     let qualityScore = 0;
@@ -1919,7 +1909,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
   const lookupWord = cleanText.replace(/(?:뜻|사전|검색|유효|의미|알려줘|알려|말해줘|말해|뭐야|뭐임|이란|\s)+/g, '').replace(/[^가-힣]/g, '');
   if (isDictLookupQuery && lookupWord.length >= 2) {
     const dict = await queryNaverDictionary(lookupWord);
-    if (dict && dict.isVerified && !ARCHAIC_BLACKLIST.has(lookupWord)) {
+    if (dict && dict.isVerified) {
       const endC = lookupWord[lookupWord.length - 1];
       const reb = getRebuttalAnalysis(endC);
       const isTrap = KILLING_INDUCTION_CHARS.has(endC) || reb.totalCount <= 30;
