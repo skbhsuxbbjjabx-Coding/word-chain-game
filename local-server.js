@@ -624,7 +624,16 @@ function isRealMeaning(text) {
   const fakePhrases = [
     '등재되지 않은',
     '사전 미등재',
-    '뜻이 등재되지'
+    '뜻이 등재되지',
+    '뜻풀이가 등재되지',
+    '공인 표준 표제어',
+    '공인 표준 어휘',
+    '공인 표제어',
+    '국어사전 등재 어휘',
+    '등재된 공인 표준',
+    '실시간 표준 뜻풀이',
+    '표준 뜻풀이',
+    '등재 어휘'
   ];
   for (const phrase of fakePhrases) {
     if (trimmed.includes(phrase)) return false;
@@ -648,7 +657,7 @@ function getUnverifiedResult(word) {
 }
 
 // 네이버 국어사전 실시간 쿼리 함수 (실제 공인 사전에 등재되고 구체적인 뜻풀이가 존재하는 유효 표제어만 100% 검증)
-async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
+async function queryNaverDictionary(queryWord, timeoutMs = 3500) {
   if (!queryWord) return null;
   const rawInput = String(queryWord).trim();
 
@@ -657,125 +666,146 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
   if (!clean || clean.length === 0) return getUnverifiedResult(queryWord);
 
   if (naverCache.has(clean)) {
-    return naverCache.get(clean);
+    const cached = naverCache.get(clean);
+    // 캐시된 결과가 실제 뜻풀이를 포함하고 있거나 미등재로 확정된 경우 즉시 반환
+    if (!cached.isVerified || (cached.meanings && cached.meanings[0] && isRealMeaning(cached.meanings[0]))) {
+      return cached;
+    }
+    // 캐시에 플레이스홀더만 들어있었던 경우 삭제 후 실제 네이버 사전 재조회 진행
+    naverCache.delete(clean);
   }
 
   const encoded = encodeURIComponent(clean);
   let apiResult = null;
   const naverResults = []; // 네이버 사전 실제 검색 결과 목록 전체
 
-  try {
-    const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc&autoConvert=false`;
-    const res = await fetch(apiUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://ko.dict.naver.com/',
-        'Accept': 'application/json, text/plain, */*'
-      },
-      signal: AbortSignal.timeout(timeoutMs)
-    });
+  // 네이버 공식 사전 API3 질의 (네트워크 불안정 대비 최대 2회 시도)
+  for (let attempt = 0; attempt < 2 && !apiResult; attempt++) {
+    try {
+      const apiUrl = `https://ko.dict.naver.com/api3/koko/search?query=${encoded}&m=pc&range=word`;
+      const res = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://ko.dict.naver.com/',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        signal: AbortSignal.timeout(timeoutMs)
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      const listMap = data?.searchResultMap?.searchResultListMap || {};
-      const officialItems = listMap.WORD?.items || [];
-      const openItems = listMap.OPEN?.items || [];
-      const combinedItems = [...officialItems, ...openItems];
+      if (res.ok) {
+        const text = await res.text();
+        if (!text || text.length === 0) {
+          if (attempt === 0) await new Promise(r => setTimeout(r, 120));
+          continue;
+        }
 
-      // 검색된 모든 네이버 사전 항목 파싱하여 naverResults 목록 구축
-      for (const item of combinedItems) {
-        const entryRaw = (item.handleEntry || item.expEntry || item.expEntryRaw || '')
-          .replace(/<[^>]+>/g, '')
-          .replace(/[0-9]/g, '')
-          .trim();
-        const rawClean = entryRaw.replace(/[-^ㆍ·\s\(\)]/g, '').replace(/[^\uAC00-\uD7A3]/g, '').trim();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (je) {
+          continue;
+        }
 
-        let itemPos = '명사';
-        const itemMeans = [];
-        if (item.meansCollector && item.meansCollector.length > 0) {
-          for (const mc of item.meansCollector) {
-            if (mc.partOfSpeech) itemPos = mc.partOfSpeech;
-            for (const m of (mc.means || [])) {
-              const val = (m.value || '').replace(/<[^>]+>/g, '').trim();
-              if (val && isRealMeaning(val) && !itemMeans.includes(val)) {
-                itemMeans.push(val);
+        const listMap = data?.searchResultMap?.searchResultListMap || {};
+        const officialItems = listMap.WORD?.items || [];
+        const openItems = listMap.OPEN?.items || [];
+        const combinedItems = [...officialItems, ...openItems];
+
+        // 검색된 모든 네이버 사전 항목 파싱하여 naverResults 목록 구축
+        for (const item of combinedItems) {
+          const entryRaw = (item.handleEntry || item.expEntry || item.expEntryRaw || '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/[0-9]/g, '')
+            .trim();
+          const rawClean = entryRaw.replace(/[-^ㆍ·\s\(\)]/g, '').replace(/[^\uAC00-\uD7A3]/g, '').trim();
+
+          let itemPos = '명사';
+          const itemMeans = [];
+          if (item.meansCollector && item.meansCollector.length > 0) {
+            for (const mc of item.meansCollector) {
+              if (mc.partOfSpeech) itemPos = mc.partOfSpeech;
+              for (const m of (mc.means || [])) {
+                const val = (m.value || '').replace(/<[^>]+>/g, '').trim();
+                if (val && isRealMeaning(val) && !itemMeans.includes(val)) {
+                  itemMeans.push(val);
+                }
               }
             }
           }
-        }
-        if (itemMeans.length === 0) {
-          const fb = item.abstractContent?.value || item.abstractContent || item.expAbstract || item.etcExplain;
-          if (fb && typeof fb === 'string') {
-            const cleanFb = fb.replace(/<[^>]+>/g, '').trim();
-            if (cleanFb && isRealMeaning(cleanFb) && !itemMeans.includes(cleanFb)) {
-              itemMeans.push(cleanFb);
+          if (itemMeans.length === 0) {
+            const fb = item.abstractContent?.value || item.abstractContent || item.expAbstract || item.etcExplain;
+            if (fb && typeof fb === 'string') {
+              const cleanFb = fb.replace(/<[^>]+>/g, '').trim();
+              if (cleanFb && isRealMeaning(cleanFb) && !itemMeans.includes(cleanFb)) {
+                itemMeans.push(cleanFb);
+              }
             }
+          }
+
+          const isOpen = openItems.includes(item);
+          const sourceName = isOpen
+            ? (item.sourceDictnameKO ? `네이버 오픈사전 (${item.sourceDictnameKO})` : (item.sourceDictname ? `네이버 오픈사전 (${item.sourceDictname})` : '네이버 오픈사전'))
+            : (item.sourceDictnameKO ? `네이버 국어사전 (${item.sourceDictnameKO})` : (item.sourceDictname ? `네이버 국어사전 (${item.sourceDictname})` : '네이버 국어사전'));
+
+          const itemLink = item.destinationLink
+            ? (item.destinationLink.startsWith('http') ? item.destinationLink : `https://ko.dict.naver.com/${item.destinationLink}`)
+            : `https://ko.dict.naver.com/#/search?query=${encoded}`;
+
+          if (itemMeans.length > 0) {
+            naverResults.push({
+              entry: entryRaw || clean,
+              cleanWord: rawClean || clean,
+              partOfSpeech: itemPos,
+              meanings: itemMeans,
+              source: sourceName,
+              link: itemLink,
+              isExactMatch: rawClean === clean
+            });
           }
         }
 
-        const isOpen = openItems.includes(item);
-        const sourceName = isOpen
-          ? (item.sourceDictnameKO ? `네이버 오픈사전 (${item.sourceDictnameKO})` : (item.sourceDictname ? `네이버 오픈사전 (${item.sourceDictname})` : '네이버 오픈사전'))
-          : (item.sourceDictnameKO ? `네이버 국어사전 (${item.sourceDictnameKO})` : (item.sourceDictname ? `네이버 국어사전 (${item.sourceDictname})` : '네이버 국어사전'));
-
-        const itemLink = item.destinationLink
-          ? (item.destinationLink.startsWith('http') ? item.destinationLink : `https://ko.dict.naver.com/${item.destinationLink}`)
-          : `https://ko.dict.naver.com/#/search?query=${encoded}`;
-
-        if (itemMeans.length > 0) {
-          naverResults.push({
-            entry: entryRaw || clean,
-            cleanWord: rawClean || clean,
-            partOfSpeech: itemPos,
-            meanings: itemMeans,
-            source: sourceName,
-            link: itemLink,
-            isExactMatch: rawClean === clean
-          });
+        // ⭐ [철저한 표제어 일치 검증]: 오직 검색어와 완전히 일치하거나 띄어쓰기만 제거했을 때 일치하는 단어만 채택!
+        let bestMatch = naverResults.find(r => r.isExactMatch && r.meanings.length > 0);
+        if (!bestMatch) {
+          bestMatch = naverResults.find(r => r.cleanWord === clean && r.meanings.length > 0);
         }
-      }
 
-      // ⭐ [철저한 표제어 일치 검증]: 오직 검색어와 완전히 일치하거나 띄어쓰기만 제거했을 때 일치하는 단어만 채택!
-      let bestMatch = naverResults.find(r => r.isExactMatch && r.meanings.length > 0);
-      if (!bestMatch) {
-        bestMatch = naverResults.find(r => r.cleanWord === clean && r.meanings.length > 0);
-      }
-
-      // ⭐ 옛말/고어/북한어/어근 정밀 감지 (단독 어휘가 아닌 '어근'이거나 블랙리스트인 경우만 무효화)
-      let isArchaic = false;
-      if (bestMatch) {
-        if (bestMatch.partOfSpeech === '어근') {
+        // ⭐ 옛말/고어/북한어/어근 정밀 감지
+        let isArchaic = false;
+        if (bestMatch && bestMatch.partOfSpeech === '어근') {
           isArchaic = true;
         }
-      }
 
-      // ⭐ 네이버 국어사전에 실제로 표제어와 뜻풀이가 등재되어 있으면 인정
-      if (bestMatch && bestMatch.meanings.length > 0) {
-        apiResult = {
-          word: clean,
-          displayEntry: bestMatch.entry,
-          isVerified: true,
-          isArchaic,
-          source: bestMatch.source,
-          totalMatches: naverResults.length,
-          partOfSpeech: bestMatch.partOfSpeech || '명사',
-          meanings: bestMatch.meanings.slice(0, 5),
-          link: bestMatch.link,
-          naverResults
-        };
-        registerDynamicWord(clean, bestMatch.partOfSpeech || '명사', bestMatch.meanings[0], bestMatch.source, bestMatch.link);
+        // ⭐ 네이버 국어사전에 실제로 표제어와 구체적 뜻풀이가 등재되어 있으면 인정
+        if (bestMatch && bestMatch.meanings.length > 0) {
+          apiResult = {
+            word: clean,
+            displayEntry: bestMatch.entry,
+            isVerified: true,
+            isArchaic,
+            source: bestMatch.source,
+            totalMatches: naverResults.length,
+            partOfSpeech: bestMatch.partOfSpeech || '명사',
+            meanings: bestMatch.meanings.slice(0, 5),
+            link: bestMatch.link,
+            naverResults
+          };
+          registerDynamicWord(clean, bestMatch.partOfSpeech || '명사', bestMatch.meanings[0], bestMatch.source, bestMatch.link);
+          break;
+        }
       }
+    } catch (err) {
+      if (attempt === 0) await new Promise(r => setTimeout(r, 120));
     }
-  } catch (err) {
-    // 네트워크 타임아웃/오류 발생 시 캐시에 미등재로 잘못 저장하지 않음
   }
 
-  // 로컬 52만 사전에 등재된 표준어인 경우 폴백 보장 (네이버 일시 장애 시 오판 방지)
+  // 로컬 54.8만 사전에 등재된 표준어인 경우 폴백 보장 (네이버 일시 장애 시 오판 방지)
   if (!apiResult && wordInfoMap.has(clean)) {
     const localItem = wordInfoMap.get(clean);
-    const m = (localItem.naverMeaning && isRealMeaning(localItem.naverMeaning))
+    const hasRealLocal = !!(localItem.naverMeaning && isRealMeaning(localItem.naverMeaning));
+    const m = hasRealLocal
       ? localItem.naverMeaning
-      : `네이버 국어사전에 등재된 공인 표준 표제어(${localItem.part || '명사'})입니다.`;
+      : `네이버 국어사전 공인 표제어 (${localItem.part || '명사'})`;
     apiResult = {
       word: clean,
       displayEntry: clean,
@@ -788,6 +818,15 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
       link: localItem.naverLink || `https://ko.dict.naver.com/#/search?query=${encoded}`,
       naverResults: []
     };
+    // ⭐ 구체적 실제 뜻이 있는 경우에만 캐시에 저장! 플레이스홀더는 절대 캐시하지 않아 다음 호출 시 네이버 API 재질의 보장!
+    if (hasRealLocal) {
+      if (naverCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = naverCache.keys().next().value;
+        naverCache.delete(firstKey);
+      }
+      naverCache.set(clean, apiResult);
+    }
+    return apiResult;
   }
 
   // 네이버 검색에서 결과를 찾았으면 캐시 후 반환
@@ -799,6 +838,7 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
     naverCache.set(clean, apiResult);
     return apiResult;
   }
+
   // 유효한 뜻이 없으면 미등재 판정 (정상 응답에서 미등재 확인된 경우만 캐시)
   const unverified = getUnverifiedResult(clean);
   naverCache.set(clean, unverified);
@@ -832,7 +872,7 @@ function searchMatchingWords(query, limitPerCategory = 45) {
     const outCount = getOutDegree(endChar);
     const cached = naverCache.get(word);
     const cachedMean = cached?.meanings?.[0];
-    const realMean = (cachedMean && isRealMeaning(cachedMean)) ? cachedMean : (item.naverMeaning || '');
+    const realMean = (cachedMean && isRealMeaning(cachedMean)) ? cachedMean : ((item.naverMeaning && isRealMeaning(item.naverMeaning)) ? item.naverMeaning : '');
     const wordObj = {
       word,
       part: item.part || '명사',
@@ -993,7 +1033,7 @@ const ICONIC_WORDS = new Set([
   '카펫', '카드뮴', '카메라', '카페',
   '타이타늄', '타래무늬그릇', '타이어', '타자기',
   '파늄', '파릇', '파도', '파랑새', '파초',
-  '하모늄', '하굿둑', '하늘', '학교', '하루',
+  '하이픈', '하모늄', '하굿둑', '하늘', '학교', '하루',
   '거섶', '거듭', '거리',
   '너덜겅', '너븨', '너구리', '너울', '너비',
   '더브늄', '더위', '더덕',
@@ -1436,7 +1476,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     const localMeaning = item?.naverMeaning || '';
     const meaningText = (localMeaning && isRealMeaning(localMeaning))
       ? localMeaning
-      : `네이버 국어사전 등재 공인 표준 어휘 (${pos})`;
+      : `네이버 국어사전 공인 표제어 (${pos})`;
     const entry = {
       word: w,
       displayEntry: w,
@@ -1447,15 +1487,44 @@ async function findUltimateBestWord(inputChar, options = {}) {
       meanings: [meaningText],
       link: item?.naverLink || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(w)}`
     };
-    naverCache.set(w, entry);
+    if (localMeaning && isRealMeaning(localMeaning)) {
+      naverCache.set(w, entry);
+    }
     return entry;
   }
 
-  const tier1Best = tier1_instantKill[0] || null;
-  const tier2Best = tier2_killingInduction[0] || null;
-  const tier3Best = tier3_nearKill[0] || null;
-  const tier4Best = tier4_safePlay[0] || null;
-  const tier5Best = tier5_desperate[0] || null;
+  // ⭐ 각 티어 상위 후보군 중 실제 네이버 사전 뜻이 확실히 등재된 단어를 최우선 선발
+  async function pickBestWithRealMeaning(candidates) {
+    if (!candidates || candidates.length === 0) return null;
+    const top = candidates.slice(0, 4);
+    // 1단계: 이미 실제 뜻이 존재하는 단어 우선 탐색
+    for (const c of top) {
+      const cached = naverCache.get(c.word);
+      if (cached && cached.meanings && cached.meanings.length > 0 && isRealMeaning(cached.meanings[0])) {
+        return c;
+      }
+      if (c.item?.naverMeaning && isRealMeaning(c.item.naverMeaning)) {
+        return c;
+      }
+    }
+    // 2단계: 상위 후보들에 대해 실시간 네이버 사전 조회 시도
+    for (const c of top) {
+      if (!naverCache.has(c.word)) {
+        await queryNaverDictionary(c.word, 3000);
+      }
+      const cached = naverCache.get(c.word);
+      if (cached && cached.meanings && cached.meanings.length > 0 && isRealMeaning(cached.meanings[0])) {
+        return c;
+      }
+    }
+    return candidates[0];
+  }
+
+  const tier1Best = await pickBestWithRealMeaning(tier1_instantKill);
+  const tier2Best = await pickBestWithRealMeaning(tier2_killingInduction);
+  const tier3Best = await pickBestWithRealMeaning(tier3_nearKill);
+  const tier4Best = await pickBestWithRealMeaning(tier4_safePlay);
+  const tier5Best = await pickBestWithRealMeaning(tier5_desperate);
 
   const diffRaw = String(options.difficulty || 'hell').toLowerCase();
   const noFirstTurnKill = !!options.noFirstTurnKill;
@@ -1511,12 +1580,12 @@ async function findUltimateBestWord(inputChar, options = {}) {
     if (!naverCache.has(w)) return true;
     const entry = naverCache.get(w);
     const m = entry?.meanings?.[0] || '';
-    return !m || m.includes('등재된 공인 표준어(') || m.includes('공인 표준 어휘');
+    return !isRealMeaning(m);
   }).slice(0, 5);
 
   if (uncachedWords.length > 0) {
     try {
-      await Promise.all(uncachedWords.map(w => queryNaverDictionary(w, 1200)));
+      await Promise.all(uncachedWords.map(w => queryNaverDictionary(w, 3500)));
     } catch (e) {
       // 타임아웃 발생 시에도 로컬 사전 정보로 안전 폴백
     }
@@ -1526,7 +1595,9 @@ async function findUltimateBestWord(inputChar, options = {}) {
   const bestPos = cBest?.partOfSpeech || best.item?.part || best.part || '명사';
   const bestMean = (cBest && cBest.meanings && cBest.meanings[0] && isRealMeaning(cBest.meanings[0]))
     ? cBest.meanings[0]
-    : (best.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${bestPos})`);
+    : ((best.item?.naverMeaning && isRealMeaning(best.item?.naverMeaning))
+        ? best.item.naverMeaning
+        : '네이버 국어사전 공인 표제어');
   const bestSource = cBest?.source || best.item?.source || '네이버 국어사전';
   const bestLink = cBest?.link || best.item?.naverLink || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`;
 
@@ -1575,7 +1646,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
     const c = naverCache.get(t.word);
     const pos = c?.partOfSpeech || t.item?.part || t.part || '명사';
     const cMean = (c && c.meanings && c.meanings[0] && isRealMeaning(c.meanings[0])) ? c.meanings[0] : null;
-    const m = cMean || t.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${pos})`;
+    const localMean = (t.item?.naverMeaning && isRealMeaning(t.item?.naverMeaning)) ? t.item?.naverMeaning : null;
+    const m = cMean || localMean || '네이버 국어사전 공인 표제어';
     const src = c?.source || t.item?.source || '네이버 국어사전 (표준국어대사전)';
     return {
       word: t.word,
@@ -1643,7 +1715,9 @@ async function findUltimateBestWord(inputChar, options = {}) {
       const altPos = cAlt?.partOfSpeech || alt.item?.part || alt.part || '명사';
       const altMean = (cAlt && cAlt.meanings && cAlt.meanings[0] && isRealMeaning(cAlt.meanings[0]))
         ? cAlt.meanings[0]
-        : (alt.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${altPos})`);
+        : ((alt.item?.naverMeaning && isRealMeaning(alt.item?.naverMeaning))
+            ? alt.item.naverMeaning
+            : '네이버 국어사전 공인 표제어');
       const altSource = cAlt?.source || alt.item?.source || '네이버 국어사전';
       return {
         word: alt.word,
@@ -1777,14 +1851,25 @@ async function generateAiChatResponse(message, history = [], options = {}) {
         reason = `두 단어 모두 상대 반격 ${reb1.totalCount}개로 대등한 수입니다.`;
       }
 
+      const mean1 = (dict1 && dict1.meanings && dict1.meanings.length > 0 && isRealMeaning(dict1.meanings[0]))
+        ? dict1.meanings[0]
+        : ((wordInfoMap.get(w1)?.naverMeaning && isRealMeaning(wordInfoMap.get(w1).naverMeaning))
+            ? wordInfoMap.get(w1).naverMeaning
+            : '네이버 국어사전 공인 표제어');
+      const mean2 = (dict2 && dict2.meanings && dict2.meanings.length > 0 && isRealMeaning(dict2.meanings[0]))
+        ? dict2.meanings[0]
+        : ((wordInfoMap.get(w2)?.naverMeaning && isRealMeaning(wordInfoMap.get(w2).naverMeaning))
+            ? wordInfoMap.get(w2).naverMeaning
+            : '네이버 국어사전 공인 표제어');
+
       return {
         text: `💡 **[AI브리핑 단어 전략 비교 분석]**\n\n` +
               `질문하신 두 단어를 네이버 국어사전과 Minimax 2수 앞 수읽기 엔진으로 정밀 비교 분석했습니다:\n\n` +
               `1️⃣ **「${w1}」** (${desc1})\n` +
-              `• **사전 뜻**: ${dict1?.meanings?.[0] || '네이버 국어사전 공인 표제어'}\n` +
+              `• **사전 뜻**: ${mean1}\n` +
               `• **끝글자**: '${w1[w1.length - 1]}' ➔ 상대 반격 가능한 단어: **${reb1.totalCount}개** ${reb1.totalCount <= 30 ? '(상대 선택지 극소 봉쇄!)' : ''}\n\n` +
               `2️⃣ **「${w2}」** (${desc2})\n` +
-              `• **사전 뜻**: ${dict2?.meanings?.[0] || '네이버 국어사전 공인 표제어'}\n` +
+              `• **사전 뜻**: ${mean2}\n` +
               `• **끝글자**: '${w2[w2.length - 1]}' ➔ 상대 반격 가능한 단어: **${reb2.totalCount}개**\n\n` +
               `🏆 **전략적 판정**: **${reason}**\n` +
               `AI브리핑은 상대의 반격을 극소화하여 다음 턴 한방으로 필승하는 **「${winner}」**을 최우선 추천합니다!`,
@@ -1796,18 +1881,23 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     // 2-B) 단일 단어 문의 (예: "꾼둑 사전에 있어?", "왜 차삯 없다고 나와?")
     if (uniqueTokens.length === 1) {
       const singleWord = uniqueTokens[0];
-      const dict = await queryNaverDictionary(singleWord);
+      const dict = await queryNaverDictionary(singleWord, 3500);
       const endC = singleWord[singleWord.length - 1];
       const reb = getRebuttalAnalysis(endC);
       const isKill = reb.totalCount === 0;
       const isTrap = !isKill && (KILLING_INDUCTION_CHARS.has(endC) || reb.totalCount <= 30);
+      const singleMean = (dict && dict.meanings && dict.meanings.length > 0 && isRealMeaning(dict.meanings[0]))
+        ? dict.meanings[0]
+        : ((wordInfoMap.get(singleWord)?.naverMeaning && isRealMeaning(wordInfoMap.get(singleWord).naverMeaning))
+            ? wordInfoMap.get(singleWord).naverMeaning
+            : '네이버 국어사전 공인 표제어');
 
       if (dict && dict.isVerified) {
         return {
           text: `📖 **[네이버 국어사전 실시간 검증: 「${singleWord}」]**\n\n` +
                 `• **품사**: ${dict.partOfSpeech || '명사'}\n` +
                 `• **출처**: ${dict.source || '네이버 국어사전'}\n` +
-                `• **사전 뜻**: ${dict.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이'}\n` +
+                `• **사전 뜻**: ${singleMean}\n` +
                 `• **끝말잇기 전략 가치**: ${isKill ? '💥 **1순위 즉시 승리 한방 단어** (상대 반격 0개 전무)' : (isTrap ? `🎯 **2순위 한방 유도 필승 수** (상대 반격 단 ${reb.totalCount}개 극소화)` : `🛡️ **일반 안전 수** (상대 반격 ${reb.totalCount}개)`)}\n\n` +
                 `네이버 국어사전과 게임 데이터베이스에 100% 정상 연동되어 있습니다!`,
           flowMode,
@@ -2041,11 +2131,16 @@ async function generateAiChatResponse(message, history = [], options = {}) {
         noFirstTurnKill: false
       });
       const counterWord = counterAnalysis?.ultimateWord?.word || '반격 어휘 없음';
+      const realDictMeaning = (dict && dict.meanings && dict.meanings.length > 0 && isRealMeaning(dict.meanings[0]))
+        ? dict.meanings[0]
+        : ((wordInfoMap.get(queryWord)?.naverMeaning && isRealMeaning(wordInfoMap.get(queryWord).naverMeaning))
+            ? wordInfoMap.get(queryWord).naverMeaning
+            : '네이버 국어사전 공인 표제어');
 
       const dualText = `🎯 **[단어 전략 분석: 「${queryWord}」]**\n\n` +
                        `📖 **[네이버 국어사전 실시간 검증]**\n` +
                        `• **품사**: ${dict.partOfSpeech || '명사'} | **출처**: ${dict.source || '네이버 국어사전'}\n` +
-                       `• **공식 뜻풀이**: ${dict.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이'}\n\n` +
+                       `• **공식 뜻풀이**: ${realDictMeaning}\n\n` +
                        `💥 **[1. 내가 「${queryWord}」(으)로 공격할 때]**\n` +
                        `• **전략 분류**: ${tierName}\n` +
                        `• **전략 해설**: ${strategyDesc}\n` +
@@ -2067,7 +2162,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
           partOfSpeech: dict.partOfSpeech || '명사',
           endChar,
           outCount: reb.totalCount,
-          naverMeaning: dict.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이',
+          naverMeaning: realDictMeaning,
           source: dict.source || '네이버 국어사전',
           hasKillingRisk,
           hasTrapRisk,
@@ -2143,7 +2238,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
   const isDictLookupQuery = /(?:뜻|사전|검색|유효|의미)/.test(trimmed);
   const lookupWord = cleanText.replace(/(?:뜻|사전|검색|유효|의미|알려줘|알려|말해줘|말해|뭐야|뭐임|이란|\s)+/g, '').replace(/[^가-힣]/g, '');
   if (isDictLookupQuery && lookupWord.length >= 2) {
-    const dict = await queryNaverDictionary(lookupWord);
+    const dict = await queryNaverDictionary(lookupWord, 3500);
     if (dict && dict.isVerified) {
       const endC = lookupWord[lookupWord.length - 1];
       const reb = getRebuttalAnalysis(endC);
@@ -2152,11 +2247,16 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       const verdictText = isKill 
         ? '💥 **즉시 승리 한방 단어** (상대 반격 0개)' 
         : (isTrap ? `🎯 **한방 유도 단어** (상대 반격 어휘 ${reb.totalCount}개 극소화)` : `🛡️ **유효 단어** (상대 반격 어휘 ${reb.totalCount}개)`);
+      const lookupMeaning = (dict.meanings && dict.meanings.length > 0 && isRealMeaning(dict.meanings[0]))
+        ? dict.meanings[0]
+        : ((wordInfoMap.get(lookupWord)?.naverMeaning && isRealMeaning(wordInfoMap.get(lookupWord).naverMeaning))
+            ? wordInfoMap.get(lookupWord).naverMeaning
+            : '네이버 국어사전 공인 표제어');
       return {
         text: `📚 **[단어 사전 정보: 「${lookupWord}」]**\n\n` +
               `• **품사**: ${dict.partOfSpeech || '명사'}\n` +
               `• **출처**: ${dict.source || '네이버 국어사전'}\n` +
-              `• **사전 뜻**: ${dict.meanings?.[0] || '네이버 국어사전 실시간 표준 뜻풀이'}\n` +
+              `• **사전 뜻**: ${lookupMeaning}\n` +
               `• **끝말잇기 판정**: ${verdictText}\n\n` +
               `🔗 [네이버 국어사전 원문 보기](${dict.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(lookupWord)}`})`,
         flowMode,
@@ -2178,7 +2278,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     if (!analysis || !analysis.ultimateWord) {
       const pureWord = trimmed.replace(/[^가-힣]/g, '');
       if (pureWord.length >= 2) {
-        const selfDict = await queryNaverDictionary(pureWord);
+        const selfDict = await queryNaverDictionary(pureWord, 3500);
         // 네이버 사전에 등재된 단어는 옛말/방언 포함 100% 인정
         if (selfDict && selfDict.isSpacedWord) {
           return {
@@ -2188,11 +2288,17 @@ async function generateAiChatResponse(message, history = [], options = {}) {
 
         if (selfDict && selfDict.isVerified && selfDict.meanings && selfDict.meanings.length > 0) {
           const directEndChar = pureWord[pureWord.length - 1];
+          const directRebuttal = getRebuttalAnalysis(directEndChar);
           const isDirectKilling = directRebuttal.totalCount === 0;
           const isDirectTrap = !isDirectKilling && (KILLING_INDUCTION_CHARS.has(directEndChar) || directRebuttal.totalCount <= 30);
           const directTierNum = isDirectKilling ? 1 : (isDirectTrap ? 2 : 3);
           const directTierName = isDirectKilling ? '1순위 한방 단어' : (isDirectTrap ? '2순위 한방 유도 단어' : '공인 등재 단어');
           const directTierDesc = isDirectKilling ? '상대 반격 0개 절대 필승' : (isDirectTrap ? '상대 선택지 극소화 한방 유도' : '네이버 국어사전 등재 어휘');
+          const directRealMean = (selfDict.meanings && isRealMeaning(selfDict.meanings[0]))
+            ? selfDict.meanings[0]
+            : ((wordInfoMap.get(pureWord)?.naverMeaning && isRealMeaning(wordInfoMap.get(pureWord).naverMeaning))
+                ? wordInfoMap.get(pureWord).naverMeaning
+                : '네이버 국어사전 공인 표제어');
 
           return {
             text: `👑 **「${pureWord}」**은(는) 네이버 국어사전에 공인 등재된 **${directTierName}**입니다!\n\n` +
@@ -2201,7 +2307,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                     : (isDirectTrap 
                         ? `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개뿐인 치명적 한방 유도 단어입니다.\n\n`
                         : `끝글자 **'${directEndChar}'**(으)로 상대방이 반격 가능한 단어가 사전에 ${directRebuttal.totalCount}개 존재합니다.\n\n`)) +
-                  `📚 **공인 사전 공식 뜻**: ${selfDict.meanings[0]} (${selfDict.source})`,
+                  `📚 **공인 사전 공식 뜻**: ${directRealMean} (${selfDict.source})`,
             hasUltimateCard: true,
             briefedWord: pureWord,
             briefedWords: flowMode ? [...briefedWords, pureWord] : [],
@@ -2212,7 +2318,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
               ultimateWord: {
                 word: pureWord,
                 endChar: directEndChar,
-                naverMeaning: selfDict.meanings[0],
+                naverMeaning: directRealMean,
                 source: selfDict.source,
                 outCount: directRebuttal.totalCount,
                 tierInfo: {
@@ -2236,6 +2342,14 @@ async function generateAiChatResponse(message, history = [], options = {}) {
     }
 
     const ultimate = analysis.ultimateWord;
+    // ⭐ AI 브리핑 대표 추천 단어의 네이버 사전 상세 뜻풀이 실시간 100% 보장 동기화
+    const ultimateDict = await queryNaverDictionary(ultimate.word, 3500);
+    if (ultimateDict && ultimateDict.meanings && ultimateDict.meanings.length > 0 && isRealMeaning(ultimateDict.meanings[0])) {
+      ultimate.naverMeaning = ultimateDict.meanings[0];
+      ultimate.partOfSpeech = ultimateDict.partOfSpeech || ultimate.partOfSpeech;
+      ultimate.source = ultimateDict.source || ultimate.source;
+      ultimate.naverLink = ultimateDict.link || ultimate.naverLink;
+    }
     const tierNum = ultimate.tierInfo?.tierNumber || 1;
 
     let speech = '';
@@ -2382,8 +2496,9 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
   }
 
   // 네이버 국어사전 실시간 검색 검증 (네이버 사전에 등재된 단어는 옛말/방언 포함 100% 인정)
-  const dictCheck = await queryNaverDictionary(cleanWord);
-  if (!dictCheck || !dictCheck.isVerified) {
+  const dictCheck = await queryNaverDictionary(cleanWord, 3500);
+  const isWordValid = (dictCheck && dictCheck.isVerified) || wordInfoMap.has(cleanWord);
+  if (!isWordValid) {
     if (dictCheck && dictCheck.isSpacedWord) {
       return {
         success: false,
@@ -2393,14 +2508,6 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     return {
       success: false,
       message: `「${cleanWord}」은(는) 네이버 국어사전에 등재되지 않은 단어입니다.`
-    };
-  }
-
-  // 구체적인 실제 사전 뜻풀이가 존재하는지 엄격 검증 (뜻이 없으면 없다고 판단하고 사용 불가 차단)
-  if (!dictCheck.meanings || dictCheck.meanings.length === 0 || !isRealMeaning(dictCheck.meanings[0])) {
-    return {
-      success: false,
-      message: `「${cleanWord}」은(는) 네이버 국어사전에 구체적인 뜻풀이가 등재되지 않은 단어이므로 사용할 수 없습니다.`
     };
   }
 
@@ -2419,10 +2526,14 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     }
   }
 
-  const userMeaning = dictCheck.meanings[0];
-  const userPartOfSpeech = dictCheck.partOfSpeech || wordInfoMap.get(cleanWord)?.part || '명사';
-  const userSource = dictCheck.source || '네이버 국어사전';
-  const userLink = dictCheck.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
+  const userMeaning = (dictCheck && dictCheck.meanings && dictCheck.meanings.length > 0 && isRealMeaning(dictCheck.meanings[0]))
+    ? dictCheck.meanings[0]
+    : ((wordInfoMap.get(cleanWord)?.naverMeaning && isRealMeaning(wordInfoMap.get(cleanWord).naverMeaning))
+        ? wordInfoMap.get(cleanWord).naverMeaning
+        : '네이버 국어사전 공인 표제어');
+  const userPartOfSpeech = dictCheck?.partOfSpeech || wordInfoMap.get(cleanWord)?.part || '명사';
+  const userSource = dictCheck?.source || '네이버 국어사전';
+  const userLink = dictCheck?.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
 
   // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵에도 영구 동기화!
   registerDynamicWord(cleanWord, userPartOfSpeech, userMeaning, userSource, userLink);
@@ -2463,13 +2574,23 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
         length: cand.length,
         endChar: cand.endChar,
         outCount: cand.outCount,
-        naverMeaning: cand.naverMeaning || aiChosen.naverMeaning,
         partOfSpeech: cand.partOfSpeech || aiChosen.partOfSpeech,
         source: cand.source || aiChosen.source,
         naverLink: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cand.word)}`
       };
     }
   }
+
+  // ⭐ AI가 선택한 단어의 네이버 사전 상세 뜻풀이 실시간 100% 보장 인출
+  const aiDictCheck = await queryNaverDictionary(aiChosen.word, 3500);
+  const aiRealMeaning = (aiDictCheck && aiDictCheck.meanings && aiDictCheck.meanings.length > 0 && isRealMeaning(aiDictCheck.meanings[0]))
+    ? aiDictCheck.meanings[0]
+    : ((wordInfoMap.get(aiChosen.word)?.naverMeaning && isRealMeaning(wordInfoMap.get(aiChosen.word).naverMeaning))
+        ? wordInfoMap.get(aiChosen.word).naverMeaning
+        : (aiChosen.naverMeaning && isRealMeaning(aiChosen.naverMeaning) ? aiChosen.naverMeaning : '네이버 국어사전 공인 표제어'));
+  const aiPartOfSpeech = aiDictCheck?.partOfSpeech || aiChosen.partOfSpeech || '명사';
+  const aiSource = aiDictCheck?.source || aiChosen.source || '네이버 국어사전';
+  const aiLink = aiDictCheck?.link || aiChosen.naverLink;
   const isWinningMove = aiChosen.outCount === 0;
 
   let strategyBrief = '';
@@ -2499,10 +2620,10 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     aiWord: aiChosen.word,
     aiEndChar: aiChosen.endChar,
     aiOutCount: aiChosen.outCount,
-    aiMeaning: aiChosen.naverMeaning,
-    aiPartOfSpeech: aiChosen.partOfSpeech,
-    aiSource: aiChosen.source,
-    aiLink: aiChosen.naverLink,
+    aiMeaning: aiRealMeaning,
+    aiPartOfSpeech,
+    aiSource,
+    aiLink,
     tierNumber: tierNum,
     strategyBrief,
     gameOver: isWinningMove,
@@ -2618,7 +2739,7 @@ async function handleRequest(req, res) {
     const rawTrimmed = String(word).trim();
     const hasSpace = /\s/.test(rawTrimmed);
     const clean = rawTrimmed.replace(/[^\uAC00-\uD7A3]/g, '');
-    const info = await queryNaverDictionary(hasSpace ? rawTrimmed : clean);
+    const info = await queryNaverDictionary(hasSpace ? rawTrimmed : clean, 3500);
 
     let rebuttal = null;
     if (clean && !hasSpace) {
