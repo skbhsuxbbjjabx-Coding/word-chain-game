@@ -15,7 +15,7 @@ function findDataDir() {
   ];
   for (const p of candidates) {
     try {
-      if (fs.existsSync(p) && fs.existsSync(path.join(p, 'kr_korean.csv'))) {
+      if (fs.existsSync(p) && (fs.existsSync(path.join(p, 'words.txt')) || fs.existsSync(path.join(p, '끄글_단어_목록.txt')) || fs.existsSync(path.join(p, 'kr_korean.csv')))) {
         return p;
       }
     } catch (e) {}
@@ -97,65 +97,61 @@ function indexWordItem(word, isPure, part, raw) {
   }
 }
 
-// 1) dictionary.json (41.8만 끝말잇기 표제어)
-try {
-  let rawData = null;
-  const jsonPath = path.join(DATA_DIR, 'dictionary.json');
-  if (fs.existsSync(jsonPath)) {
-    rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  } else {
-    rawData = require('./data/dictionary.json');
-  }
-  if (rawData) {
-    for (const [s, wordList] of Object.entries(rawData)) {
-      if (!Array.isArray(wordList)) continue;
-      for (let i = 0; i < wordList.length; i++) {
-        const w = wordList[i];
-        if (!w || /\s/.test(w) || w.length < 2) continue;
-        const isPure = !w.includes('-') && !w.includes('^');
-        indexWordItem(w, isPure, '명사', w);
-      }
-    }
-  }
-} catch (e1) {
-  console.warn('[사전 JSON 로드 예외]', e1.message);
-}
+// 끄글(Kkeugl) 공인 단어 목록 (548,502단어 전수 로드, 1줄 1단어)
+function loadKkeuglWords() {
+  const fileCandidates = [
+    path.join(DATA_DIR, 'words.txt'),
+    path.join(DATA_DIR, '끄글_단어_목록.txt'),
+    path.join(process.cwd(), 'data', 'words.txt'),
+    'C:/Users/User/Downloads/끄글_단어 목록_20261008195625.txt'
+  ];
 
-// 2) kr_korean.csv & kp_korean.csv (50.8만 국립국어원 표준국어대사전/우리말샘 및 조선말대사전 전수 색인)
-function loadCsvWords(filename) {
-  try {
-    const csvPath = path.join(DATA_DIR, filename);
-    if (!fs.existsSync(csvPath)) return;
-    const buf = fs.readFileSync(csvPath);
-    let lineStart = 0;
-    for (let i = 0; i < buf.length; i++) {
-      if (buf[i] === 10) { // \n
-        const line = buf.toString('utf8', lineStart, i).trim().replace(/^\uFEFF/, '');
-        lineStart = i + 1;
-        if (!line) continue;
-        const comma = line.indexOf(',');
-        if (comma !== -1) {
-          const raw = line.slice(0, comma);
-          const part = line.slice(comma + 1).trim();
-          if (invalidParts.has(part)) continue;
-          if (/\s/.test(raw) || raw.includes(' ')) continue;
-          const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
-          if (!clean || clean.length < 2) continue;
-          const isPure = !raw.includes('-') && !raw.includes('^');
-          indexWordItem(clean, isPure, part || '명사', raw);
+  let loaded = false;
+  for (const fp of fileCandidates) {
+    if (fs.existsSync(fp)) {
+      try {
+        const buf = fs.readFileSync(fp);
+        let lineStart = 0;
+        for (let i = 0; i < buf.length; i++) {
+          if (buf[i] === 10) { // \n
+            let line = buf.toString('utf8', lineStart, buf[i - 1] === 13 ? i - 1 : i).trim();
+            lineStart = i + 1;
+            if (!line) continue;
+            if (line.startsWith('"') || line.endsWith('"') || line.endsWith('",')) {
+              line = line.replace(/^[\[\s"]+|[",\]\s]+$/g, '').trim();
+            }
+            if (line.length >= 2 && !/\s/.test(line)) {
+              indexWordItem(line, true, '명사', line);
+            }
+          }
         }
+        if (lineStart < buf.length) {
+          let line = buf.toString('utf8', lineStart, buf.length).trim();
+          if (line.startsWith('"') || line.endsWith('"') || line.endsWith('",')) {
+            line = line.replace(/^[\[\s"]+|[",\]\s]+$/g, '').trim();
+          }
+          if (line.length >= 2 && !/\s/.test(line)) {
+            indexWordItem(line, true, '명사', line);
+          }
+        }
+        loaded = true;
+        console.log(`✅ [끄글 54.8만 단어 파일 로드 완료: ${path.basename(fp)}]`);
+        break;
+      } catch (err) {
+        console.warn(`[끄글 단어 로드 예외: ${fp}]`, err.message);
       }
     }
-  } catch (err) {
-    console.warn(`[CSV 사전 로드 실패: ${filename}]`, err.message);
+  }
+
+  if (!loaded) {
+    console.error('❌ 끄글 단어 파일을 찾을 수 없습니다.');
   }
 }
 
-loadCsvWords('kr_korean.csv');
-loadCsvWords('kp_korean.csv');
+loadKkeuglWords();
 
 console.timeEnd('📖 52만 공인 사전 데이터 전수 로드');
-console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (전수 완전 통합 완료)`);
+console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (끄글 54.8만 단어 전수 완전 통합 완료)`);
 
 function registerDynamicWord(word, part = '명사', meaning = '', source = '', link = '') {
   if (!word || word.length < 2 || /\s/.test(word)) return;
