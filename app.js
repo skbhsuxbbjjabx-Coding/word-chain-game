@@ -1175,6 +1175,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return '';
   }
 
+  function highlightKilling(word, query) {
+    if (!word || !query) return escapeHtml(word || '');
+    if (word.startsWith(query)) return highlightPrefix(word, query);
+    if (word.endsWith(query)) return highlightSuffix(word, query);
+    if (word.includes(query)) return highlightContains(word, query);
+    return highlightCharMatch(word, query);
+  }
+
   function renderPartitionSection(title, icon, type, items, totalCount, highlightFn, query) {
     if (!items || items.length === 0) return '';
     const isTruncated = totalCount > items.length;
@@ -1184,13 +1192,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="partition-title-group">
             <span class="partition-icon">${icon}</span>
             <h5 class="partition-title">${title}</h5>
-            <span class="partition-count-badge">
-              ${isTruncated ? `${items.length}개 표시 (총 ${totalCount.toLocaleString()}개)` : `총 ${totalCount.toLocaleString()}개`}
+            <span class="partition-count-badge" id="badge-${type}">
+              ${isTruncated ? `${items.length}개 표시 중 (총 ${totalCount.toLocaleString()}개)` : `총 ${totalCount.toLocaleString()}개`}
             </span>
           </div>
           <span class="partition-subtip">클릭 시 해당 단어로 즉시 사전 검색</span>
         </div>
-        <div class="partition-words-grid">
+        <div class="partition-words-grid" id="grid-${type}">
           ${items.map(item => `
             <button type="button" class="partition-word-pill ${item.isKilling ? 'is-kill' : ''}" data-word="${escapeHtml(item.word)}" title="「${escapeHtml(item.word)}」 국어사전 검색 [${escapeHtml(item.part || '명사')}, 끝글자: '${escapeHtml(item.endChar)}']">
               <span class="pill-text-wrap">${highlightFn(item.word, query)}</span>
@@ -1198,6 +1206,18 @@ document.addEventListener('DOMContentLoaded', () => {
             </button>
           `).join('')}
         </div>
+        ${isTruncated ? `
+          <div class="partition-load-more-bar" id="loadbar-${type}">
+            <button type="button" class="btn-load-more-words" data-part="${type}" data-query="${escapeHtml(query)}" data-offset="${items.length}" data-total="${totalCount}">
+              <span class="btn-more-icon">🔽</span>
+              <span class="btn-more-text">+60개 더 보기 (${(items.length + 1).toLocaleString()}~${Math.min(items.length + 60, totalCount).toLocaleString()} / 총 ${totalCount.toLocaleString()}개)</span>
+            </button>
+            <button type="button" class="btn-load-all-words" data-part="${type}" data-query="${escapeHtml(query)}" data-offset="${items.length}" data-total="${totalCount}">
+              <span class="btn-more-icon">⚡</span>
+              <span class="btn-more-text">+300개 대량 불러오기</span>
+            </button>
+          </div>
+        ` : ''}
       </section>
     `;
   }
@@ -1226,6 +1246,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const cats = data.categories || {
         exact: null,
+        killing: [],
+        killingTotal: 0,
         prefix: [],
         prefixTotal: 0,
         suffix: [],
@@ -1420,6 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="dict-partition-tabs">
             <button type="button" class="part-tab-chip active" data-filter="all">전체 (${totalAll.toLocaleString()})</button>
+            ${cats.killingTotal > 0 ? `<button type="button" class="part-tab-chip part-killing" data-filter="killing">💥 한방 단어 (${cats.killingTotal.toLocaleString()})</button>` : ''}
             ${cats.prefixTotal > 0 ? `<button type="button" class="part-tab-chip part-prefix" data-filter="prefix">📌 앞에 들어감 (${cats.prefixTotal.toLocaleString()})</button>` : ''}
             ${cats.suffixTotal > 0 ? `<button type="button" class="part-tab-chip part-suffix" data-filter="suffix">📎 끝에 들어감 (${cats.suffixTotal.toLocaleString()})</button>` : ''}
             ${cats.containsTotal > 0 ? `<button type="button" class="part-tab-chip part-contains" data-filter="contains">🔍 중간에 포함 (${cats.containsTotal.toLocaleString()})</button>` : ''}
@@ -1429,6 +1452,16 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       // 5. 파트별 분할 섹션 렌더링
+      const killingSectionHtml = renderPartitionSection(
+        `💥 한방 단어 (상대 반격 0개 절대 필승)`,
+        '💥',
+        'killing',
+        cats.killing,
+        cats.killingTotal,
+        highlightKilling,
+        clean
+      );
+
       const prefixSectionHtml = renderPartitionSection(
         `앞에 들어가는 단어 (「${escapeHtml(clean)}」 시작)`,
         '📌',
@@ -1475,11 +1508,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ${naverResultsHtml}
         ${summaryBarHtml}
         <div class="dict-partitions-wrapper" id="dictPartitionsWrapper">
+          ${killingSectionHtml}
           ${prefixSectionHtml}
           ${suffixSectionHtml}
           ${containsSectionHtml}
           ${charMatchSectionHtml}
-          ${(!prefixSectionHtml && !suffixSectionHtml && !containsSectionHtml && !charMatchSectionHtml) ? `
+          ${(!killingSectionHtml && !prefixSectionHtml && !suffixSectionHtml && !containsSectionHtml && !charMatchSectionHtml) ? `
             <div class="dict-no-partitions">
               「${escapeHtml(clean)}」과(와) 연관된 추가 어휘를 찾을 수 없습니다.
             </div>
@@ -1528,6 +1562,91 @@ document.addEventListener('DOMContentLoaded', () => {
         pill.addEventListener('click', () => {
           const targetWord = pill.getAttribute('data-word');
           searchDictionary(targetWord);
+        });
+      });
+
+      // 더보기 (+60개) 및 대량 불러오기 (+300개) 이벤트 연결
+      dictContentArea.querySelectorAll('.btn-load-more-words, .btn-load-all-words').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const isAll = btn.classList.contains('btn-load-all-words');
+          const part = btn.getAttribute('data-part');
+          const query = btn.getAttribute('data-query');
+          const offset = parseInt(btn.getAttribute('data-offset'), 10) || 0;
+          const total = parseInt(btn.getAttribute('data-total'), 10) || 0;
+          const fetchLimit = isAll ? Math.min(300, total - offset) : 60;
+
+          const originalHtml = btn.innerHTML;
+          btn.disabled = true;
+          btn.innerHTML = `<span class="btn-more-icon">⏳</span><span class="btn-more-text">단어 불러오는 중...</span>`;
+
+          try {
+            const res = await fetch(`/api/dict/more?word=${encodeURIComponent(query)}&type=${encodeURIComponent(part)}&offset=${offset}&limit=${fetchLimit}`);
+            const json = await res.json();
+            if (json.success && Array.isArray(json.items) && json.items.length > 0) {
+              const grid = dictContentArea.querySelector(`#grid-${part}`);
+              const badge = dictContentArea.querySelector(`#badge-${part}`);
+              const loadbar = dictContentArea.querySelector(`#loadbar-${part}`);
+
+              let hlFn = highlightContains;
+              if (part === 'killing') hlFn = highlightKilling;
+              else if (part === 'prefix') hlFn = highlightPrefix;
+              else if (part === 'suffix') hlFn = highlightSuffix;
+              else if (part === 'char') hlFn = highlightCharMatch;
+
+              const newHtml = json.items.map(item => `
+                <button type="button" class="partition-word-pill ${item.isKilling ? 'is-kill' : ''}" data-word="${escapeHtml(item.word)}" title="「${escapeHtml(item.word)}」 국어사전 검색 [${escapeHtml(item.part || '명사')}, 끝글자: '${escapeHtml(item.endChar)}']">
+                  <span class="pill-text-wrap">${hlFn(item.word, query)}</span>
+                  ${getStratBadge(item)}
+                </button>
+              `).join('');
+
+              if (grid) {
+                grid.insertAdjacentHTML('beforeend', newHtml);
+                grid.querySelectorAll('.partition-word-pill:not([data-bound])').forEach(pill => {
+                  pill.setAttribute('data-bound', 'true');
+                  pill.addEventListener('click', () => {
+                    const targetWord = pill.getAttribute('data-word');
+                    searchDictionary(targetWord);
+                  });
+                });
+              }
+
+              const newOffset = offset + json.items.length;
+              if (badge) {
+                badge.textContent = `${newOffset.toLocaleString()}개 표시 중 (총 ${total.toLocaleString()}개)`;
+              }
+
+              if (newOffset >= total || !json.hasMore) {
+                if (loadbar) {
+                  loadbar.innerHTML = `<div class="partition-all-loaded">🎉 모든 ${total.toLocaleString()}개 어휘를 불러왔습니다!</div>`;
+                }
+              } else {
+                if (loadbar) {
+                  const moreBtn = loadbar.querySelector('.btn-load-more-words');
+                  const allBtn = loadbar.querySelector('.btn-load-all-words');
+                  if (moreBtn) {
+                    moreBtn.setAttribute('data-offset', newOffset);
+                    moreBtn.disabled = false;
+                    const nextEnd = Math.min(newOffset + 60, total);
+                    moreBtn.innerHTML = `<span class="btn-more-icon">🔽</span><span class="btn-more-text">+60개 더 보기 (${(newOffset + 1).toLocaleString()}~${nextEnd.toLocaleString()} / 총 ${total.toLocaleString()}개)</span>`;
+                  }
+                  if (allBtn) {
+                    allBtn.setAttribute('data-offset', newOffset);
+                    allBtn.disabled = false;
+                    allBtn.innerHTML = `<span class="btn-more-icon">⚡</span><span class="btn-more-text">+300개 대량 불러오기</span>`;
+                  }
+                }
+              }
+              if (window.soundEngine) window.soundEngine.playMove();
+            } else {
+              btn.disabled = false;
+              btn.innerHTML = originalHtml;
+            }
+          } catch (e) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            showToast('단어 추가 로딩 중 오류가 발생했습니다.');
+          }
         });
       });
 

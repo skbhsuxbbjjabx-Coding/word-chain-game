@@ -2413,7 +2413,26 @@ html, body {
   box-shadow: 0 0 12px var(--primary-glow);
 }
 
-/* 3. 파트별 분할 섹션 (앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치) */
+.part-tab-chip.part-killing {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fda4af;
+}
+
+.part-tab-chip.part-killing:hover {
+  background: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.6);
+  color: #fff;
+}
+
+.part-tab-chip.part-killing.active {
+  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  border-color: #f43f5e;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.65);
+}
+
+/* 3. 파트별 분할 섹션 (한방 단어, 앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치) */
 .dict-partitions-wrapper {
   display: flex;
   flex-direction: column;
@@ -2432,6 +2451,12 @@ html, body {
 }
 
 /* 파트별 테두리 및 액센트 컬러 구분 */
+.dict-partition-section.part-killing {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.08), transparent 45%), var(--bg-card);
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.08);
+}
+
 .dict-partition-section.part-prefix {
   border-color: rgba(56, 189, 248, 0.35);
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.04), transparent 40%), var(--bg-card);
@@ -2485,6 +2510,13 @@ html, body {
   font-weight: 700;
   padding: 2px 7px;
   border-radius: var(--radius-full);
+}
+
+.part-killing .partition-count-badge {
+  background: rgba(244, 63, 94, 0.22);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.25);
 }
 
 .part-prefix .partition-count-badge {
@@ -2615,6 +2647,78 @@ html, body {
   background: rgba(245, 158, 11, 0.28);
   color: #fde68a;
   border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+/* 대용량 어휘 더보기 바 및 액션 버튼 */
+.partition-load-more-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  margin-top: 4px;
+}
+
+.btn-load-more-words,
+.btn-load-all-words {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-load-more-words {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.btn-load-more-words:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+}
+
+.btn-load-all-words {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fde68a;
+}
+
+.btn-load-all-words:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.22);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+}
+
+.btn-load-more-words:disabled,
+.btn-load-all-words:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.partition-all-loaded {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #34d399;
+  padding: 6px 12px;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: var(--radius-sm);
+  text-align: center;
 }
 
 .dict-no-partitions {

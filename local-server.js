@@ -845,116 +845,162 @@ async function queryNaverDictionary(queryWord, timeoutMs = 3500) {
   return unverified;
 }
 
-// 3-2. ⭐ 국어사전식 파트 분할 검색 엔진 (앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치)
-function searchMatchingWords(query, limitPerCategory = 45) {
+// 3-2. ⭐ 국어사전식 파트 분할 검색 엔진 (한방 단어, 앞에 들어가는 단어, 끝에 들어가는 단어, 중간 포함, 음절 일치)
+const dictSearchCache = new Map();
+
+function searchMatchingWords(query, limitPerCategory = 80) {
   if (!query || typeof query !== 'string') {
-    return { exact: null, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
+    return { exact: null, killing: [], killingTotal: 0, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
   }
   const clean = query.trim().replace(/[^\uAC00-\uD7A3]/g, '');
   if (!clean) {
-    return { exact: null, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
+    return { exact: null, killing: [], killingTotal: 0, prefix: [], prefixTotal: 0, suffix: [], suffixTotal: 0, contains: [], containsTotal: 0, charMatch: [], charMatchTotal: 0, flat: [], totalMatches: 0 };
   }
 
-  const queryChars = new Set(clean.split(''));
-  let exact = null;
-  const prefix = [];
-  const suffix = [];
-  const contains = [];
-  const charMatch = [];
-  const flat = [];
-  const seen = new Set();
+  // 캐시 확인
+  let cachedEntry = dictSearchCache.get(clean);
+  if (!cachedEntry) {
+    const queryChars = new Set(clean.split(''));
+    let exact = null;
+    const killing = [];
+    const prefix = [];
+    const suffix = [];
+    const contains = [];
+    const charMatch = [];
+    const flat = [];
+    const seen = new Set();
 
-  for (const item of wordInfoMap.values()) {
-    const word = item.word;
-    if (seen.has(word)) continue;
+    for (const item of wordInfoMap.values()) {
+      const word = item.word;
+      if (seen.has(word)) continue;
 
-    const endChar = word[word.length - 1];
-    const outCount = getOutDegree(endChar);
-    const cached = naverCache.get(word);
-    const cachedMean = cached?.meanings?.[0];
-    const realMean = (cachedMean && isRealMeaning(cachedMean)) ? cachedMean : ((item.naverMeaning && isRealMeaning(item.naverMeaning)) ? item.naverMeaning : '');
-    const wordObj = {
-      word,
-      part: item.part || '명사',
-      isPure: item.isPure,
-      length: word.length,
-      endChar,
-      outCount,
-      meaning: realMean,
-      isKilling: outCount === 0,
-      statusText: outCount === 0 ? '한방' : (outCount <= 3 ? '외통수' : (outCount <= 20 ? '압박' : '안전'))
+      const endChar = word[word.length - 1];
+      const outCount = getOutDegree(endChar);
+      const cached = naverCache.get(word);
+      const cachedMean = cached?.meanings?.[0];
+      const realMean = (cachedMean && isRealMeaning(cachedMean)) ? cachedMean : ((item.naverMeaning && isRealMeaning(item.naverMeaning)) ? item.naverMeaning : '');
+      const wordObj = {
+        word,
+        part: item.part || '명사',
+        isPure: item.isPure,
+        length: word.length,
+        endChar,
+        outCount,
+        meaning: realMean,
+        isKilling: outCount === 0,
+        statusText: outCount === 0 ? '한방' : (outCount <= 3 ? '외통수' : (outCount <= 20 ? '압박' : '안전'))
+      };
+
+      let matched = false;
+      // 1) 완전 일치 (100% 동일)
+      if (word === clean) {
+        wordObj.matchType = 'EXACT';
+        wordObj.matchBadge = '🎯 100% 완전 일치';
+        exact = wordObj;
+        matched = true;
+      }
+      // 2) 앞에 들어가는 단어 (접두사 일치)
+      else if (word.startsWith(clean)) {
+        wordObj.matchType = 'PREFIX';
+        wordObj.matchBadge = '📌 시작 일치';
+        prefix.push(wordObj);
+        matched = true;
+      }
+      // 3) 끝에 들어가는 단어 (접미사 일치)
+      else if (word.endsWith(clean)) {
+        wordObj.matchType = 'SUFFIX';
+        wordObj.matchBadge = '📎 끝 일치';
+        suffix.push(wordObj);
+        matched = true;
+      }
+      // 4) 중간에 들어가는 단어 (포함 일치)
+      else if (word.includes(clean)) {
+        wordObj.matchType = 'CONTAINS';
+        wordObj.matchBadge = '🔍 중간 포함';
+        contains.push(wordObj);
+        matched = true;
+      }
+      // 5) 한 글자라도 일치 (음절 일치)
+      else {
+        let matchedCount = 0;
+        for (const ch of queryChars) {
+          if (word.includes(ch)) matchedCount++;
+        }
+        if (matchedCount > 0) {
+          wordObj.matchType = 'CHAR_MATCH';
+          wordObj.matchBadge = `💡 ${matchedCount}글자 일치`;
+          wordObj.matchedCount = matchedCount;
+          charMatch.push(wordObj);
+          matched = true;
+        }
+      }
+
+      if (matched) {
+        seen.add(word);
+        flat.push(wordObj);
+        if (wordObj.isKilling) {
+          killing.push(wordObj);
+        }
+      }
+    }
+
+    // 💥 한방 단어 전용 정렬: 시작 일치 > 끝 일치 > 짧은 어휘 우선 > 순수 어휘 우선
+    const killingSorter = (a, b) => {
+      const aStarts = a.word.startsWith(clean) ? 1 : 0;
+      const bStarts = b.word.startsWith(clean) ? 1 : 0;
+      if (aStarts !== bStarts) return bStarts - aStarts;
+
+      const aEnds = a.word.endsWith(clean) ? 1 : 0;
+      const bEnds = b.word.endsWith(clean) ? 1 : 0;
+      if (aEnds !== bEnds) return bEnds - aEnds;
+
+      if (a.length !== b.length) return a.length - b.length;
+      return (b.isPure ? 1 : 0) - (a.isPure ? 1 : 0);
+    };
+    killing.sort(killingSorter);
+
+    // 짧은 단어 및 순수 어휘 우선 정렬
+    const sorter = (a, b) => (b.isPure ? 1 : 0) - (a.isPure ? 1 : 0) || a.length - b.length;
+    prefix.sort(sorter);
+    suffix.sort(sorter);
+    contains.sort(sorter);
+    charMatch.sort((a, b) => (b.matchedCount || 0) - (a.matchedCount || 0) || sorter(a, b));
+
+    const totalMatches = (exact ? 1 : 0) + prefix.length + suffix.length + contains.length + charMatch.length;
+
+    cachedEntry = {
+      exact,
+      killing,
+      prefix,
+      suffix,
+      contains,
+      charMatch,
+      flat,
+      totalMatches,
+      time: Date.now()
     };
 
-    // 1) 완전 일치 (100% 동일)
-    if (word === clean) {
-      seen.add(word);
-      wordObj.matchType = 'EXACT';
-      wordObj.matchBadge = '🎯 100% 완전 일치';
-      exact = wordObj;
-      flat.push(wordObj);
+    if (dictSearchCache.size > 50) {
+      const firstKey = dictSearchCache.keys().next().value;
+      dictSearchCache.delete(firstKey);
     }
-    // 2) 앞에 들어가는 단어 (접두사 일치)
-    else if (word.startsWith(clean)) {
-      seen.add(word);
-      wordObj.matchType = 'PREFIX';
-      wordObj.matchBadge = '📌 시작 일치';
-      prefix.push(wordObj);
-      flat.push(wordObj);
-    }
-    // 3) 끝에 들어가는 단어 (접미사 일치)
-    else if (word.endsWith(clean)) {
-      seen.add(word);
-      wordObj.matchType = 'SUFFIX';
-      wordObj.matchBadge = '📎 끝 일치';
-      suffix.push(wordObj);
-      flat.push(wordObj);
-    }
-    // 4) 중간에 들어가는 단어 (포함 일치)
-    else if (word.includes(clean)) {
-      seen.add(word);
-      wordObj.matchType = 'CONTAINS';
-      wordObj.matchBadge = '🔍 중간 포함';
-      contains.push(wordObj);
-      flat.push(wordObj);
-    }
-    // 5) 한 글자라도 일치 (음절 일치)
-    else {
-      let matchedCount = 0;
-      for (const ch of queryChars) {
-        if (word.includes(ch)) matchedCount++;
-      }
-      if (matchedCount > 0) {
-        seen.add(word);
-        wordObj.matchType = 'CHAR_MATCH';
-        wordObj.matchBadge = `💡 ${matchedCount}글자 일치`;
-        wordObj.matchedCount = matchedCount;
-        charMatch.push(wordObj);
-        flat.push(wordObj);
-      }
-    }
+    dictSearchCache.set(clean, cachedEntry);
   }
 
-  // 짧은 단어 및 순수 어휘 우선 정렬
-  const sorter = (a, b) => (b.isPure ? 1 : 0) - (a.isPure ? 1 : 0) || a.length - b.length;
-  prefix.sort(sorter);
-  suffix.sort(sorter);
-  contains.sort(sorter);
-  charMatch.sort((a, b) => (b.matchedCount || 0) - (a.matchedCount || 0) || sorter(a, b));
-
-  const totalMatches = (exact ? 1 : 0) + prefix.length + suffix.length + contains.length + charMatch.length;
-
   return {
-    exact,
-    prefix: prefix.slice(0, limitPerCategory),
-    prefixTotal: prefix.length,
-    suffix: suffix.slice(0, limitPerCategory),
-    suffixTotal: suffix.length,
-    contains: contains.slice(0, limitPerCategory),
-    containsTotal: contains.length,
-    charMatch: charMatch.slice(0, limitPerCategory),
-    charMatchTotal: charMatch.length,
-    flat: flat.slice(0, 100),
-    totalMatches
+    exact: cachedEntry.exact,
+    killing: cachedEntry.killing.slice(0, limitPerCategory),
+    killingTotal: cachedEntry.killing.length,
+    prefix: cachedEntry.prefix.slice(0, limitPerCategory),
+    prefixTotal: cachedEntry.prefix.length,
+    suffix: cachedEntry.suffix.slice(0, limitPerCategory),
+    suffixTotal: cachedEntry.suffix.length,
+    contains: cachedEntry.contains.slice(0, limitPerCategory),
+    containsTotal: cachedEntry.contains.length,
+    charMatch: cachedEntry.charMatch.slice(0, limitPerCategory),
+    charMatchTotal: cachedEntry.charMatch.length,
+    flat: cachedEntry.flat.slice(0, 100),
+    totalMatches: cachedEntry.totalMatches
   };
 }
 
@@ -2739,6 +2785,7 @@ async function handleRequest(req, res) {
     const rawTrimmed = String(word).trim();
     const hasSpace = /\s/.test(rawTrimmed);
     const clean = rawTrimmed.replace(/[^\uAC00-\uD7A3]/g, '');
+    const limit = Math.min(Math.max(parseInt(parsedUrl.query.limit, 10) || 80, 20), 500);
     const info = await queryNaverDictionary(hasSpace ? rawTrimmed : clean, 3500);
 
     let rebuttal = null;
@@ -2748,8 +2795,10 @@ async function handleRequest(req, res) {
     }
 
     // ⭐ 가장 일치하는 것부터 쫘르르륵 한 글자라도 일치하는 단어 파트별 분류 추출
-    const searchResult = clean ? searchMatchingWords(clean, 48) : {
+    const searchResult = clean ? searchMatchingWords(clean, limit) : {
       exact: null,
+      killing: [],
+      killingTotal: 0,
       prefix: [],
       prefixTotal: 0,
       suffix: [],
@@ -2770,6 +2819,45 @@ async function handleRequest(req, res) {
       matchedCount: searchResult.totalMatches,
       matchedWords: searchResult.flat,
       categories: searchResult
+    }));
+    return;
+  }
+
+  // API 3-1: 대용량 어휘 카테고리별 더보기 (+60개, +300개 등 무제한 탐색)
+  if (pathname === '/api/dict/more' && req.method === 'GET') {
+    const word = parsedUrl.query.word || parsedUrl.query.q || '';
+    const clean = String(word).trim().replace(/[^\uAC00-\uD7A3]/g, '');
+    let type = String(parsedUrl.query.type || 'prefix').trim();
+    if (type === 'char') type = 'charMatch';
+
+    const offset = Math.max(parseInt(parsedUrl.query.offset, 10) || 0, 0);
+    const limit = Math.min(Math.max(parseInt(parsedUrl.query.limit, 10) || 60, 1), 500);
+
+    if (!clean) {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: '단어를 입력해주세요.' }));
+      return;
+    }
+
+    // 캐시 확인 혹은 검색 생성
+    if (!dictSearchCache.has(clean)) {
+      searchMatchingWords(clean, 80);
+    }
+
+    const cached = dictSearchCache.get(clean);
+    const targetList = (cached && cached[type]) || [];
+    const items = targetList.slice(offset, offset + limit);
+
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({
+      success: true,
+      query: clean,
+      type,
+      offset,
+      limit,
+      total: targetList.length,
+      items,
+      hasMore: (offset + items.length) < targetList.length
     }));
     return;
   }
