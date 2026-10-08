@@ -284,8 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const source = item.source || item.dict?.source || '네이버 국어사전';
       const badgeHtml = getKillBadge(item, tNum);
 
+      const tierCandidates = analysis.tierCandidates || {};
+      const candidates = tierCandidates[tNum] || [];
+
       let pillsHtml = '';
-      const availableTiers = [1, 2, 3, 4].filter(num => tierWords[num]);
+      const availableTiers = [1, 2, 3, 4, 5].filter(num => tierWords[num]);
       if (availableTiers.length > 1) {
         pillsHtml = `<div class="hero-tier-pills-row">` +
           availableTiers.map(num => {
@@ -295,6 +298,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<button type="button" class="hero-tier-pill-btn ${active}" data-tier="${num}">${tMeta.label}: <strong>「${escapeHtml(twObj.word)}」</strong></button>`;
           }).join('') +
         `</div>`;
+      }
+
+      let candidatesHtml = '';
+      if (candidates.length > 1) {
+        candidatesHtml = `
+          <div class="hero-candidates-container">
+            <div class="hero-candidates-header">
+              <span>💡 <strong>${meta.label} 후보군</strong> (${candidates.length}개)</span>
+              <small>클릭 시 단어 즉시 변경</small>
+            </div>
+            <div class="hero-candidates-scroll-row">
+              ${candidates.map(cand => {
+                const isActive = cand.word === w ? 'active' : '';
+                const oCount = typeof cand.outCount === 'number' ? cand.outCount : 0;
+                const badgeText = oCount === 0 ? '한방' : `반격 ${oCount}개`;
+                return `<button type="button" class="hero-candidate-chip ${isActive}" data-word="${escapeHtml(cand.word)}" title="${escapeHtml(cand.word)}: ${escapeHtml(cand.naverMeaning || '')}">
+                  <span class="chip-word">${escapeHtml(cand.word)}</span>
+                  <span class="chip-out">${badgeText}</span>
+                </button>`;
+              }).join('')}
+            </div>
+          </div>
+        `;
       }
 
       card.className = `briefing-hero-card ${meta.cls}`;
@@ -316,6 +342,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           ${badgeHtml}
         </div>
+
+        ${candidatesHtml}
 
         <div class="hero-meaning-card">
           <div class="hero-source-label">📖 ${source} 공식 뜻</div>
@@ -370,6 +398,18 @@ document.addEventListener('DOMContentLoaded', () => {
           const selectedTier = parseInt(btn.dataset.tier, 10);
           if (tierWords[selectedTier]) {
             renderCardInner(tierWords[selectedTier], selectedTier);
+          }
+        });
+      });
+
+      const chipBtns = card.querySelectorAll('.hero-candidate-chip');
+      chipBtns.forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetW = chip.dataset.word;
+          const foundCand = candidates.find(c => c.word === targetW);
+          if (foundCand) {
+            renderCardInner(foundCand, tNum);
           }
         });
       });

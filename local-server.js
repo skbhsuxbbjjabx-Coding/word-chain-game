@@ -80,159 +80,89 @@ const wordInfoMap = new Map();
 const startMap = new Map();
 const endMap = new Map();
 
-console.time('📖 52만 공인 사전 데이터 로드');
+console.time('📖 52만 공인 사전 데이터 전수 로드');
 
-// 1) kr_korean.csv로부터 정확한 품사(명사, 동사, 형용사 등) 색인 구축
-const posMap = new Map();
+// 헬퍼: 유효 단어 인덱스 등록 (중복 방지 및 품사/순수어 갱신)
+function indexWordItem(word, isPure, part, raw) {
+  if (!word || word.length < 2 || /\s/.test(word)) return;
+  if (word.endsWith('다') && !NOUN_DA_WHITELIST.has(word)) return;
+  const existing = wordInfoMap.get(word);
+  if (!existing) {
+    const item = { word, isPure: !!isPure, part: part || '명사', raw: raw || word };
+    wordInfoMap.set(word, item);
+    const s = word[0];
+    const e = word[word.length - 1];
+    if (!startMap.has(s)) startMap.set(s, []);
+    startMap.get(s).push(item);
+    if (!endMap.has(e)) endMap.set(e, []);
+    endMap.get(e).push(item);
+  } else {
+    if (!existing.isPure && isPure) existing.isPure = true;
+    if (part && (!existing.part || existing.part === '명사')) {
+      existing.part = part;
+    }
+  }
+}
+
+// 1) dictionary.json (41.8만 끝말잇기 표제어)
 try {
-  const csvPath = path.join(DATA_DIR, 'kr_korean.csv');
-  if (fs.existsSync(csvPath)) {
+  let rawData = null;
+  const jsonPath = path.join(DATA_DIR, 'dictionary.json');
+  if (fs.existsSync(jsonPath)) {
+    rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  } else {
+    rawData = require('./data/dictionary.json');
+  }
+  if (rawData) {
+    for (const [s, wordList] of Object.entries(rawData)) {
+      if (!Array.isArray(wordList)) continue;
+      for (let i = 0; i < wordList.length; i++) {
+        const w = wordList[i];
+        if (!w || /\s/.test(w) || w.length < 2) continue;
+        const isPure = !w.includes('-') && !w.includes('^');
+        indexWordItem(w, isPure, '명사', w);
+      }
+    }
+  }
+} catch (e1) {
+  console.warn('[사전 JSON 로드 예외]', e1.message);
+}
+
+// 2) kr_korean.csv & kp_korean.csv (50.8만 국립국어원 표준국어대사전/우리말샘 및 조선말대사전 전수 색인)
+function loadCsvWords(filename) {
+  try {
+    const csvPath = path.join(DATA_DIR, filename);
+    if (!fs.existsSync(csvPath)) return;
     const buf = fs.readFileSync(csvPath);
     let lineStart = 0;
     for (let i = 0; i < buf.length; i++) {
       if (buf[i] === 10) { // \n
-        const line = buf.toString('utf8', lineStart, i).trim();
+        const line = buf.toString('utf8', lineStart, i).trim().replace(/^\uFEFF/, '');
         lineStart = i + 1;
         if (!line) continue;
         const comma = line.indexOf(',');
         if (comma !== -1) {
-          const raw = line.slice(0, comma).replace(/[^\uAC00-\uD7A3]/g, '');
-          const pos = line.slice(comma + 1).trim();
-          if (raw.length >= 2 && !posMap.has(raw)) {
-            posMap.set(raw, pos);
-          }
+          const raw = line.slice(0, comma);
+          const part = line.slice(comma + 1).trim();
+          if (invalidParts.has(part)) continue;
+          if (/\s/.test(raw) || raw.includes(' ')) continue;
+          const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
+          if (!clean || clean.length < 2) continue;
+          const isPure = !raw.includes('-') && !raw.includes('^');
+          indexWordItem(clean, isPure, part || '명사', raw);
         }
       }
     }
-  }
-} catch (csvErr) {
-  console.warn('[품사 CSV 사전 로드 경고]', csvErr.message);
-}
-
-// 2) 41.8만 공인 사전 데이터 색인 (끝말잇기 표준 체언만 정밀 선별)
-let loadedFromJson = false;
-try {
-  const rawData = require('./data/dictionary.json');
-  for (const [s, wordList] of Object.entries(rawData)) {
-    for (const w of wordList) {
-      if (!w || /\s/.test(w)) continue;
-      const part = posMap.get(w);
-      if (part && invalidParts.has(part)) continue;
-      // 끝말잇기 표준 룰: 용언(동사/형용사) 기본형 '-다' 엄격 차단 (명사 화이트리스트 제외)
-      if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
-      const finalPart = part || '명사';
-      const isPure = !w.includes('-') && !w.includes('^');
-      const item = { word: w, isPure, part: finalPart, raw: w };
-      wordInfoMap.set(w, item);
-      if (!startMap.has(s)) startMap.set(s, []);
-      startMap.get(s).push(item);
-      const e = w[w.length - 1];
-      if (!endMap.has(e)) endMap.set(e, []);
-      endMap.get(e).push(item);
-    }
-  }
-  loadedFromJson = true;
-} catch (e1) {
-  const jsonPath = path.join(DATA_DIR, 'dictionary.json');
-  if (fs.existsSync(jsonPath)) {
-    try {
-      const rawData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      for (const [s, wordList] of Object.entries(rawData)) {
-        for (const w of wordList) {
-          if (!w || /\s/.test(w)) continue;
-          const part = posMap.get(w);
-          if (part && invalidParts.has(part)) continue;
-          if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
-          const finalPart = part || '명사';
-          const isPure = !w.includes('-') && !w.includes('^');
-          const item = { word: w, isPure, part: finalPart, raw: w };
-          wordInfoMap.set(w, item);
-          if (!startMap.has(s)) startMap.set(s, []);
-          startMap.get(s).push(item);
-          const e = w[w.length - 1];
-          if (!endMap.has(e)) endMap.set(e, []);
-          endMap.get(e).push(item);
-        }
-      }
-      loadedFromJson = true;
-    } catch (err) {
-      console.warn('[사전 JSON 로드 실패, CSV 폴백]', err.message);
-    }
+  } catch (err) {
+    console.warn(`[CSV 사전 로드 실패: ${filename}]`, err.message);
   }
 }
 
-if (!loadedFromJson) {
-  function loadDictionary(filename) {
-    const filePath = path.join(DATA_DIR, filename);
-    if (!fs.existsSync(filePath)) {
-      console.warn(`[사전 로드 경고] 파일을 찾을 수 없습니다: ${filePath}`);
-      return;
-    }
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const lines = content.split('\n');
+loadCsvWords('kr_korean.csv');
+loadCsvWords('kp_korean.csv');
 
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) continue;
-        const parts = line.split(',');
-        const raw = parts[0] || '';
-        const part = parts[1] || '명사';
-
-        if (invalidParts.has(part)) continue;
-        if (/\s/.test(raw) || raw.includes(' ')) continue;
-
-        const clean = raw.replace(/[^\uAC00-\uD7A3]/g, '');
-        if (!clean || clean.length < 2 || ARCHAIC_BLACKLIST.has(clean)) continue;
-        if (clean.endsWith('다') && !NOUN_DA_WHITELIST.has(clean)) continue;
-
-        const isPure = !raw.includes('-') && !raw.includes('^');
-
-        const existing = wordInfoMap.get(clean);
-        if (!existing || (!existing.isPure && isPure)) {
-          wordInfoMap.set(clean, { word: clean, isPure, part, raw });
-        }
-      }
-    } catch (err) {
-      console.error(`[사전 읽기 오류] ${filename}:`, err.message);
-    }
-  }
-
-  loadDictionary('kr_korean.csv');
-  loadDictionary('kp_korean.csv');
-
-  for (const item of wordInfoMap.values()) {
-    const s = item.word[0];
-    const e = item.word[item.word.length - 1];
-
-    if (!startMap.has(s)) startMap.set(s, []);
-    startMap.get(s).push(item);
-
-    if (!endMap.has(e)) endMap.set(e, []);
-    endMap.get(e).push(item);
-  }
-}
-
-// 3) kr_korean.csv(posMap)에 등재된 유효 표준 체언(명사 등) 중 미등록 단어 전수 색인 통합
-for (const [w, part] of posMap.entries()) {
-  if (wordInfoMap.has(w)) continue;
-  if (!w || w.length < 2 || /\s/.test(w) || ARCHAIC_BLACKLIST.has(w) || /[뎡죵픠돓븟늧옄읓앛뤂]/.test(w)) continue;
-  if (part && invalidParts.has(part)) continue;
-  if (w.endsWith('다') && !NOUN_DA_WHITELIST.has(w)) continue;
-
-  const isPure = !w.includes('-') && !w.includes('^');
-  const item = { word: w, isPure, part: part || '명사', raw: w };
-  wordInfoMap.set(w, item);
-  const s = w[0];
-  const e = w[w.length - 1];
-  if (!startMap.has(s)) startMap.set(s, []);
-  startMap.get(s).push(item);
-  if (!endMap.has(e)) endMap.set(e, []);
-  endMap.get(e).push(item);
-}
-
-console.timeEnd('📖 52만 공인 사전 데이터 로드');
-console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (정확한 품사 매핑 완료)`);
+console.timeEnd('📖 52만 공인 사전 데이터 전수 로드');
+console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (전수 완전 통합 완료)`);
 
 function registerDynamicWord(word, part = '명사') {
   if (!word || word.length < 2 || /\s/.test(word)) return;
@@ -954,9 +884,9 @@ async function findUltimateBestWord(inputChar, options = {}) {
     else if (word.length === 4) qualityScore += 40000;
     else if (word.length >= 5) qualityScore -= (word.length * 35000);
 
-    // 대중적인 상용 단어 대폭 우대
+    // 대중적인 상용 단어 적정 우대 (+80,000으로 조정하여 단어 선택 폭 대폭 다변화)
     if (ICONIC_WORDS.has(word)) {
-      qualityScore += 1200000;
+      qualityScore += 80000;
     } else if (pos.includes('북한')) {
       qualityScore -= 200000;
     } else if (pos.includes('방언')) {
@@ -1359,14 +1289,16 @@ async function findUltimateBestWord(inputChar, options = {}) {
     return {
       word: t.word,
       length: t.length,
-      partOfSpeech: d.partOfSpeech || t.part || '명사',
+      partOfSpeech: d?.partOfSpeech || t.part || '명사',
       endChar: t.endChar,
       outCount: t.outCount,
+      hasKillingRisk: !!t.hasKillingRisk,
+      hasTrapRisk: !!t.hasTrapRisk,
       tier: t.tier,
       tierName: t.tierName,
       tierBadgeClass: t.tierBadgeClass,
-      naverMeaning: d.meanings?.[0] || '공인 사전 등재 어휘',
-      source: d.source || '국립국어원 표준국어대사전'
+      naverMeaning: d?.meanings?.[0] || '공인 사전 등재 어휘',
+      source: d?.source || '국립국어원 표준국어대사전'
     };
   }
 
@@ -1402,11 +1334,18 @@ async function findUltimateBestWord(inputChar, options = {}) {
       naverLink: bestDict.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`
     },
     tierWords: {
-      1: formatTierSummary(tier1Best),
-      2: formatTierSummary(tier2Best),
-      3: formatTierSummary(tier3Best),
-      4: formatTierSummary(tier4Best),
-      5: formatTierSummary(tier5Best)
+      1: tier1Best ? { ...formatTierSummary(tier1Best), totalCount: tier1_instantKill.length } : null,
+      2: tier2Best ? { ...formatTierSummary(tier2Best), totalCount: tier2_killingInduction.length } : null,
+      3: tier3Best ? { ...formatTierSummary(tier3Best), totalCount: tier3_nearKill.length } : null,
+      4: tier4Best ? { ...formatTierSummary(tier4Best), totalCount: tier4_safePlay.length } : null,
+      5: tier5Best ? { ...formatTierSummary(tier5Best), totalCount: tier5_desperate.length } : null
+    },
+    tierCandidates: {
+      1: tier1_instantKill.slice(0, 8).map(formatTierSummary),
+      2: tier2_killingInduction.slice(0, 8).map(formatTierSummary),
+      3: tier3_nearKill.slice(0, 8).map(formatTierSummary),
+      4: tier4_safePlay.slice(0, 8).map(formatTierSummary),
+      5: tier5_desperate.slice(0, 8).map(formatTierSummary)
     },
     alternatives: altTierCandidates.slice(0, 4).map(alt => {
       const d = alt.dict || getDictSync(alt.word, alt.item);
@@ -1744,7 +1683,6 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       const endChar = queryWord[queryWord.length - 1];
       const reb = getRebuttalAnalysis(endChar);
       const isKill = !KILLING_INDUCTION_CHARS.has(endChar) && ABSOLUTE_KILLING_CHARS.has(endChar) && reb.totalCount === 0;
-      const isTrap = !isKill && (KILLING_INDUCTION_CHARS.has(endChar) || reb.totalCount <= 30);
 
       // 상대방이 나에게 역공할 수 있는 한방 및 한방 유도(값, 릇, 늣, 둑 등) 카운터 전수 감지
       const oppKillerWords = [];
@@ -1765,6 +1703,7 @@ async function generateAiChatResponse(message, history = [], options = {}) {
       const hasKillingRisk = oppKillerWords.length > 0;
       const hasTrapRisk = oppTrapWords.length > 0;
       const hasCounterRisk = hasKillingRisk || hasTrapRisk;
+      const isTrap = !isKill && !hasCounterRisk && (KILLING_INDUCTION_CHARS.has(endChar) || reb.totalCount <= 15);
 
       let tierNum = 4;
       let tierName = '🛡️ 4순위: 안전 방어 단어';
@@ -1774,10 +1713,6 @@ async function generateAiChatResponse(message, history = [], options = {}) {
         tierNum = 1;
         tierName = '💥 1순위: 즉시 승리 한방 단어';
         strategyDesc = '상대 반격 0개, 즉시 100% 승리하는 절대 필승 수입니다!';
-      } else if (isTrap) {
-        tierNum = 2;
-        tierName = '🎯 2순위: 한방 유도 단어';
-        strategyDesc = `끝글자 '${endChar}'(으)로 상대 반격을 ${reb.totalCount}개로 제한하고 한방으로 유도하는 전략 수입니다!`;
       } else if (hasCounterRisk) {
         tierNum = 5;
         if (hasKillingRisk) {
@@ -1789,6 +1724,10 @@ async function generateAiChatResponse(message, history = [], options = {}) {
           tierName = `⚠️ 5순위: '${trapE}' 유도 피격 위험 단어 (차선책)`;
           strategyDesc = `상대방에게 '${trapE}' 카운터(예: 「${trapW}」) 등 한방 유도 공격을 당할 위험이 있는 차선책입니다.`;
         }
+      } else if (isTrap) {
+        tierNum = 2;
+        tierName = '🎯 2순위: 한방 유도 단어';
+        strategyDesc = `끝글자 '${endChar}'(으)로 상대 반격을 ${reb.totalCount}개로 제한하고 한방으로 유도하는 전략 수입니다!`;
       } else if (reb.totalCount >= 1 && reb.totalCount <= 4) {
         tierNum = 3;
         tierName = '🔥 3순위: 치명적 압박 단어';
@@ -2042,17 +1981,26 @@ async function generateAiChatResponse(message, history = [], options = {}) {
                `📖 **사전 뜻풀이**: ${ultimate.naverMeaning} (${ultimate.source})`;
     }
 
+    const tc = analysis.tierCandidates || {};
+    const curCandidates = tc[tierNum] || [];
+    const altWords = curCandidates.slice(1, 6).map(c => c.word);
+    if (altWords.length > 0) {
+      speech += `\n💡 **추가 ${tierNum}순위 추천 후보군**: ${altWords.map(w => `「${w}」`).join(', ')}`;
+    }
+
     const tw = analysis.tierWords || {};
     const t1 = tw[1];
     const t2 = tw[2];
     const t3 = tw[3];
     const t4 = tw[4];
+    const t5 = tw[5];
 
-    const tierOverview = `\n\n📊 **[1순위~4순위 전략 단어 종합 브리핑]**\n` +
-      `• 💥 **1순위 (즉시 한방)**: ${t1 ? `**「${t1.word}」** (끝: '${t1.endChar}', 상대 반격 0개 필승!)` : '사전에 반격 0개 한방 단어 없음'}\n` +
-      `• 🎯 **2순위 (한방 유도)**: ${t2 ? `**「${t2.word}」** (끝: '${t2.endChar}', 상대 반격 ${t2.outCount}개 봉쇄 & 한방 유도)` : '한방 유도 단어 없음'}\n` +
-      `• 🔥 **3순위 (치명타 압박)**: ${t3 ? `**「${t3.word}」** (끝: '${t3.endChar}', 상대 선택지 단 ${t3.outCount}개뿐인 포위망)` : '압박 단어 없음'}\n` +
-      `• 🛡️ **4순위 (안전 방어)**: ${t4 ? `**「${t4.word}」** (끝: '${t4.endChar}', 상대 역공 위험 0개 안전 수)` : '안전 방어 단어 없음'}`;
+    const tierOverview = `\n\n📊 **[1순위~5순위 전략 단어 종합 브리핑]**\n` +
+      `• 💥 **1순위 (즉시 한방)**: ${t1 ? `**「${t1.word}」** (끝: '${t1.endChar}', 상대 반격 0개 필승!${t1.totalCount > 1 ? ` 외 ${t1.totalCount - 1}개` : ''})` : '사전에 반격 0개 한방 단어 없음'}\n` +
+      `• 🎯 **2순위 (한방 유도)**: ${t2 ? `**「${t2.word}」** (끝: '${t2.endChar}', 상대 반격 ${t2.outCount}개 봉쇄 & 한방 유도${t2.totalCount > 1 ? ` 외 ${t2.totalCount - 1}개` : ''})` : '한방 유도 단어 없음'}\n` +
+      `• 🔥 **3순위 (치명타 압박)**: ${t3 ? `**「${t3.word}」** (끝: '${t3.endChar}', 상대 선택지 단 ${t3.outCount}개뿐인 포위망${t3.totalCount > 1 ? ` 외 ${t3.totalCount - 1}개` : ''})` : '압박 단어 없음'}\n` +
+      `• 🛡️ **4순위 (안전 방어)**: ${t4 ? `**「${t4.word}」** (끝: '${t4.endChar}', 상대 역공 위험 0개 안전 수${t4.totalCount > 1 ? ` 외 ${t4.totalCount - 1}개` : ''})` : '안전 방어 단어 없음'}\n` +
+      `• ⚠️ **5순위 (위기 차선책)**: ${t5 ? `**「${t5.word}」** (끝: '${t5.endChar}', 상대 반격 ${t5.outCount}개, ${t5.hasKillingRisk ? '한방 피격 위험' : '유도 피격 위험'})` : '차선책 단어 없음'}`;
 
     speech += tierOverview;
 
@@ -2206,9 +2154,28 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
     };
   }
 
-  const aiChosen = analysis.ultimateWord;
-  const isWinningMove = aiChosen.outCount === 0;
+  let aiChosen = analysis.ultimateWord;
   const tierNum = aiChosen.tierInfo?.tierNumber || 1;
+  const candidatesForTier = analysis.tierCandidates?.[tierNum] || [];
+  // AI 단어 다변화: 동일 티어 내 상위 후보군 중에서 지능적으로 다양하게 선택 (반복 착수 방지)
+  if (candidatesForTier.length > 1) {
+    const pickIndex = Math.floor(Math.random() * Math.min(candidatesForTier.length, 3));
+    const cand = candidatesForTier[pickIndex];
+    if (cand && cand.word) {
+      aiChosen = {
+        ...aiChosen,
+        word: cand.word,
+        length: cand.length,
+        endChar: cand.endChar,
+        outCount: cand.outCount,
+        naverMeaning: cand.naverMeaning || aiChosen.naverMeaning,
+        partOfSpeech: cand.partOfSpeech || aiChosen.partOfSpeech,
+        source: cand.source || aiChosen.source,
+        naverLink: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cand.word)}`
+      };
+    }
+  }
+  const isWinningMove = aiChosen.outCount === 0;
 
   let strategyBrief = '';
   if (aiNoFirstTurnKill && !isWinningMove) {
