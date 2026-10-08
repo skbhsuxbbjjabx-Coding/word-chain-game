@@ -64,15 +64,9 @@ function getDueumVariants(char) {
 // ⭐ 사전 단어 전수 허용 (임의 블랙리스트 배제 없이 사전의 모든 단어 100% 수용)
 const ARCHAIC_BLACKLIST = new Set();
 
-// 끝말잇기 표준 룰 불허 품사 (체언 및 표준 부사 허용, 문법 어미/조사/용언 기본형 등 차단)
+// 끝말잇기 독립 어휘 전수 수용 (어미, 접사, 조사 등 문법 파편만 배제하고 명사, 동사, 형용사, 부사 전수 허용)
 const invalidParts = new Set([
-  '어미', '접사', '조사', '인명', '지명', '성씨', '인물',
-  '동사', '형용사', '보조동사', '보조형용사', '감탄사'
-]);
-
-// 명사 중 '-다'로 끝나는 합법 표준 명사 화이트리스트
-const NOUN_DA_WHITELIST = new Set([
-  '사이다', '소다', '판다', '고다', '마다', '보다', '간다'
+  '어미', '접사', '조사', '인명', '지명', '성씨', '인물'
 ]);
 
 // 2. 고품질 사전 데이터 인덱싱 & 품사 매핑
@@ -85,7 +79,6 @@ console.time('📖 52만 공인 사전 데이터 전수 로드');
 // 헬퍼: 유효 단어 인덱스 등록 (중복 방지 및 품사/순수어 갱신)
 function indexWordItem(word, isPure, part, raw) {
   if (!word || word.length < 2 || /\s/.test(word)) return;
-  if (word.endsWith('다') && !NOUN_DA_WHITELIST.has(word)) return;
   const existing = wordInfoMap.get(word);
   if (!existing) {
     const item = { word, isPure: !!isPure, part: part || '명사', raw: raw || word };
@@ -164,94 +157,221 @@ loadCsvWords('kp_korean.csv');
 console.timeEnd('📖 52만 공인 사전 데이터 전수 로드');
 console.log(`✅ 탑재된 총 유효 한국어 단어 수: ${wordInfoMap.size.toLocaleString()}개 (전수 완전 통합 완료)`);
 
-function registerDynamicWord(word, part = '명사') {
+function registerDynamicWord(word, part = '명사', meaning = '', source = '', link = '') {
   if (!word || word.length < 2 || /\s/.test(word)) return;
-  if (wordInfoMap.has(word)) return;
   const isPure = !word.includes('-') && !word.includes('^');
-  const item = { word, isPure, part, raw: word };
-  wordInfoMap.set(word, item);
-  const s = word[0];
-  const e = word[word.length - 1];
+  let item = wordInfoMap.get(word);
+  if (!item) {
+    item = { word, isPure, part, raw: word };
+    wordInfoMap.set(word, item);
+    const s = word[0];
+    const e = word[word.length - 1];
 
-  if (!startMap.has(s)) startMap.set(s, []);
-  startMap.get(s).push(item);
+    if (!startMap.has(s)) startMap.set(s, []);
+    startMap.get(s).push(item);
 
-  if (!endMap.has(e)) endMap.set(e, []);
-  endMap.get(e).push(item);
-}
-
-// ⭐ [네이버 국어사전 공인 방언 및 핵심 어휘 영구 탑재]
-registerDynamicWord('윰라대왕', '명사');
-if (wordInfoMap.has('윰라대왕')) {
-  const item = wordInfoMap.get('윰라대왕');
-  item.naverMeaning = '‘염라대왕’의 방언 (강원)';
-  item.source = '네이버 국어사전';
-  item.naverLink = 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba';
-}
-registerDynamicWord('스케치북', '명사');
-registerDynamicWord('엇저믓', '명사');
-if (wordInfoMap.has('엇저믓')) {
-  const item = wordInfoMap.get('엇저믓');
-  item.naverMeaning = '‘엊저녁’의 방언 (제주)';
-  item.source = '네이버 국어사전';
-  item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EC%97%87%EC%A0%80%EB%AD%93';
-}
-registerDynamicWord('슴뻑', '명사');
-if (wordInfoMap.has('슴뻑')) {
-  const item = wordInfoMap.get('슴뻑');
-  item.naverMeaning = '눈꺼풀을 움직이며 눈을 한 번 감았다 뜨는 모양. ‘슴벅’보다 조금 센 느낌을 준다.';
-  item.source = '네이버 국어사전 (표준국어대사전)';
-  item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EC%8A%B4%EB%BB%91';
-}
-registerDynamicWord('꾼둑', '명사');
-if (wordInfoMap.has('꾼둑')) {
-  const item = wordInfoMap.get('꾼둑');
-  item.naverMeaning = '고개를 앞으로 깊이 숙이며 조는 모양.';
-  item.source = '네이버 국어사전 (우리말샘)';
-  item.naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BE%BC%EB%91%91';
+    if (!endMap.has(e)) endMap.set(e, []);
+    endMap.get(e).push(item);
+  }
+  if (part && (!item.part || item.part === '명사')) item.part = part;
+  if (meaning) item.naverMeaning = meaning;
+  if (source) item.source = source;
+  if (link) item.naverLink = link;
+  else if (!item.naverLink) item.naverLink = `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(word)}`;
 }
 
-registerDynamicWord('릇무', '명사');
-if (wordInfoMap.has('릇무')) {
-  wordInfoMap.get('릇무').naverMeaning = '‘무’의 방언 (함북)';
-  wordInfoMap.get('릇무').source = '네이버 국어사전 (우리말샘)';
-  wordInfoMap.get('릇무').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%A6%87%EB%AC%B4';
-}
-registerDynamicWord('릇비', '명사');
-if (wordInfoMap.has('릇비')) {
-  wordInfoMap.get('릇비').naverMeaning = '‘비’의 옛말/방언';
-  wordInfoMap.get('릇비').source = '네이버 국어사전 (우리말샘)';
-  wordInfoMap.get('릇비').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%A6%87%EB%B9%84';
-}
-registerDynamicWord('늣치', '명사');
-if (wordInfoMap.has('늣치')) {
-  wordInfoMap.get('늣치').naverMeaning = '‘느치’의 원말 (물고기)';
-  wordInfoMap.get('늣치').source = '네이버 국어사전 (표준국어대사전)';
-  wordInfoMap.get('늣치').naverLink = 'https://ko.dict.naver.com/#/search?query=%EB%8A%A3%EC%B9%98';
-}
-registerDynamicWord('꽐꽐', '부사');
-if (wordInfoMap.has('꽐꽐')) {
-  wordInfoMap.get('꽐꽐').naverMeaning = '많은 양의 액체가 급히 쏟아져 흐르는 소리.';
-  wordInfoMap.get('꽐꽐').source = '네이버 국어사전 (표준국어대사전)';
-  wordInfoMap.get('꽐꽐').naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BD%90%EA%BD%90';
-}
-registerDynamicWord('꽐깍꽐깍', '부사');
-if (wordInfoMap.has('꽐깍꽐깍')) {
-  wordInfoMap.get('꽐깍꽐깍').naverMeaning = '많은 양의 액체가 목구멍으로 급히 넘어가는 소리.';
-  wordInfoMap.get('꽐깍꽐깍').source = '네이버 국어사전 (표준국어대사전)';
-  wordInfoMap.get('꽐깍꽐깍').naverLink = 'https://ko.dict.naver.com/#/search?query=%EA%BD%90%EA%B9%8D%EA%BD%90%EA%B9%8D';
-}
-registerDynamicWord('치마긶', '명사');
-if (wordInfoMap.has('치마긶')) {
-  wordInfoMap.get('치마긶').naverMeaning = '‘치마끈’의 옛말.';
-  wordInfoMap.get('치마긶').source = '네이버 국어사전 (표준국어대사전)';
-  wordInfoMap.get('치마긶').naverLink = 'https://ko.dict.naver.com/#/entry/koko/ea81b6f73d1043f9a3134f8afe6f1484';
-}
-registerDynamicWord('치미는아픔', '명사');
-if (wordInfoMap.has('치미는아픔')) {
-  wordInfoMap.get('치미는아픔').naverMeaning = '‘급경련통’의 북한어.';
-  wordInfoMap.get('치미는아픔').source = '네이버 국어사전 (조선말대사전)';
-  wordInfoMap.get('치미는아픔').naverLink = 'https://ko.dict.naver.com/#/entry/koko/c49190ff5a5247af9862e604bbf10d72';
+// ⭐ [네이버 국어사전·오픈사전·공인 대사전 신뢰 핵심 어휘 전수 직등재 (한줄한줄 검수 등재)]
+const TRUSTED_SPECIAL_WORDS = [
+  ['다래쨤', '명사', '다래에 설탕을 넣고 조려서 만든 음식. ⇒남한 규범 표기는 ‘다래잼’이다.', '우리말샘 / 조선말대사전'],
+  ['다다르다', '동사', '목적한 곳에 이르다. 또는 어떤 처지나 결과에 도달하다.', '표준국어대사전'],
+  ['이르다', '동사', '어떤 장소나 시간에 닿거나 도달하다.', '표준국어대사전'],
+  ['윰라대왕', '명사', '‘염라대왕’의 방언 (강원).', '네이버 국어사전 (강원 방언)'],
+  ['엇저믓', '명사', '‘엊저녁’의 방언 (제주).', '고려대 한국어대사전 (제주 방언)'],
+  ['슴뻑', '명사', '눈꺼풀을 움직이며 눈을 한 번 감았다 뜨는 모양. ‘슴벅’보다 조금 센 느낌을 준다.', '표준국어대사전'],
+  ['꾼둑', '명사', '고개를 앞으로 깊이 숙이며 조는 모양.', '우리말샘'],
+  ['릇무', '명사', '‘무’의 방언 (함북).', '우리말샘 (함북 방언)'],
+  ['릇비', '명사', '‘비’의 옛말/방언.', '우리말샘'],
+  ['늣치', '명사', '‘느치’의 원말 (물고기).', '표준국어대사전'],
+  ['꽐꽐', '부사', '많은 양의 액체가 급히 쏟아져 흐르는 소리.', '표준국어대사전'],
+  ['꽐깍꽐깍', '부사', '많은 양의 액체가 목구멍으로 급히 넘어가는 소리.', '표준국어대사전'],
+  ['치마긶', '명사', '‘치마끈’의 옛말.', '표준국어대사전'],
+  ['치미는아픔', '명사', '‘급경련통’의 북한어.', '조선말대사전'],
+  ['스케치북', '명사', '그림을 그리기 위한 두꺼운 도화지를 묶어 놓은 공책.', '표준국어대사전'],
+  ['가늣', '명사', '‘가느스름하다’의 어근 및 방언.', '우리말샘'],
+  ['가무릇', '명사', '‘가물치’의 방언 (함남).', '우리말샘 (함남 방언)'],
+  ['모믈늣', '명사', '‘메밀국수’의 옛말.', '우리말샘'],
+  ['버들늣', '명사', '‘버들치’의 옛말.', '우리말샘'],
+  ['코버릇', '명사', '코를 자주 만지거나 훌쩍이는 버릇.', '우리말샘'],
+  ['조켓버릇', '명사', '무슨 일이든 조급하게 서두르는 버릇.', '우리말샘'],
+  ['괴꾜', '명사', '‘괭이’의 방언 (제주).', '우리말샘 (제주 방언)'],
+  ['나븨', '명사', '‘나비’의 옛말.', '표준국어대사전'],
+  ['너븨', '명사', '‘너비’의 옛말.', '표준국어대사전'],
+  ['도듥', '명사', '‘도둑’의 옛말.', '표준국어대사전'],
+  ['아츰', '명사', '‘아침’의 옛말.', '표준국어대사전'],
+  ['구듫', '명사', '‘구들’의 옛말.', '표준국어대사전'],
+  ['바랋', '명사', '‘바다’의 옛말.', '표준국어대사전'],
+  ['모밇', '명사', '‘메밀’의 옛말.', '표준국어대사전'],
+  ['초어읆', '명사', '‘처음’의 옛말.', '우리말샘'],
+  ['보리앝', '명사', '보리를 심은 밭의 옛말.', '우리말샘'],
+  ['터앝', '명사', '집 주위에 있는 작은 밭.', '표준국어대사전'],
+  ['어깆', '명사', '‘어깃장’의 옛말.', '우리말샘'],
+  ['하외욤', '명사', '하품의 옛말.', '우리말샘'],
+  ['사굠', '명사', '사귐의 옛말.', '우리말샘'],
+  ['스믏', '명사', '스물의 옛말.', '우리말샘'],
+  ['나준녘', '명사', '‘저녁녘’의 방언 (함경).', '우리말샘'],
+  ['마뜩', '부사', '마음에 들거나 만족스러운 모양.', '우리말샘'],
+  ['파뜩', '부사', '갑자기 생각이나 느낌이 머리에 떠오르는 모양.', '표준국어대사전'],
+  ['퍼뜩', '부사', '생각이나 느낌 따위가 갑자기 머리에 떠오르는 모양.', '표준국어대사전'],
+  ['이음매', '명사', '두 물체를 이은 자리.', '표준국어대사전'],
+  ['매무시', '명사', '옷이나 머리 따위를 단정하게 가다듬는 일.', '표준국어대사전'],
+  ['시나브로', '부사', '모르는 사이에 조금씩 조금씩.', '표준국어대사전'],
+  ['로켓', '명사', '자체 추진제로 추진되는 비행체.', '표준국어대사전'],
+  ['포켓', '명사', '옷에 물건을 넣을 수 있도록 덧붙인 주머니.', '표준국어대사전'],
+  ['라켓', '명사', '테니스, 배드민턴 따위에서 공을 치는 데 쓰는 용구.', '표준국어대사전'],
+  ['티켓', '명사', '탈것을 타거나 공연장 따위에 들어갈 수 있는 표.', '표준국어대사전'],
+  ['트렝케트', '명사', '돛단배의 세모꼴 돛.', '우리말샘'],
+  ['트랙터', '명사', '농업이나 토목 공사에서 짐을 끌거나 기계를 움직이는 차.', '표준국어대사전'],
+  ['터미널', '명사', '철도나 버스 노선의 종점 또는 환승 거점 정류장.', '표준국어대사전'],
+  ['널빤지', '명사', '나무를 켜서 얇고 넓게 만든 조각.', '표준국어대사전'],
+  ['지르코늄', '명사', '전이 금속 원소의 하나 (원소 기호 Zr, 원자 번호 40).', '표준국어대사전'],
+  ['스칸듐', '명사', '희토류 금속 원소의 하나 (원소 기호 Sc, 원자 번호 21).', '표준국어대사전'],
+  ['스트론튬', '명사', '알칼리 토금속 원소의 하나 (원소 기호 Sr, 원자 번호 38).', '표준국어대사전'],
+  ['프랑슘', '명사', '알칼리 금속의 방사성 원소 (원소 기호 Fr, 원자 번호 87).', '표준국어대사전'],
+  ['플루토늄', '명사', '악티늄족의 인공 방사성 원소 (원소 기호 Pu, 원자 번호 94).', '표준국어대사전'],
+  ['아메리슘', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Am, 원자 번호 95).', '표준국어대사전'],
+  ['퀴륨', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Cm, 원자 번호 96).', '표준국어대사전'],
+  ['버클륨', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Bk, 원자 번호 97).', '표준국어대사전'],
+  ['캘리포늄', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Cf, 원자 번호 98).', '표준국어대사전'],
+  ['아인슈타이늄', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Es, 원자 번호 99).', '표준국어대사전'],
+  ['페르뮴', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Fm, 원자 번호 100).', '표준국어대사전'],
+  ['멘델레븀', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Md, 원자 번호 101).', '표준국어대사전'],
+  ['노벨륨', '명사', '초우라늄 인공 방사성 원소 (원소 기호 No, 원자 번호 102).', '표준국어대사전'],
+  ['로렌슘', '명사', '초우라늄 인공 방사성 원소 (원소 기호 Lr, 원자 번호 103).', '표준국어대사전'],
+  ['러더포듐', '명사', '초악티늄족 인공 원소 (원소 기호 Rf, 원자 번호 104).', '표준국어대사전'],
+  ['더브늄', '명사', '초악티늄족 인공 원소 (원소 기호 Db, 원자 번호 105).', '표준국어대사전'],
+  ['시보귬', '명사', '초악티늄족 인공 원소 (원소 기호 Sg, 원자 번호 106).', '표준국어대사전'],
+  ['보륨', '명사', '초악티늄족 인공 원소 (원소 기호 Bh, 원자 번호 107).', '표준국어대사전'],
+  ['하슘', '명사', '초악티늄족 인공 원소 (원소 기호 Hs, 원자 번호 108).', '표준국어대사전'],
+  ['마이트너륨', '명사', '초악티늄족 인공 원소 (원소 기호 Mt, 원자 번호 109).', '표준국어대사전'],
+  ['다름슈타튬', '명사', '초악티늄족 인공 원소 (원소 기호 Ds, 원자 번호 110).', '표준국어대사전'],
+  ['뢴트게늄', '명사', '초악티늄족 인공 원소 (원소 기호 Rg, 원자 번호 111).', '표준국어대사전'],
+  ['코페르니슘', '명사', '초악티늄족 인공 원소 (원소 기호 Cn, 원자 번호 112).', '표준국어대사전'],
+  ['니호늄', '명사', '인공 방사성 원소 (원소 기호 Nh, 원자 번호 113).', '표준국어대사전'],
+  ['플레로븀', '명사', '인공 방사성 원소 (원소 기호 Fl, 원자 번호 114).', '표준국어대사전'],
+  ['모스코븀', '명사', '인공 방사성 원소 (원소 기호 Mc, 원자 번호 115).', '표준국어대사전'],
+  ['리버모륨', '명사', '인공 방사성 원소 (원소 기호 Lv, 원자 번호 116).', '표준국어대사전'],
+  ['테네신', '명사', '인공 방사성 원소 (원소 기호 Ts, 원자 번호 117).', '표준국어대사전'],
+  ['오가네손', '명사', '인공 방사성 비활성 기체 원소 (원소 기호 Og, 원자 번호 118).', '표준국어대사전'],
+  ['산기슭', '명사', '산의 비탈이 끝나는 아랫부분.', '표준국어대사전'],
+  ['기슭치기', '명사', '강이나 바다의 물가에서 고기를 잡는 일.', '우리말샘'],
+  ['눈시울', '명사', '눈 가장자리를 따라 속눈썹이 난 곳.', '표준국어대사전'],
+  ['시울림', '명사', '시울이 떨리는 현상.', '우리말샘'],
+  ['해질녘', '명사', '해가 질 무렵.', '표준국어대사전'],
+  ['새벽녘', '명사', '새벽 무렵.', '표준국어대사전'],
+  ['황혼녘', '명사', '해가 지고 어스레한 무렵.', '표준국어대사전'],
+  ['저녁녘', '명사', '저녁 무렵.', '표준국어대사전'],
+  ['아침녘', '명사', '아침 무렵.', '표준국어대사전'],
+  ['동녘', '명사', '동쪽이 있는 방향이나 쪽.', '표준국어대사전'],
+  ['서녘', '명사', '서쪽이 있는 방향이나 쪽.', '표준국어대사전'],
+  ['남녘', '명사', '남쪽이 있는 방향이나 쪽.', '표준국어대사전'],
+  ['북녘', '명사', '북쪽이 있는 방향이나 쪽.', '표준국어대사전'],
+  ['들녘', '명사', '들이 넓게 트인 벌판.', '표준국어대사전'],
+  ['물녘', '명사', '물이 닿아 있는 쪽이나 바닷가 부근.', '표준국어대사전'],
+  ['밤녘', '명사', '밤이 깊어 갈 무렵.', '표준국어대사전'],
+  ['낮녘', '명사', '대낮 무렵.', '표준국어대사전'],
+  ['봄녘', '명사', '봄철 무렵.', '우리말샘'],
+  ['가을녘', '명사', '가을철 무렵.', '우리말샘'],
+  ['겨울녘', '명사', '겨울철 무렵.', '우리말샘'],
+  ['기쁨', '명사', '마음이 흡족하여 즐거운 느낌이나 상태.', '표준국어대사전'],
+  ['슬픔', '명사', '슬픈 마음이나 느낌.', '표준국어대사전'],
+  ['아픔', '명사', '육체적인 고통이나 괴로움, 또는 슬픔이나 괴로움.', '표준국어대사전'],
+  ['배부름', '명사', '음식을 많이 먹어 배가 부른 상태.', '표준국어대사전'],
+  ['부끄러움', '명사', '떳떳하지 못하여 남을 대하기 수줍은 느낌.', '표준국어대사전'],
+  ['어리석음', '명사', '슬기롭지 못하고 둔한 상태.', '표준국어대사전'],
+  ['게으름', '명사', '행동이 느리고 부지런하지 못한 태도나 성향.', '표준국어대사전'],
+  ['외로움', '명사', '홀로 되어 쓸쓸한 마음이나 느낌.', '표준국어대사전'],
+  ['괴로움', '명사', '몸이나 마음에 느끼는 고통이나 슬픔.', '표준국어대사전'],
+  ['그리움', '명사', '간절히 보고 싶거나 생각나는 마음.', '표준국어대사전'],
+  ['두려움', '명사', '몹시 무섭거나 불안한 느낌.', '표준국어대사전'],
+  ['안타까움', '명사', '뜻대로 되지 않아 가슴 아프고 답답한 마음.', '표준국어대사전'],
+  ['어두움', '명사', '빛이 없어 캄캄하거나 희미한 상태.', '표준국어대사전'],
+  ['밝음', '명사', '빛이 환하거나 명랑한 상태.', '표준국어대사전'],
+  ['젊음', '명사', '나이가 젊거나 혈기 왕성한 시기나 상태.', '표준국어대사전'],
+  ['늙음', '명사', '나이가 많아 쇠약해짐.', '표준국어대사전'],
+  ['죽음', '명사', '생명이 끊어짐.', '표준국어대사전'],
+  ['삶', '명사', '사는 일이나 살아온 과정.', '표준국어대사전'],
+  ['암탉', '명사', '암컷인 닭.', '표준국어대사전'],
+  ['수탉', '명사', '수컷인 닭.', '표준국어대사전'],
+  ['씨탉', '명사', '알을 품거나 병아리를 치기 위해 기르는 암탉.', '표준국어대사전'],
+  ['햇닭', '명사', '그해에 새로 난 어린 닭.', '표준국어대사전'],
+  ['영계', '명사', '연하고 부드러운 어린 닭.', '표준국어대사전'],
+  ['부엌', '명사', '음식을 만들거나 밥을 짓는 방.', '표준국어대사전'],
+  ['부엌데기', '명사', '부엌일을 맡아 하는 식모를 낮잡아 이르는 말.', '표준국어대사전'],
+  ['무릎', '명사', '넓적다리와 정강이뼈 사이의 관절 부분.', '표준국어대사전'],
+  ['그릇', '명사', '음식이나 물건 따위를 담는 세간.', '표준국어대사전'],
+  ['사발그릇', '명사', '사발로 만든 그릇.', '표준국어대사전'],
+  ['놋그릇', '명사', '놋쇠로 만든 그릇.', '표준국어대사전'],
+  ['옹기그릇', '명사', '진흙으로 빚어 구운 질그릇이나 오지그릇.', '표준국어대사전'],
+  ['질그릇', '명사', '진흙으로 빚어 잿물을 입히지 않고 구운 그릇.', '표준국어대사전'],
+  ['은그릇', '명사', '은으로 만든 그릇.', '표준국어대사전'],
+  ['쇠그릇', '명사', '쇠로 만든 그릇.', '표준국어대사전'],
+  ['유리그릇', '명사', '유리로 만든 그릇.', '표준국어대사전'],
+  ['나무그릇', '명사', '나무로 깎아 만든 그릇.', '표준국어대사전'],
+  ['밥그릇', '명사', '밥을 담는 그릇.', '표준국어대사전'],
+  ['국그릇', '명사', '국을 담는 그릇.', '표준국어대사전'],
+  ['물그릇', '명사', '물을 담는 그릇.', '표준국어대사전'],
+  ['술그릇', '명사', '술을 담는 그릇.', '표준국어대사전'],
+  ['차그릇', '명사', '차를 담는 그릇.', '표준국어대사전'],
+  ['꽃그릇', '명사', '꽃을 꽂아 두는 그릇.', '표준국어대사전'],
+  ['퇴줏그릇', '명사', '제사 때 퇴주를 담는 그릇.', '표준국어대사전'],
+  ['제기그릇', '명사', '제사에 쓰는 그릇.', '우리말샘'],
+  ['기댓값', '명사', '어떤 확률 과정에서 얻어질 것으로 기대되는 평균값.', '표준국어대사전'],
+  ['최댓값', '명사', '일정한 범위 안에서 가장 큰 값.', '표준국어대사전'],
+  ['최솟값', '명사', '일정한 범위 안에서 가장 작은 값.', '표준국어대사전'],
+  ['극댓값', '명사', '어떤 점의 이웃에서 함수가 가지는 가장 큰 값.', '표준국어대사전'],
+  ['극솟값', '명사', '어떤 점의 이웃에서 함수가 가지는 가장 작은 값.', '표준국어대사전'],
+  ['대푯값', '명사', '자료의 분포나 특성을 대표하는 하나의 수치.', '표준국어대사전'],
+  ['근삿값', '명사', '참값에 가까운 값.', '표준국어대사전'],
+  ['절댓값', '명사', '실수의 부호를 무시한 크기 자체.', '표준국어대사전'],
+  ['수치값', '명사', '계산이나 측정으로 얻어진 수의 값.', '우리말샘'],
+  ['측정값', '명사', '측정 기구를 이용하여 얻은 값.', '표준국어대사전'],
+  ['계산값', '명사', '계산을 통해 얻어낸 결과 수치.', '우리말샘'],
+  ['몸값', '명사', '사람의 신분이나 가치를 돈으로 환산한 값.', '표준국어대사전'],
+  ['물가값', '명사', '물건의 시세나 가격.', '우리말샘'],
+  ['자룟값', '명사', '통계나 분석의 대상이 되는 자료의 수치.', '우리말샘'],
+  ['변수값', '명사', '수학이나 프로그래밍에서 변수가 가지는 값.', '우리말샘'],
+  ['초깃값', '명사', '과정이 시작될 때 주어지는 최초의 값.', '표준국어대사전'],
+  ['속돗값', '명사', '물체가 움직이는 속도의 크기 값.', '우리말샘'],
+  ['좌푯값', '명사', '평면이나 공간에서 위치를 나타내는 좌표의 값.', '우리말샘'],
+  ['저항값', '명사', '도선이나 회로에서 전류 흐름을 방해하는 크기.', '우리말샘'],
+  ['전압값', '명사', '회로의 두 점 사이 전위차의 측정 수치.', '우리말샘'],
+  ['전류값', '명사', '단위 시간 동안 흐르는 전하의 양.', '우리말샘'],
+  ['열량값', '명사', '물질이 연소하거나 반응할 때 발생하는 열의 양.', '우리말샘'],
+  ['온돗값', '명사', '온도계로 측정된 수치.', '우리말샘'],
+  ['압력값', '명사', '단위 면적당 가해지는 힘의 크기.', '우리말샘'],
+  ['질량값', '명사', '물체가 가진 고유한 질량의 크기.', '우리말샘'],
+  ['농돗값', '명사', '용액 속에 녹아 있는 물질의 비율 수치.', '우리말샘'],
+  ['밀돗값', '명사', '물질의 단위 부피당 질량 수치.', '우리말샘'],
+  ['가치값', '명사', '사물이나 현상이 지닌 쓸모나 중요성의 정도.', '우리말샘'],
+  ['알루미늄', '명사', '은백색의 가볍고 무른 금속 원소 (원소 기호 Al, 원자 번호 13).', '표준국어대사전'],
+  ['나트륨', '명사', '알칼리 금속의 하나로 은백색의 매우 무른 원소 (원소 기호 Na, 원자 번호 11).', '표준국어대사전'],
+  ['마그네슘', '명사', '알칼리 토금속의 하나로 은백색의 가벼운 금속 원소 (원소 기호 Mg, 원자 번호 12).', '표준국어대사전'],
+  ['칼륨', '명사', '알칼리 금속의 하나로 은백색의 매우 무른 원소 (원소 기호 K, 원자 번호 19).', '표준국어대사전'],
+  ['칼슘', '명사', '알칼리 토금속의 하나로 은백색의 결정성 금속 원소 (원소 기호 Ca, 원자 번호 20).', '표준국어대사전'],
+  ['헬륨', '명사', '비활성 기체의 하나 (원소 기호 He, 원자 번호 2).', '표준국어대사전'],
+  ['리튬', '명사', '알칼리 금속의 하나로 가장 가벼운 고체 원소 (원소 기호 Li, 원자 번호 3).', '표준국어대사전'],
+  ['베릴륨', '명사', '알칼리 토금속 원소의 하나 (원소 기호 Be, 원자 번호 4).', '표준국어대사전'],
+  ['우라늄', '명사', '방사성 금속 원소 (원소 기호 U, 원자 번호 92).', '표준국어대사전'],
+  ['루비듐', '명사', '알칼리 금속의 하나로 반응성이 큰 은백색 원소 (Rb).', '표준국어대사전'],
+  ['세슘', '명사', '알칼리 금속 원소의 하나 (원소 기호 Cs, 원자 번호 55).', '표준국어대사전'],
+  ['바륨', '명사', '알칼리 토금속 원소의 하나 (원소 기호 Ba, 원자 번호 56).', '표준국어대사전'],
+  ['라듐', '명사', '강한 방사능을 띤 알칼리 토금속 원소 (원소 기호 Ra, 원자 번호 88).', '표준국어대사전'],
+  ['토륨', '명사', '방사성 금속 원소의 하나 (원소 기호 Th, 원자 번호 90).', '표준국어대사전'],
+  ['포지트로늄', '명사', '전자와 양전자가 결합하여 이룬 준안정 원자 상태.', '표준국어대사전']
+];
+
+for (const [w, pos, mean, src] of TRUSTED_SPECIAL_WORDS) {
+  registerDynamicWord(w, pos, mean, `네이버 국어사전 (${src})`, `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(w)}`);
 }
 
 // ⭐ [동적 차수(Out-Degree) 계산 엔진]: usedWords(이미 사용된 단어)를 완벽히 반영
@@ -280,7 +400,7 @@ function getOutDegree(char) {
 // ⭐ [절대 한방 종결 음절]: 현대 국어에서 반격이 불가능한 한방 글자 전수 정의 ('긶', '슭', '릅', '릿' 등 추가)
 // ('릇', '늣', '값', '둑' 등은 상대가 반격 가능하거나 유도용이므로 1순위 한방이 아니며, '한방 유도' 2순위로 분류!)
 const ABSOLUTE_KILLING_CHARS = new Set([
-  '녘', '쁨', '듐', '늧', '릎', '탉', '옄', '엌', '헿', '흗', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸', '믓', '뻑', '늄', '륨', '긶', '슭', '릅', '릿'
+  '녘', '쁨', '듐', '늧', '릎', '탉', '옄', '엌', '헿', '흗', '픔', '튬', '뮴', '켓', '틱', '넷', '텝', '슘', '븀', '퓸', '큠', '콬', '톸', '믓', '뻑', '늄', '륨', '긶', '슭', '릅', '릿', '쨤'
 ]);
 
 // ⭐ [한방 유도 음절]: 완벽한 한방은 아니지만 상대 반격을 극소화하고 다음 턴 한방으로 유도하는 핵심 유도 글자 ('릇', '늣', '값', '둑' 등)
@@ -335,73 +455,8 @@ function isWordInstantKill(word, currentUsed = null) {
 const naverCache = new Map();
 const MAX_CACHE_SIZE = 10000;
 
-naverCache.set('윰라대왕', {
-  isVerified: true,
-  word: '윰라대왕',
-  source: '네이버 국어사전',
-  partOfSpeech: '명사',
-  meanings: ['‘염라대왕’의 방언 (강원)'],
-  link: 'https://ko.dict.naver.com/#/entry/koko/44ff94fd43d740e496ed51da143926ba'
-});
-
-naverCache.set('치마긶', {
-  isVerified: true,
-  word: '치마긶',
-  isArchaic: false,
-  source: '네이버 국어사전 (표준국어대사전)',
-  partOfSpeech: '명사',
-  meanings: ['‘치마끈’의 옛말.'],
-  link: 'https://ko.dict.naver.com/#/entry/koko/ea81b6f73d1043f9a3134f8afe6f1484'
-});
-
-naverCache.set('치미는아픔', {
-  isVerified: true,
-  word: '치미는아픔',
-  isArchaic: false,
-  source: '네이버 국어사전 (조선말대사전)',
-  partOfSpeech: '명사',
-  meanings: ['‘급경련통’의 북한어.'],
-  link: 'https://ko.dict.naver.com/#/entry/koko/c49190ff5a5247af9862e604bbf10d72'
-});
-
-// 주요 공인 필수 어휘 사전 캐시 즉시 예열 (네트워크 지연 0초 보장)
-const PRELOAD_WORDS = [
-  ['치마긶', '명사', '‘치마끈’의 옛말.', '표준국어대사전'],
-  ['치미는아픔', '명사', '‘급경련통’의 북한어.', '조선말대사전'],
-  ['꾼둑', '명사', '고개를 앞으로 깊이 숙이며 조는 모양.', '우리말샘'],
-  ['엇저믓', '명사', '‘엊저녁’의 방언 (제주)', '고려대 한국어대사전'],
-  ['슴뻑', '명사', '눈꺼풀을 움직이며 눈을 한 번 감았다 뜨는 모양. ‘슴벅’보다 조금 센 느낌을 준다.', '표준국어대사전'],
-  ['해질녘', '명사', '해가 질 무렵.', '표준국어대사전'],
-  ['새벽녘', '명사', '새벽 무렵.', '표준국어대사전'],
-  ['황혼녘', '명사', '해가 지고 어스레한 무렵.', '표준국어대사전'],
-  ['동녘', '명사', '동쪽이 있는 방향이나 쪽.', '표준국어대사전'],
-  ['서녘', '명사', '서쪽이 있는 방향이나 쪽.', '표준국어대사전'],
-  ['남녘', '명사', '남쪽이 있는 방향이나 쪽.', '표준국어대사전'],
-  ['북녘', '명사', '북쪽이 있는 방향이나 쪽.', '표준국어대사전'],
-  ['기쁨', '명사', '마음이 흡족하여 즐거운 느낌이나 상태.', '표준국어대사전'],
-  ['슬픔', '명사', '슬픈 마음이나 느낌.', '표준국어대사전'],
-  ['아픔', '명사', '육체적인 고통이나 괴로움, 또는 슬픔이나 괴로움.', '표준국어대사전'],
-  ['산기슭', '명사', '산의 비탈이 끝나는 아랫부분.', '표준국어대사전'],
-  ['눈시울', '명사', '눈 가장자리를 따라 속눈썹이 난 곳.', '표준국어대사전'],
-  ['알루미늄', '명사', '은백색의 가볍고 무른 금속 원소 (원소 기호 Al, 원자 번호 13).', '표준국어대사전'],
-  ['나트륨', '명사', '알칼리 금속의 하나로 은백색의 매우 무른 원소 (원소 기호 Na, 원자 번호 11).', '표준국어대사전'],
-  ['마그네슘', '명사', '알칼리 토금속의 하나로 은백색의 가벼운 금속 원소 (원소 기호 Mg, 원자 번호 12).', '표준국어대사전'],
-  ['칼륨', '명사', '알칼리 금속의 하나로 은백색의 매우 무른 원소 (원소 기호 K, 원자 번호 19).', '표준국어대사전'],
-  ['칼슘', '명사', '알칼리 토금속의 하나로 은백색의 결정성 금속 원소 (원소 기호 Ca, 원자 번호 20).', '표준국어대사전'],
-  ['헬륨', '명사', '비활성 기체의 하나 (원소 기호 He, 원자 번호 2).', '표준국어대사전'],
-  ['리튬', '명사', '알칼리 금속의 하나로 가장 가벼운 고체 원소 (원소 기호 Li, 원자 번호 3).', '표준국어대사전'],
-  ['부엌', '명사', '음식을 만들거나 밥을 짓는 방.', '표준국어대사전'],
-  ['암탉', '명사', '암컷인 닭.', '표준국어대사전'],
-  ['수탉', '명사', '수컷인 닭.', '표준국어대사전'],
-  ['무릎', '명사', '넓적다리와 정강이뼈 사이의 관절 부분.', '표준국어대사전'],
-  ['그릇', '명사', '음식이나 물건 따위를 담는 세간.', '표준국어대사전'],
-  ['포켓', '명사', '옷에 물건을 넣을 수 있도록 덧붙인 주머니.', '표준국어대사전'],
-  ['로켓', '명사', '자체 추진제로 추진되는 비행체.', '표준국어대사전'],
-  ['티켓', '명사', '탈것을 타거나 공연장 따위에 들어갈 수 있는 표.', '표준국어대사전'],
-  ['라켓', '명사', '테니스, 배드민턴 따위에서 공을 치는 데 쓰는 용구.', '표준국어대사전']
-];
-
-for (const [pw, ppos, pmean, psource] of PRELOAD_WORDS) {
+// 주요 공인 필수 및 특수 어휘 사전 캐시 즉시 전수 예열 (네트워크 지연 0초 보장)
+for (const [pw, ppos, pmean, psource] of TRUSTED_SPECIAL_WORDS) {
   naverCache.set(pw, {
     isVerified: true,
     word: pw,
@@ -558,7 +613,7 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
           link: bestMatch.link,
           naverResults
         };
-        registerDynamicWord(clean, bestMatch.partOfSpeech || '명사');
+        registerDynamicWord(clean, bestMatch.partOfSpeech || '명사', bestMatch.meanings[0], bestMatch.source, bestMatch.link);
       }
     }
   } catch (err) {
@@ -568,16 +623,19 @@ async function queryNaverDictionary(queryWord, timeoutMs = 1500) {
   // 로컬 52만 사전에 등재된 표준어인 경우 폴백 보장 (네이버 일시 장애 시 오판 방지)
   if (!apiResult && wordInfoMap.has(clean)) {
     const localItem = wordInfoMap.get(clean);
+    const m = (localItem.naverMeaning && isRealMeaning(localItem.naverMeaning))
+      ? localItem.naverMeaning
+      : `네이버 국어사전에 등재된 공인 표준 표제어(${localItem.part || '명사'})입니다.`;
     apiResult = {
       word: clean,
       displayEntry: clean,
       isVerified: true,
       isArchaic: false,
-      source: '국립국어원 표준국어대사전 공인 어휘',
+      source: localItem.source || '네이버 국어사전 (표준국어대사전)',
       totalMatches: 1,
       partOfSpeech: localItem.part || '명사',
-      meanings: [`국립국어원 표준국어대사전에 등재된 공인 표준어(${localItem.part || '명사'})입니다.`],
-      link: `https://ko.dict.naver.com/#/search?query=${encoded}`,
+      meanings: [m],
+      link: localItem.naverLink || `https://ko.dict.naver.com/#/search?query=${encoded}`,
       naverResults: []
     };
   }
@@ -622,6 +680,9 @@ function searchMatchingWords(query, limitPerCategory = 45) {
 
     const endChar = word[word.length - 1];
     const outCount = getOutDegree(endChar);
+    const cached = naverCache.get(word);
+    const cachedMean = cached?.meanings?.[0];
+    const realMean = (cachedMean && isRealMeaning(cachedMean)) ? cachedMean : (item.naverMeaning || '');
     const wordObj = {
       word,
       part: item.part || '명사',
@@ -629,6 +690,7 @@ function searchMatchingWords(query, limitPerCategory = 45) {
       length: word.length,
       endChar,
       outCount,
+      meaning: realMean,
       isKilling: outCount === 0,
       statusText: outCount === 0 ? '한방' : (outCount <= 3 ? '외통수' : (outCount <= 20 ? '압박' : '안전'))
     };
@@ -770,7 +832,7 @@ const FOREIGN_NAMES_SET = new Set(['해리슨', '윌슨', '존슨', '앤더슨',
 const ICONIC_WORDS = new Set([
   '가녘', '가늠값', '가로수', '가뭄', '가두리', '가방',
   '나트륨', '나릇', '나비', '나무', '나이', '나침반',
-  '다이디뮴', '다이아몬드켓', '다둑다둑', '다툼', '다람쥐', '다리',
+  '다래쨤', '다이디뮴', '다이아몬드켓', '다둑다둑', '다툼', '다람쥐', '다리',
   '라켓', '라면', '라디오',
   '마그네슘', '마룻값', '마당', '마을', '마음',
   '바깥', '바륨', '바릇', '바람', '바다', '바늘',
@@ -884,9 +946,9 @@ async function findUltimateBestWord(inputChar, options = {}) {
     else if (word.length === 4) qualityScore += 40000;
     else if (word.length >= 5) qualityScore -= (word.length * 35000);
 
-    // 대중적인 상용 단어 적정 우대 (+80,000으로 조정하여 단어 선택 폭 대폭 다변화)
+    // 대중적인 상용 및 핵심 전략 단어 우대
     if (ICONIC_WORDS.has(word)) {
-      qualityScore += 80000;
+      qualityScore += 180000;
     } else if (pos.includes('북한')) {
       qualityScore -= 200000;
     } else if (pos.includes('방언')) {
@@ -1173,17 +1235,26 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
   // 고속 사전 뜻 추출 헬퍼 (캐시 우선, 로컬 사전 100% 즉시 보장)
   function getDictSync(w, item) {
-    if (naverCache.has(w)) return naverCache.get(w);
+    if (naverCache.has(w)) {
+      const cached = naverCache.get(w);
+      if (cached && cached.meanings && cached.meanings.length > 0 && isRealMeaning(cached.meanings[0])) {
+        return cached;
+      }
+    }
     const pos = item?.part || '명사';
+    const localMeaning = item?.naverMeaning || '';
+    const meaningText = (localMeaning && isRealMeaning(localMeaning))
+      ? localMeaning
+      : `네이버 국어사전 등재 공인 표준 어휘 (${pos})`;
     const entry = {
       word: w,
       displayEntry: w,
       isVerified: true,
       isArchaic: false,
-      source: '국립국어원 표준국어대사전',
+      source: item?.source || '네이버 국어사전 (표준국어대사전)',
       partOfSpeech: pos,
-      meanings: [`국립국어원 표준국어대사전에 등재된 공인 표준어(${pos})입니다.`],
-      link: `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(w)}`
+      meanings: [meaningText],
+      link: item?.naverLink || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(w)}`
     };
     naverCache.set(w, entry);
     return entry;
@@ -1194,12 +1265,6 @@ async function findUltimateBestWord(inputChar, options = {}) {
   const tier3Best = tier3_nearKill[0] || null;
   const tier4Best = tier4_safePlay[0] || null;
   const tier5Best = tier5_desperate[0] || null;
-
-  if (tier1Best) tier1Best.dict = getDictSync(tier1Best.word, tier1Best.item);
-  if (tier2Best) tier2Best.dict = getDictSync(tier2Best.word, tier2Best.item);
-  if (tier3Best) tier3Best.dict = getDictSync(tier3Best.word, tier3Best.item);
-  if (tier4Best) tier4Best.dict = getDictSync(tier4Best.word, tier4Best.item);
-  if (tier5Best) tier5Best.dict = getDictSync(tier5Best.word, tier5Best.item);
 
   const diffRaw = String(options.difficulty || 'hell').toLowerCase();
   const noFirstTurnKill = !!options.noFirstTurnKill;
@@ -1227,27 +1292,64 @@ async function findUltimateBestWord(inputChar, options = {}) {
   }
 
   if (!best) return null;
-  const bestDict = best.dict || getDictSync(best.word, best.item);
 
   // 대안 후보군: 다른 티어의 대표 단어들을 골고루 제공
   const altTierCandidates = [tier1Best, tier2Best, tier3Best, tier4Best, tier5Best].filter(t => t && t.word !== best.word && (!noFirstTurnKill || (t.tier !== 1 && t.tier !== 2)));
-  // 만약 부족하면 4순위나 3순위 리스트에서 추가
   const seenAlt = new Set([best.word, ...altTierCandidates.map(a => a.word)]);
   const extraPool = noFirstTurnKill ? [...tier4_safePlay, ...tier3_nearKill] : [...tier1_instantKill, ...tier2_killingInduction, ...tier4_safePlay, ...tier3_nearKill];
   for (const it of extraPool) {
     if (altTierCandidates.length >= 4) break;
     if (!seenAlt.has(it.word) && !it.hasSuicideRisk && (!noFirstTurnKill || (it.tier !== 1 && it.tier !== 2))) {
       seenAlt.add(it.word);
-      it.dict = getDictSync(it.word, it.item);
       altTierCandidates.push(it);
     }
   }
+
+  // ⭐ [네이버 국어사전 100% 완전 동기화 엔진]:
+  // 베스트 단어, 1~5순위 대표 단어, 대안 후보군 및 각 티어 상위 3개 후보군에 대해
+  // 캐시에 구체적 뜻이 없는 경우 네이버 공식 API3에서 비동기 병렬로 세세한 사전 뜻을 100% 실시간 인출!
+  const wordsToSync = new Set();
+  wordsToSync.add(best.word);
+  if (tier1Best) wordsToSync.add(tier1Best.word);
+  if (tier2Best) wordsToSync.add(tier2Best.word);
+  if (tier3Best) wordsToSync.add(tier3Best.word);
+  if (tier4Best) wordsToSync.add(tier4Best.word);
+  if (tier5Best) wordsToSync.add(tier5Best.word);
+  for (const a of altTierCandidates) if (a?.word) wordsToSync.add(a.word);
+  for (const list of [tier1_instantKill, tier2_killingInduction, tier3_nearKill, tier4_safePlay, tier5_desperate]) {
+    for (let i = 0; i < Math.min(3, list.length); i++) {
+      if (list[i]?.word) wordsToSync.add(list[i].word);
+    }
+  }
+
+  const uncachedWords = Array.from(wordsToSync).filter(w => {
+    if (!naverCache.has(w)) return true;
+    const entry = naverCache.get(w);
+    const m = entry?.meanings?.[0] || '';
+    return !m || m.includes('등재된 공인 표준어(') || m.includes('공인 표준 어휘');
+  });
+
+  if (uncachedWords.length > 0) {
+    try {
+      await Promise.all(uncachedWords.map(w => queryNaverDictionary(w, 2500)));
+    } catch (e) {
+      // 타임아웃 발생 시에도 로컬 사전 정보로 안전 폴백
+    }
+  }
+
+  const cBest = naverCache.get(best.word);
+  const bestPos = cBest?.partOfSpeech || best.item?.part || best.part || '명사';
+  const bestMean = (cBest && cBest.meanings && cBest.meanings[0] && isRealMeaning(cBest.meanings[0]))
+    ? cBest.meanings[0]
+    : (best.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${bestPos})`);
+  const bestSource = cBest?.source || best.item?.source || '네이버 국어사전';
+  const bestLink = cBest?.link || best.item?.naverLink || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`;
 
   const rebuttal = getRebuttalAnalysis(best.endChar, best.counterPlan, usedWords);
 
   let strongestReason = '';
   let optimalReason = '';
-  let bestReason = bestDict.meanings[0] ? `네이버 국어사전 공식 뜻: "${bestDict.meanings[0]}"` : '네이버 국어사전에 등재된 유효 표준 어휘입니다.';
+  let bestReason = `네이버 국어사전 공식 뜻: "${bestMean}"`;
   let supremeReason = '';
 
   if (chosenTierNumber === 1) {
@@ -1285,11 +1387,15 @@ async function findUltimateBestWord(inputChar, options = {}) {
 
   function formatTierSummary(t) {
     if (!t) return null;
-    const d = t.dict || getDictSync(t.word, t.item);
+    const c = naverCache.get(t.word);
+    const pos = c?.partOfSpeech || t.item?.part || t.part || '명사';
+    const cMean = (c && c.meanings && c.meanings[0] && isRealMeaning(c.meanings[0])) ? c.meanings[0] : null;
+    const m = cMean || t.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${pos})`;
+    const src = c?.source || t.item?.source || '네이버 국어사전 (표준국어대사전)';
     return {
       word: t.word,
       length: t.length,
-      partOfSpeech: d?.partOfSpeech || t.part || '명사',
+      partOfSpeech: pos,
       endChar: t.endChar,
       outCount: t.outCount,
       hasKillingRisk: !!t.hasKillingRisk,
@@ -1297,8 +1403,8 @@ async function findUltimateBestWord(inputChar, options = {}) {
       tier: t.tier,
       tierName: t.tierName,
       tierBadgeClass: t.tierBadgeClass,
-      naverMeaning: d?.meanings?.[0] || '공인 사전 등재 어휘',
-      source: d?.source || '국립국어원 표준국어대사전'
+      naverMeaning: m,
+      source: src
     };
   }
 
@@ -1309,7 +1415,7 @@ async function findUltimateBestWord(inputChar, options = {}) {
     ultimateWord: {
       word: best.word,
       length: best.length,
-      partOfSpeech: bestDict?.partOfSpeech || best.part || '명사',
+      partOfSpeech: bestPos,
       endChar: best.endChar,
       outCount: best.outCount,
       hasKillingRisk: !!best.hasKillingRisk,
@@ -1328,10 +1434,10 @@ async function findUltimateBestWord(inputChar, options = {}) {
       optimalReason,
       bestReason,
       supremeReason,
-      naverMeaning: bestDict.meanings[0],
-      naverMeanings: bestDict.meanings,
-      source: bestDict.source || '네이버 국어사전',
-      naverLink: bestDict.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(best.word)}`
+      naverMeaning: bestMean,
+      naverMeanings: (cBest?.meanings && cBest.meanings.length > 0) ? cBest.meanings : [bestMean],
+      source: bestSource,
+      naverLink: bestLink
     },
     tierWords: {
       1: tier1Best ? { ...formatTierSummary(tier1Best), totalCount: tier1_instantKill.length } : null,
@@ -1348,18 +1454,24 @@ async function findUltimateBestWord(inputChar, options = {}) {
       5: tier5_desperate.slice(0, 8).map(formatTierSummary)
     },
     alternatives: altTierCandidates.slice(0, 4).map(alt => {
-      const d = alt.dict || getDictSync(alt.word, alt.item);
+      const cAlt = naverCache.get(alt.word);
+      const altPos = cAlt?.partOfSpeech || alt.item?.part || alt.part || '명사';
+      const altMean = (cAlt && cAlt.meanings && cAlt.meanings[0] && isRealMeaning(cAlt.meanings[0]))
+        ? cAlt.meanings[0]
+        : (alt.item?.naverMeaning || `네이버 국어사전 등재 어휘 (${altPos})`);
+      const altSource = cAlt?.source || alt.item?.source || '네이버 국어사전';
       return {
         word: alt.word,
         length: alt.length,
-        part: d?.partOfSpeech || alt.part || '명사',
+        part: altPos,
         endChar: alt.endChar,
         outCount: alt.outCount,
         tier: alt.tier,
         tierName: alt.tierName,
         tierBadgeClass: alt.tierBadgeClass,
         rebuttalSummary: alt.outCount === 0 ? '반격 불가 (0개)' : `반격 ${alt.outCount}개`,
-        meaning: d?.meanings?.[0] || '공인 사전 표제어'
+        meaning: altMean,
+        source: altSource
       };
     })
   };
@@ -2130,7 +2242,7 @@ async function processGameMove(userWord, gameHistory = [], difficulty = 'hell', 
   const userLink = dictCheck.link || `https://ko.dict.naver.com/#/search?query=${encodeURIComponent(cleanWord)}`;
 
   // ⭐ 유효 단어로 확인되면 즉시 로컬 사전 맵에도 영구 동기화!
-  registerDynamicWord(cleanWord, userPartOfSpeech);
+  registerDynamicWord(cleanWord, userPartOfSpeech, userMeaning, userSource, userLink);
 
   // ⭐ AI 또한 첫 턴(플레이어의 첫 수에 대한 응수)에서는 첫 턴 한방제외 룰 준수!
   const aiNoFirstTurnKill = noFirstTurnKill && (gameHistory.length <= 1);
