@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     turnLog.appendChild(card);
-    card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    turnLog.scrollTo({ top: turnLog.scrollHeight, behavior: 'smooth' });
   }
 
   function appendGameOverCard(winner, message) {
@@ -991,7 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
     userMsg.className = 'briefing-msg user';
     userMsg.innerHTML = `<div class="msg-bubble">${escapeHtml(cleanQuery)}</div>`;
     briefingMessages.appendChild(userMsg);
-    userMsg.scrollIntoView({ behavior: 'smooth' });
+    briefingMessages.scrollTo({ top: briefingMessages.scrollHeight, behavior: 'smooth' });
 
     // 로딩 메시지
     const loadingMsg = document.createElement('div');
@@ -1001,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="msg-bubble">분석 중... 4단계 지능으로 최적의 수를 탐색하고 있습니다.</div>
     `;
     briefingMessages.appendChild(loadingMsg);
-    loadingMsg.scrollIntoView({ behavior: 'smooth' });
+    briefingMessages.scrollTo({ top: briefingMessages.scrollHeight, behavior: 'smooth' });
 
     isBriefingLoading = true;
     briefingSendBtn.disabled = true;
@@ -1043,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aiMsg.innerHTML = `<div class="msg-avatar">⚡</div>`;
       aiMsg.appendChild(bubble);
       briefingMessages.appendChild(aiMsg);
-      aiMsg.scrollIntoView({ behavior: 'smooth' });
+      briefingMessages.scrollTo({ top: briefingMessages.scrollHeight, behavior: 'smooth' });
 
       // 흐름 모드 & 상대방 단어 적기 상태 및 단어 업데이트
       if (isFlow) {

@@ -1679,8 +1679,9 @@ html, body {
 }
 
 .hero-action-btn.hero-battle-btn {
-  flex: 1;
-  min-width: 140px;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #fff;
   box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
@@ -1708,6 +1709,8 @@ html, body {
 
 .hero-action-btn.hero-copy-btn,
 .hero-action-btn.hero-dict-btn {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--border-light);
   color: var(--text-primary);
