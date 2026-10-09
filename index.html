@@ -6,7 +6,10 @@
   <title>끝말잇기 AI - 네이버 국어사전 100% 공식 연동</title>
   <meta name="description" content="네이버 국어사전 공식 표제어 기반의 정통 끝말잇기 배틀, AI브리핑(흐름 모드), 단어 사전 및 4단계 난이도">
   
+  <meta name="theme-color" content="#070a15">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="theme.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
@@ -17,7 +20,9 @@
     <header class="app-header">
       <div class="header-main-row">
         <div class="brand-group">
-          <span class="brand-symbol">⚡</span>
+          <span class="brand-symbol" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor" fill-opacity="0.25"/></svg>
+          </span>
           <div class="brand-titles">
             <h1>끝말잇기 AI <span class="version-tag">PRO</span></h1>
             <span class="brand-subtitle">네이버 국어사전 100% 공식 연동</span>
@@ -26,7 +31,7 @@
 
         <div class="header-actions">
           <button id="compactAiToggleBtn" class="header-btn compact-ai-btn" title="컴퓨터 화면 조그맣게 볼 때: AI 창만 보기 모드 토글">
-            <span>⚡</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M14 4v16"/></svg>
             <span class="btn-text">AI 창만</span>
           </button>
           <button id="soundToggleBtn" class="header-btn" title="사운드 토글" aria-label="사운드 토글">
@@ -34,7 +39,7 @@
             <span class="btn-text">사운드</span>
           </button>
           <button id="resetGameBtn" class="header-btn reset" title="배틀 새 게임">
-            <span>🔄</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
             <span class="btn-text">새 게임</span>
           </button>
         </div>
@@ -205,7 +210,7 @@
           <div class="briefing-chat-messages" id="briefingMessages">
             <div class="briefing-msg ai">
               <div class="msg-avatar">⚡</div>
-              <div class="msg-bubble">
+              <div class="msg-bubble welcome-bubble">
                 <p>안녕하세요! <strong>AI브리핑</strong>입니다. <strong>끄글 548,502개 공인 단어</strong> 및 <strong>네이버 국어사전</strong> 전수 연동 기반으로 최적의 수를 실시간 브리핑합니다.</p>
                 <p>아래 엄격한 5단계 게임이론 수읽기 기준에 따라 최적의 수를 추천합니다:</p>
                 <ol class="briefing-priority-list">

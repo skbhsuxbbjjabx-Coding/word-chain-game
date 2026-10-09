@@ -1453,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 5. 파트별 분할 섹션 렌더링
       const killingSectionHtml = renderPartitionSection(
-        `💥 한방 단어 (상대 반격 0개 절대 필승)`,
+        `한방 단어 (상대 반격 0개 절대 필승)`,
         '💥',
         'killing',
         cats.killing,
